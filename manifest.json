@@ -1,0 +1,48 @@
+{
+    "name": "MyStudy Base",
+    "short_name": "MyStudy",
+    "description": "Nigeria's all-in-one learning platform — WAEC & JAMB past questions, CBT practice quizzes, video tutorials, study materials, and competitive challenges.",
+    "start_url": "./",
+    "scope": "./",
+    "display": "standalone",
+    "orientation": "portrait-primary",
+    "theme_color": "#10b981",
+    "background_color": "#ffffff",
+    "categories": ["education", "productivity"],
+    "lang": "en",
+    "icons": [
+        {
+            "src": "./assets/img/favicon.png",
+            "sizes": "192x192",
+            "type": "image/png",
+            "purpose": "any maskable"
+        },
+        {
+            "src": "./assets/img/favicon.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "any maskable"
+        }
+    ],
+    "screenshots": [],
+    "shortcuts": [
+        {
+            "name": "Practice Quizzes",
+            "short_name": "Quizzes",
+            "url": "./quizzes.php",
+            "icons": [{"src": "./assets/img/favicon.png", "sizes": "192x192"}]
+        },
+        {
+            "name": "Study Materials",
+            "short_name": "Materials",
+            "url": "./materials.php",
+            "icons": [{"src": "./assets/img/favicon.png", "sizes": "192x192"}]
+        },
+        {
+            "name": "Video Tutorials",
+            "short_name": "Tutorials",
+            "url": "./tutorials.php",
+            "icons": [{"src": "./assets/img/favicon.png", "sizes": "192x192"}]
+        }
+    ]
+}

@@ -1,0 +1,56 @@
+# ============================================================
+# SERVER-ONLY SECRETS — must never reach GitHub
+# ============================================================
+config/secrets.local.php
+config/vapid_keys.json
+*.local.php
+
+# ============================================================
+# LIVE USER DATA — owned by the server, never by the repo.
+# Contents are ignored, but each folder's .htaccess stays tracked
+# so the deployed site still blocks direct access to these paths.
+# ============================================================
+/assets/uploads/*
+!/assets/uploads/.htaccess
+
+/uploads/*
+!/uploads/.htaccess
+
+/logs/*
+!/logs/.htaccess
+
+/cache/*
+!/cache/.htaccess
+
+# ============================================================
+# Moved out of webroot: admin.zip + full SQL dump (password hashes)
+# ============================================================
+/_offwebroot/
+
+# ============================================================
+# SERVER-SPECIFIC PHP SETTINGS — differ per host
+# ============================================================
+/.user.ini
+/php.ini
+
+# ============================================================
+# Backups, dumps and archives
+# ============================================================
+*.sql.gz
+*.zip
+*.tar
+*.tar.gz
+*.bak
+*.old
+*.orig
+
+# ============================================================
+# OS / editor noise
+# ============================================================
+Thumbs.db
+Desktop.ini
+.DS_Store
+*.swp
+*~
+.idea/
+.vscode/

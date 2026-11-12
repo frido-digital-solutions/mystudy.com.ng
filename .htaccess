@@ -1,0 +1,138 @@
+# === GZIP COMPRESSION (biggest payload reduction) ===
+<IfModule mod_deflate.c>
+    AddOutputFilterByType DEFLATE text/html text/plain text/css text/xml
+    AddOutputFilterByType DEFLATE text/javascript application/javascript application/x-javascript
+    AddOutputFilterByType DEFLATE application/json application/xml application/xhtml+xml
+    AddOutputFilterByType DEFLATE image/svg+xml application/font-woff application/font-woff2
+    AddOutputFilterByType DEFLATE application/vnd.ms-fontobject font/opentype font/ttf font/eot
+
+    # Remove browser bugs for very old browsers
+    BrowserMatch ^Mozilla/4 gzip-only-text/html
+    BrowserMatch ^Mozilla/4\.0[678] no-gzip
+    BrowserMatch \bMSIE !no-gzip !gzip-only-text/html
+    Header append Vary User-Agent
+</IfModule>
+
+# === BROWSER CACHING ===
+<IfModule mod_expires.c>
+    ExpiresActive On
+    ExpiresDefault "access plus 1 month"
+
+    # CSS & JavaScript
+    ExpiresByType text/css "access plus 1 year"
+    ExpiresByType application/javascript "access plus 1 year"
+    ExpiresByType text/javascript "access plus 1 year"
+
+    # Images
+    ExpiresByType image/png "access plus 1 year"
+    ExpiresByType image/jpeg "access plus 1 year"
+    ExpiresByType image/gif "access plus 1 year"
+    ExpiresByType image/webp "access plus 1 year"
+    ExpiresByType image/svg+xml "access plus 1 year"
+    ExpiresByType image/x-icon "access plus 1 year"
+
+    # Fonts
+    ExpiresByType font/woff "access plus 1 year"
+    ExpiresByType font/woff2 "access plus 1 year"
+    ExpiresByType font/ttf "access plus 1 year"
+    ExpiresByType font/eot "access plus 1 year"
+    ExpiresByType application/font-woff "access plus 1 year"
+    ExpiresByType application/font-woff2 "access plus 1 year"
+    ExpiresByType application/vnd.ms-fontobject "access plus 1 year"
+
+    # HTML (short cache for dynamic content)
+    ExpiresByType text/html "access plus 0 seconds"
+</IfModule>
+
+# === CACHE-CONTROL HEADERS ===
+<IfModule mod_headers.c>
+    # Static assets: aggressive caching
+    <FilesMatch "\.(css|js|png|jpg|jpeg|gif|webp|svg|ico|woff|woff2|ttf|eot)$">
+        Header set Cache-Control "public, max-age=31536000, immutable"
+    </FilesMatch>
+
+    # HTML/PHP: no cache (dynamic)
+    <FilesMatch "\.(php|html)$">
+        Header set Cache-Control "no-cache, no-store, must-revalidate"
+        Header set Pragma "no-cache"
+        Header set Expires "0"
+    </FilesMatch>
+
+    # Security headers
+    Header always set X-Content-Type-Options "nosniff"
+    Header always set X-Frame-Options "SAMEORIGIN"
+    Header always set Referrer-Policy "strict-origin-when-cross-origin"
+</IfModule>
+
+# === KEEP-ALIVE CONNECTIONS ===
+<IfModule mod_headers.c>
+    Header set Connection keep-alive
+</IfModule>
+
+# === ETags (disable - we use Cache-Control instead) ===
+<IfModule mod_headers.c>
+    Header unset ETag
+</IfModule>
+FileETag None
+
+# Enable URL rewriting
+RewriteEngine On
+
+# Set the base directory
+RewriteBase /
+
+# If the requested file or directory exists, serve it directly
+RewriteCond %{REQUEST_FILENAME} -f [OR]
+RewriteCond %{REQUEST_FILENAME} -d
+RewriteRule ^ - [L]
+
+# DirectoryIndex - make index.php the default
+DirectoryIndex index.php index.html
+
+# Handle clean URLs without .php extension
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteCond %{REQUEST_FILENAME}.php -f
+RewriteRule ^(.+)$ $1.php [L,QSA]
+
+# Protect sensitive files
+<FilesMatch "^(config\.php|database\.php|secrets\.local\.php|vapid_keys\.json|composer\.(json|lock))$">
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        Order allow,deny
+        Deny from all
+    </IfModule>
+</FilesMatch>
+
+# Never serve dumps, archives, backups, logs or ini files over HTTP
+<FilesMatch "\.(sql|zip|tar|gz|bak|backup|log|ini|sh|env|old|orig|save|swp)$">
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        Order allow,deny
+        Deny from all
+    </IfModule>
+</FilesMatch>
+<FilesMatch "^(\.user\.ini|php\.ini|\.htaccess|\.env)">
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        Order allow,deny
+        Deny from all
+    </IfModule>
+</FilesMatch>
+
+# Custom Error Pages
+ErrorDocument 404 /index.php
+ErrorDocument 403 /index.php
+
+# php -- BEGIN cPanel-generated handler, do not edit
+# Set the “ea-php83” package as the default “PHP” programming language.
+<IfModule mime_module>
+  AddHandler application/x-httpd-ea-php83 .php .php8 .phtml
+</IfModule>
+# php -- END cPanel-generated handler, do not edit

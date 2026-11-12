@@ -1,0 +1,12 @@
+User-agent: *
+Allow: /
+Disallow: /admin/
+Disallow: /config/
+Disallow: /logs/
+Disallow: /cache/
+Disallow: /includes/
+Disallow: /models/
+Disallow: /controllers/
+Disallow: /database/
+
+Sitemap: https://mystudybase.ng/sitemap.xml.php

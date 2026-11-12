@@ -1,0 +1,40 @@
+---
+# ============================================================================
+# cPanel Git Version Control — deployment tasks
+#
+# Runs when you click "Deploy HEAD Commit" in cPanel -> Git Version Control.
+#
+# HOW THIS KEEPS LIVE DATA SAFE
+#   /bin/cp -R merges: it overwrites files that exist in the repo and leaves
+#   everything else alone. It never deletes. So user uploads, sessions, logs
+#   and cache on the server survive every deploy.
+#
+#   The repo does not even contain the data folders' contents (.gitignore
+#   excludes them) — only their .htaccess guard files, which ARE deployed so
+#   those folders stay blocked from direct web access.
+#
+#   config/secrets.local.php and config/vapid_keys.json are gitignored, so they
+#   are absent from the clone and can never be overwritten by a deploy.
+#
+# DEPLOY PATH
+#   $HOME/public_html/ is correct for the main domain on a standard cPanel
+#   account. If the deploy log says "No such file or directory", replace
+#   $HOME/public_html/ below with your literal path, e.g.
+#   /home/yourcpanelusername/public_html/
+#   (For an addon domain, use its own document root instead.)
+#
+# ADDING A NEW TOP-LEVEL PAGE
+#   New files inside admin/, includes/, models/, assets/ etc. deploy
+#   automatically. A new .php file in the ROOT folder must also be added to
+#   one of the /bin/cp lines below, or it will not reach the server.
+# ============================================================================
+deployment:
+  tasks:
+    - export DEPLOYPATH=$HOME/public_html/
+    - /bin/cp -R admin ajax assets cache config controllers database includes logs models university uploads views $DEPLOYPATH
+    - /bin/cp .htaccess manifest.json robots.txt sw.js $DEPLOYPATH
+    - /bin/cp about.php api_discussion.php api_messages.php battle_arena.php battle_hub.php battle_invite.php blog.php bootstrap.php cache_manager.php certificate.php cgpa-calculator.php challenge_results.php claim_reward.php contact.php conversation.php cookies.php $DEPLOYPATH
+    - /bin/cp dashboard.php deactivate-account.php discussion_view.php discussions.php download.php faq.php forgot-password.php frozen.php index.php leaderboard.php login.php logout.php $DEPLOYPATH
+    - /bin/cp maintenance.php material.php materials.php messages.php my_quizzes.php notifications.php notify_challenge_end.php payment_success.php performance.php post.php privacy-policy.php process_battle_action.php process_challenge.php process_open_challenge.php profile.php profile_public.php $DEPLOYPATH
+    - /bin/cp quiz.php quiz_battle.php quiz_battle_play.php quiz_battle_result.php quiz_battle_submit.php quiz_multi.php quiz_result.php quiz_special.php quiz_start.php quiz_submit.php quizzes.php $DEPLOYPATH
+    - /bin/cp register.php reset-password.php settings.php sitemap.xml.php terms.php timetable.php tools.php tutorials.php universities.php upload-material.php upload_receipt.php users.php verify-email.php verify_redirect.php $DEPLOYPATH
