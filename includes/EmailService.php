@@ -38,8 +38,10 @@ class EmailService {
 
     /**
      * Send an email via Brevo transactional API.
+     *
+     * @param array $attachments each item: ['content' => base64, 'name' => ..., 'filename' => ...]
      */
-    public function send(string $toEmail, string $toName, string $subject, string $htmlContent, string $textContent = ''): bool {
+    public function send(string $toEmail, string $toName, string $subject, string $htmlContent, string $textContent = '', array $attachments = []): bool {
         $payload = [
             'sender' => [
                 'name' => $this->fromName,
@@ -62,6 +64,18 @@ class EmailService {
                 'name' => $this->replyToName ?: $this->replyToEmail,
             ];
         }
+        if ($attachments) {
+            $clean = [];
+            foreach ($attachments as $a) {
+                if (empty($a['content']) || empty($a['name'])) continue;
+                $clean[] = [
+                    'content' => (string)$a['content'],
+                    'name' => basename((string)$a['name']),
+                    'filename' => basename((string)($a['filename'] ?? $a['name'])),
+                ];
+            }
+            if ($clean) $payload['attachments'] = $clean;
+        }
 
         $ch = curl_init('https://api.brevo.com/v3/smtp/email');
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
@@ -72,7 +86,8 @@ class EmailService {
             'api-key: ' . $this->apiKey,
         ]);
         curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));
-        curl_setopt($ch, CURLOPT_TIMEOUT, 12);
+        // A 4 MB attachment is ~5.4 MB of base64; 12s is not enough to post that.
+        curl_setopt($ch, CURLOPT_TIMEOUT, $attachments ? 60 : 12);
         
         // Disable SSL verification for local XAMPP environments
         curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);

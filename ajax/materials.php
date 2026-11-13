@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../config/config.php';
 require_once __DIR__ . '/../models/Material.php';
+require_once __DIR__ . '/../includes/materials_paid.php';
 
 header('Content-Type: application/json; charset=utf-8');
 
@@ -79,6 +80,12 @@ try {
         $detail = $parts ? (' matching ' . implode(' · ', $parts)) : '';
         echo '<div class="col-12"><div class="alert alert-info">No materials' . $detail . ' found.</div></div>';
     } else {
+        $ajaxUserId = is_logged_in() ? (int)$_SESSION['user_id'] : 0;
+        $ajaxAdmin = $ajaxUserId > 0 && has_role('admin');
+        $ajaxOwned = $ajaxUserId > 0
+            ? (new MaterialPayment($pdo))->ownedIds($ajaxUserId, array_column($materials, 'id'))
+            : [];
+
         foreach ($materials as $m) {
             $title = htmlspecialchars($m['title']);
             $desc = htmlspecialchars(mb_strimwidth($m['description'] ?? '', 0, 100, '...'));
@@ -87,13 +94,18 @@ try {
             $isUniGenV = !empty($m['is_university_general']);
             $secBoard = htmlspecialchars($m['secondary_board'] ?? 'General');
             $viewHref = SITE_URL . '/material.php?id=' . (int)$m['id'];
-            $downloadUrl = SITE_URL . '/' . ltrim(($m['file_path'] ?? ''), '/');
+            // Never hand out the raw path: that skips the price check and the counter.
+            $downloadUrl = SITE_URL . '/material_download.php?id=' . (int)$m['id'];
+            $cardLocked = material_is_paid($m)
+                && !in_array((int)$m['id'], $ajaxOwned, true)
+                && (int)($m['uploader_id'] ?? 0) !== $ajaxUserId
+                && !$ajaxAdmin;
             $downloadName = !empty($m['original_name']) ? $m['original_name'] : basename($m['file_path'] ?? '');
 
             echo '<div class="col-md-4">';
             echo '  <div class="card h-100">';
             echo '    <div class="card-body">';
-            echo '      <h5 class="card-title mb-2">' . $title . '</h5>';
+            echo '      <h5 class="card-title mb-2">' . ($cardLocked ? '<i class="fas fa-lock text-warning me-1"></i>' : '') . $title . '</h5>';
             echo '      <div class="small text-muted mb-2">';
             echo          htmlspecialchars($levelV);
             if ($levelV === 'Secondary') {
@@ -110,7 +122,11 @@ try {
             echo '    </div>';
             echo '    <div class="card-footer bg-transparent border-0 d-flex justify-content-between">';
             echo '      <a href="' . htmlspecialchars($viewHref) . '" class="btn btn-sm btn-outline-primary"><i class="fas fa-eye me-1"></i> View</a>';
-            echo '      <a href="' . htmlspecialchars($downloadUrl) . '" class="btn btn-sm btn-primary" download="' . htmlspecialchars($downloadName) . '"><i class="fas fa-download me-1"></i> Download</a>';
+            if ($cardLocked) {
+                echo '      <a href="' . htmlspecialchars($viewHref) . '" class="btn btn-sm btn-primary"><i class="fas fa-lock-open me-1"></i> Pay &#8358;' . number_format((float)$m['price'], 0) . '</a>';
+            } else {
+                echo '      <a href="' . htmlspecialchars($downloadUrl) . '" class="btn btn-sm btn-primary" download="' . htmlspecialchars($downloadName) . '"><i class="fas fa-download me-1"></i> Download</a>';
+            }
             echo '    </div>';
             echo '  </div>';
             echo '</div>';

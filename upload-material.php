@@ -1,10 +1,13 @@
 <?php
 require_once __DIR__ . '/config/config.php';
 require_login();
+require_once __DIR__ . '/includes/materials_paid.php';
 
 $page_title = 'Upload Material';
 require_once __DIR__ . '/models/Material.php';
 $materialModel = new Material($pdo);
+// Only the platform owners can put a price on learning.
+$canSell = has_role('admin');
 // Load universities for University scope selection
 $universities = $materialModel->listUniversities();
 
@@ -22,6 +25,8 @@ $secondary_board = 'General';
 $university_id = '';
 $is_university_general = 0;
 $university_scope = 'specific'; // 'general' or 'specific' (university only)
+$is_paid = false;
+$price = 0.0;
 
 // Categories not needed on this form anymore
 $categories = [];
@@ -41,6 +46,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $university_scope = ($_POST['university_scope'] ?? 'specific') === 'general' ? 'general' : 'specific';
     $is_university_general = ($level === 'University' && $university_scope === 'general') ? 1 : 0;
     $university_id = isset($_POST['university_id']) && $_POST['university_id'] !== '' ? (int)$_POST['university_id'] : null;
+
+    // Price is read from the form but only ever trusted from an admin; a student
+    // posting is_paid=1 is ignored.
+    $is_paid = $canSell && !empty($_POST['is_paid']);
+    $price = 0.0;
+    if ($is_paid) {
+        $price = (float)str_replace([',', ' ', "\xc2\xa0"], '', (string)($_POST['price'] ?? ''));
+        if ($price < 50 || $price > 5000000) {
+            $errors['price'] = 'Enter a price between ₦50 and ₦5,000,000.';
+        }
+    }
 
     // File handling (supports single or multiple files)
     $allowed_ext = ['pdf','doc','docx','ppt','pptx','xls','xlsx','jpg','jpeg','png'];
@@ -71,6 +87,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     $isBulk = count($files) > 1;
+    if ($is_paid && $isBulk) {
+        $errors['price'] = 'A paid material is one file at a time — the price belongs to a single document.';
+    }
     if (!$isBulk && $title === '') {
         $errors['title'] = 'Title is required';
     }
@@ -109,21 +128,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     if (empty($errors)) {
-        if (!is_dir($upload_dir)) {
-            mkdir($upload_dir, 0777, true);
+        // Paid files go to assets/secure/materials, which no URL can reach; the
+        // gateway in material_download.php is the only door.
+        $targetDir = $is_paid ? material_secure_base() : $upload_dir;
+        if (!is_dir($targetDir)) {
+            mkdir($targetDir, 0777, true);
         }
         $created = 0;
         foreach ($files as $file) {
             $ext = strtolower(pathinfo((string)$file['name'], PATHINFO_EXTENSION));
             $safeName = bin2hex(random_bytes(16)) . '.' . $ext;
-            $dest = $upload_dir . $safeName;
+            $dest = $targetDir . $safeName;
 
             if (!move_uploaded_file($file['tmp_name'], $dest)) {
                 $errors['file'] = 'Failed to save one of the uploaded files';
                 break;
             }
 
-            $relative_path = 'assets/uploads/materials/' . $safeName;
+            $relative_path = material_store_dir($is_paid) . '/' . $safeName;
             $mime = mime_content_type($dest) ?: null;
             $original_name = trim((string)$file['name']);
 
@@ -148,6 +170,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'university_id' => $is_university_general ? null : $university_id,
                 'is_university_general' => $level === 'University' ? (int)$is_university_general : 0,
                 'original_name' => $original_name,
+                'is_paid' => $is_paid ? 1 : 0,
+                'price' => $is_paid ? $price : null,
             ]);
             $created++;
         }
@@ -177,6 +201,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 include __DIR__ . '/includes/header.php';
 ?>
+<style>
+.um-sell{border:1px solid var(--border,#e2e8f0);border-radius:var(--radius-md,12px);padding:.95rem 1.05rem;background:#fcfdff}
+.um-sell-head{display:flex;gap:.65rem;align-items:flex-start;cursor:pointer;margin:0}
+.um-sell-head input{margin-top:.2rem;width:1.05rem;height:1.05rem;accent-color:var(--primary,#10b981);flex:0 0 auto}
+.um-sell-head strong{display:block;font-size:.95rem;color:var(--text-dark,#1e293b)}
+.um-sell-head em{display:block;font-style:normal;font-size:.83rem;color:var(--text-muted,#64748b);margin-top:.15rem}
+.um-price{margin-top:.9rem;padding-top:.9rem;border-top:1px dashed var(--border,#e2e8f0)}
+.um-price-row{display:flex;align-items:stretch;gap:.5rem;max-width:280px}
+.um-naira{display:flex;align-items:center;justify-content:center;width:2.6rem;border:1px solid var(--border,#e2e8f0);border-radius:var(--radius-md,12px);background:#f8fafc;font-weight:700;color:var(--text-muted,#64748b)}
+.um-price-row .form-control{flex:1 1 auto;min-width:0;font-size:1.05rem;font-weight:600}
+</style>
 <div class="container py-4">
     <h3 class="mb-3">Upload Study Material</h3>
 
@@ -253,6 +288,35 @@ include __DIR__ . '/includes/header.php';
                     </select>
                 </div>
             </div>
+
+            <?php if ($canSell): ?>
+            <div class="um-sell mt-4">
+                <label class="um-sell-head">
+                    <input type="checkbox" name="is_paid" value="1" id="isPaidBox"
+                           <?php echo $is_paid ? 'checked' : ''; ?>
+                           onchange="document.getElementById('umPriceWrap').classList.toggle('d-none', !this.checked)">
+                    <span>
+                        <strong>Sell this material</strong>
+                        <em>Students pay with Paystack before they can open or download it.</em>
+                    </span>
+                </label>
+                <div id="umPriceWrap" class="um-price<?php echo $is_paid ? '' : ' d-none'; ?>">
+                    <label class="form-label" for="umPrice">Price (Naira)</label>
+                    <div class="um-price-row">
+                        <span class="um-naira">&#8358;</span>
+                        <input type="number" id="umPrice" name="price" class="form-control" min="50" max="5000000" step="50"
+                               value="<?php echo $price ? htmlspecialchars((string)$price) : ''; ?>" placeholder="500">
+                    </div>
+                    <div class="form-text text-muted">
+                        One file per paid material. The file is stored where no web address can reach it and is streamed
+                        to each buyer by the server, so a paid document cannot be hotlinked or shared by URL.
+                    </div>
+                    <?php if (!empty($errors['price'])): ?>
+                        <div class="text-danger small mt-1"><?php echo htmlspecialchars($errors['price']); ?></div>
+                    <?php endif; ?>
+                </div>
+            </div>
+            <?php endif; ?>
 
             <!-- Upload Progress UI -->
             <div id="uploadProgressContainer" class="mt-4 mb-3 d-none">

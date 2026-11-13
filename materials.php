@@ -4,7 +4,10 @@ $page_title = 'Study Materials';
 
 // Load model
 require_once __DIR__ . '/models/Material.php';
+require_once __DIR__ . '/models/MaterialPayment.php';
+require_once __DIR__ . '/includes/materials_paid.php';
 $materialModel = new Material($pdo);
+$materialPayments = new MaterialPayment($pdo);
 
 // Build university id => acronym map for messages
 $uniMap = [];
@@ -21,34 +24,56 @@ $universityId = isset($_GET['university_id']) ? (int)$_GET['university_id'] : 0;
 $page = max(1, (int)($_GET['page'] ?? 1));
 $limit = 12;
 $offset = ($page - 1) * $limit;
+$view = (($_GET['view'] ?? '') === 'purchased') ? 'purchased' : '';
 
-// Fetch data using advanced search
-$materials = $materialModel->searchMaterials(
-    $q !== '' ? $q : null,
-    $level,
-    $secondaryBoard ?: null,
-    $isUniGen,
-    $universityId ?: null,
-    $limit,
-    $offset,
-    'approved'
-);
+$currentUserId = is_logged_in() ? (int)$_SESSION['user_id'] : 0;
 
-// Get total count for pagination
-$totalCount = $materialModel->countSearchMaterials(
-    $q !== '' ? $q : null,
-    $level,
-    $secondaryBoard ?: null,
-    $isUniGen,
-    $universityId ?: null,
-    'approved'
-);
+if ($view === 'purchased' && $currentUserId > 0) {
+    $ownedAll = $materialPayments->allOwnedIds($currentUserId);
+    $materials = $ownedAll ? $materialModel->listByIds($ownedAll, $limit, $offset) : [];
+    $totalCount = count($ownedAll);
+} else {
+    $view = '';
+    // Fetch data using advanced search
+    $materials = $materialModel->searchMaterials(
+        $q !== '' ? $q : null,
+        $level,
+        $secondaryBoard ?: null,
+        $isUniGen,
+        $universityId ?: null,
+        $limit,
+        $offset,
+        'approved'
+    );
+
+    // Get total count for pagination
+    $totalCount = $materialModel->countSearchMaterials(
+        $q !== '' ? $q : null,
+        $level,
+        $secondaryBoard ?: null,
+        $isUniGen,
+        $universityId ?: null,
+        'approved'
+    );
+}
 $totalPages = ceil($totalCount / $limit) ?: 1;
+
+// Which of the materials about to be drawn is already paid for?
+$viewerOwnsIds = $currentUserId > 0 ? $materialPayments->ownedIds($currentUserId, array_column($materials, 'id')) : [];
+$viewerIsAdmin = $currentUserId > 0 && has_role('admin');
 
 include __DIR__ . '/includes/header.php';
 ?>
 
 <!-- Styles loaded from design-system.css -->
+<style>
+.mat-lock{color:#f59e0b;font-size:.82em;margin-right:.15em}
+.mat-price{background:#fff7ed;color:#c2410c;border:1px solid #fed7aa;font-weight:700}
+.mat-owned{background:#ecfdf5;color:#047857;border:1px solid #a7f3d0;font-weight:700}
+.mat-tabs{display:flex;gap:.4rem;flex-wrap:wrap}
+.mat-tabs a{display:inline-flex;align-items:center;gap:.4rem;padding:.42rem .95rem;border-radius:999px;font-size:.86rem;font-weight:600;text-decoration:none;background:#fff;border:1px solid var(--border,#e2e8f0);color:var(--text-muted,#64748b)}
+.mat-tabs a.active{background:var(--primary,#10b981);border-color:var(--primary,#10b981);color:#fff}
+</style>
 
 <div class="page-header">
     <div class="container d-flex flex-wrap align-items-center justify-content-between">
@@ -65,9 +90,20 @@ include __DIR__ . '/includes/header.php';
 </div>
 
 <div class="container pb-5">
+    <?php if (is_logged_in()): ?>
+        <div class="mat-tabs mb-3">
+            <a href="<?php echo SITE_URL; ?>/materials.php" class="<?php echo $view === '' ? 'active' : ''; ?>">
+                <i class="fas fa-layer-group"></i> All materials
+            </a>
+            <a href="<?php echo SITE_URL; ?>/materials.php?view=purchased" class="<?php echo $view === 'purchased' ? 'active' : ''; ?>">
+                <i class="fas fa-unlock"></i> My purchases
+            </a>
+        </div>
+    <?php endif; ?>
     <!-- Search & Filter -->
     <div class="search-card">
         <form method="get" action="">
+            <?php if ($view !== ''): ?><input type="hidden" name="view" value="<?php echo htmlspecialchars($view); ?>"><?php endif; ?>
             <div class="row g-3">
                 <div class="col-lg-5">
                     <label class="form-label">Search</label>
@@ -146,6 +182,12 @@ include __DIR__ . '/includes/header.php';
                 elseif (in_array($ext, ['doc','docx'])) { $iconClass = 'fa-file-word'; $colorClass = 'doc'; }
                 elseif (in_array($ext, ['ppt','pptx'])) { $iconClass = 'fa-file-powerpoint'; $colorClass = 'ppt'; }
                 elseif (in_array($ext, ['xls','xlsx'])) { $iconClass = 'fa-file-excel'; $colorClass = 'xls'; }
+
+                $mPaid = material_is_paid($m);
+                $mOwned = in_array((int)$m['id'], $viewerOwnsIds, true)
+                    || (int)($m['uploader_id'] ?? 0) === $currentUserId
+                    || $viewerIsAdmin;
+                $mLocked = $mPaid && !$mOwned;
             ?>
             <div class="col-md-6 col-lg-3">
                 <div class="material-card">
@@ -153,7 +195,10 @@ include __DIR__ . '/includes/header.php';
                         <i class="fas <?php echo $iconClass; ?>"></i>
                     </div>
                     <div class="material-body">
-                        <h3 class="material-title"><?php echo htmlspecialchars($m['title']); ?></h3>
+                        <h3 class="material-title">
+                            <?php if ($mLocked): ?><i class="fas fa-lock mat-lock" title="Paid material"></i> <?php endif; ?>
+                            <?php echo htmlspecialchars($m['title']); ?>
+                        </h3>
                         <p class="material-desc"><?php echo htmlspecialchars($m['description'] ?: 'No description provided.'); ?></p>
                         
                         <div class="material-meta mb-3 d-flex flex-wrap gap-2">
@@ -171,6 +216,11 @@ include __DIR__ . '/includes/header.php';
                                 <?php endif; ?>
                             <?php endif; ?>
                             <span class="badge bg-light text-muted border px-2 py-1"><?php echo strtoupper($ext); ?></span>
+                            <?php if ($mLocked): ?>
+                                <span class="badge mat-price">&#8358;<?php echo number_format((float)$m['price'], 0); ?></span>
+                            <?php elseif ($mPaid): ?>
+                                <span class="badge mat-owned"><i class="fas fa-check me-1"></i>Unlocked</span>
+                            <?php endif; ?>
                         </div>
                         
                         <div class="material-stats mt-3 mb-3 d-flex justify-content-between text-muted small">
@@ -180,9 +230,16 @@ include __DIR__ . '/includes/header.php';
                             <?php endif; ?>
                         </div>
                         
-                        <a href="<?php echo SITE_URL; ?>/download.php?id=<?php echo $m['id']; ?>" class="btn btn-outline-primary btn-download mt-auto" target="_blank">
-                            <i class="fas fa-download me-2"></i> Download
-                        </a>
+                        <?php if ($mLocked): ?>
+                            <a href="<?php echo SITE_URL; ?>/material.php?id=<?php echo (int)$m['id']; ?>"
+                               class="btn btn-primary btn-download mt-auto rounded-pill" target="_self">
+                                <i class="fas fa-lock-open me-2"></i> Pay &#8358;<?php echo number_format((float)$m['price'], 0); ?> &amp; download
+                            </a>
+                        <?php else: ?>
+                            <a href="<?php echo SITE_URL; ?>/material_download.php?id=<?php echo (int)$m['id']; ?>" class="btn btn-outline-primary btn-download mt-auto" target="_blank">
+                                <i class="fas fa-download me-2"></i> Download
+                            </a>
+                        <?php endif; ?>
                     </div>
                 </div>
             </div>

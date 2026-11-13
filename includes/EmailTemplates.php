@@ -168,6 +168,34 @@ class EmailTemplates {
         ];
     }
 
+    public static function materialPurchased(string $studentName, string $materialTitle, float $amount, string $pageUrl, bool $attached): array {
+        $price = '₦' . number_format($amount, 0);
+        $body = '
+          <h2 style="margin:0 0 10px;font-size:20px;line-height:1.25;">Your material is unlocked</h2>
+          <p style="margin:0 0 12px;color:#334155;font-size:14.5px;line-height:1.7;">
+            Hi <strong>' . htmlspecialchars($studentName ?: 'Student', ENT_QUOTES, 'UTF-8') . '</strong>, we have confirmed your payment of <strong>' . htmlspecialchars($price, ENT_QUOTES, 'UTF-8') . '</strong> for <strong>' . htmlspecialchars($materialTitle, ENT_QUOTES, 'UTF-8') . '</strong>.
+          </p>
+          <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:14px;padding:12px 14px;margin:0 0 10px;">
+            <div style="color:#64748b;font-weight:800;font-size:12px;text-transform:uppercase;letter-spacing:0.8px;">Paid</div>
+            <div style="font-weight:900;font-size:18px;color:#0f172a;margin-top:6px;">' . htmlspecialchars($price, ENT_QUOTES, 'UTF-8') . '</div>
+          </div>
+          <p style="margin:0 0 8px;color:#334155;font-size:14.5px;line-height:1.7;">'
+            . ($attached
+                ? 'The file is attached to this email. Keep it safe.'
+                : 'The file is too large to attach, so please download it from your account.')
+          . '</p>
+          <p style="margin:0;color:#64748b;font-size:13.5px;line-height:1.7;">
+            It also stays unlocked on your account for good &mdash; you can download it again any time, even if you lose this email. If this is the material above, the button opens it directly:
+            <br><br>
+            <span style="word-break:break-all;color:#0f172a;">' . htmlspecialchars($pageUrl, ENT_QUOTES, 'UTF-8') . '</span>
+          </p>';
+        return [
+            'subject' => 'Download ready: ' . $materialTitle,
+            'html' => self::baseLayout('Payment Confirmed', 'Your paid material is unlocked and ready.', $body, 'Open My Material', $pageUrl),
+            'text' => "Hi {$studentName},\n\nPayment of {$price} confirmed for: {$materialTitle}\n\nDownload any time: {$pageUrl}\n\n— MyStudy Team",
+        ];
+    }
+
     public static function rewardClaimApproved(string $studentName, string $challengeTitle, string $reward, string $claimUrl): array {
         $body = '
           <h2 style="margin:0 0 10px;font-size:20px;line-height:1.25;">🎉 Reward Claim Approved!</h2>

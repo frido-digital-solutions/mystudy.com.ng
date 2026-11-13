@@ -35,6 +35,8 @@ class Material
             university_id INT NULL,
             is_university_general TINYINT(1) NOT NULL DEFAULT 0,
             original_name VARCHAR(255) NULL,
+            is_paid TINYINT(1) NOT NULL DEFAULT 0,
+            price DECIMAL(12,2) NULL,
             reviewed_by INT NULL,
             reviewed_at TIMESTAMP NULL DEFAULT NULL,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -54,6 +56,8 @@ class Material
             $add('reviewed_by', "reviewed_by INT NULL");
             $add('reviewed_at', "reviewed_at TIMESTAMP NULL DEFAULT NULL");
             $add('download_count', "download_count INT NOT NULL DEFAULT 0");
+            $add('is_paid', "is_paid TINYINT(1) NOT NULL DEFAULT 0");
+            $add('price', "price DECIMAL(12,2) NULL");
         } catch (Throwable $e) { /* ignore */ }
 
         // Ensure material categories exist (reference data, not demo data)
@@ -114,9 +118,10 @@ class Material
 
     public function create(array $data): int
     {
-        $sql = "INSERT INTO materials (title, description, category_id, file_path, file_size, mime_type, uploader_id, visibility, status, level, secondary_board, university_id, is_university_general, original_name)
-                VALUES (:title, :description, :category_id, :file_path, :file_size, :mime_type, :uploader_id, :visibility, :status, :level, :secondary_board, :university_id, :is_university_general, :original_name)";
+        $sql = "INSERT INTO materials (title, description, category_id, file_path, file_size, mime_type, uploader_id, visibility, status, level, secondary_board, university_id, is_university_general, original_name, is_paid, price)
+                VALUES (:title, :description, :category_id, :file_path, :file_size, :mime_type, :uploader_id, :visibility, :status, :level, :secondary_board, :university_id, :is_university_general, :original_name, :is_paid, :price)";
         $stmt = $this->conn->prepare($sql);
+        $isPaid = !empty($data['is_paid']) && (float)($data['price'] ?? 0) > 0;
         $stmt->execute([
             ':title' => $data['title'],
             ':description' => $data['description'] ?? null,
@@ -132,8 +137,25 @@ class Material
             ':university_id' => $data['university_id'] ?? null,
             ':is_university_general' => !empty($data['is_university_general']) ? 1 : 0,
             ':original_name' => $data['original_name'] ?? null,
+            ':is_paid' => $isPaid ? 1 : 0,
+            ':price' => $isPaid ? (float)$data['price'] : null,
         ]);
         return (int)$this->conn->lastInsertId();
+    }
+
+    /**
+     * Price (or unprice) an existing material. Files never move here — the gateway
+     * resolves file_path, so a paid material keeps working in either direction.
+     */
+    public function setPricing(int $id, bool $paid, ?float $price): bool
+    {
+        $sql = 'UPDATE materials SET is_paid = :p, price = :pr WHERE id = :id';
+        $stmt = $this->conn->prepare($sql);
+        return $stmt->execute([
+            ':p' => $paid ? 1 : 0,
+            ':pr' => $paid ? max(0, (float)$price) : null,
+            ':id' => $id,
+        ]);
     }
 
     public function list(int $limit = 20, int $offset = 0, ?int $categoryId = null, ?string $q = null, string $status = 'approved'): array
@@ -263,12 +285,41 @@ class Material
         $stmt->execute([':id' => $id]);
     }
 
+    /**
+     * Fetch specific materials, newest purchase first. Used by the "My purchases" view.
+     */
+    public function listByIds(array $ids, int $limit = 20, int $offset = 0): array
+    {
+        $ids = array_values(array_unique(array_filter(array_map('intval', $ids))));
+        if (!$ids) { return []; }
+        $in = implode(',', array_fill(0, count($ids), '?'));
+        $sql = "SELECT m.*, c.name AS category_name
+                FROM materials m
+                LEFT JOIN material_categories c ON c.id = m.category_id
+                WHERE m.status = 'approved' AND m.id IN ($in)
+                ORDER BY m.created_at DESC
+                LIMIT ? OFFSET ?";
+        $stmt = $this->conn->prepare($sql);
+        $n = 1;
+        foreach ($ids as $id) { $stmt->bindValue($n++, $id, PDO::PARAM_INT); }
+        $stmt->bindValue($n++, $limit, PDO::PARAM_INT);
+        $stmt->bindValue($n, $offset, PDO::PARAM_INT);
+        $stmt->execute();
+        return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+    }
+
     public function getById(int $id): ?array
     {
         $stmt = $this->conn->prepare("SELECT m.*, c.name AS category_name FROM materials m LEFT JOIN material_categories c ON c.id = m.category_id WHERE m.id = :id");
         $stmt->execute([':id' => $id]);
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
         return $row ?: null;
+    }
+
+    public function updateFilePath(int $id, string $relativePath): bool
+    {
+        $stmt = $this->conn->prepare('UPDATE materials SET file_path = :p WHERE id = :id');
+        return $stmt->execute([':p' => $relativePath, ':id' => $id]);
     }
 
     public function listUniversities(): array

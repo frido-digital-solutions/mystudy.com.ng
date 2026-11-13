@@ -13,6 +13,11 @@ config/vapid_keys.json
 /assets/uploads/*
 !/assets/uploads/.htaccess
 
+# Paid material files: server-owned, never pushed. The deny-all guard above
+# them is tracked so the protection itself ships with the code.
+/assets/secure/*
+!/assets/secure/.htaccess
+
 /uploads/*
 !/uploads/.htaccess
 

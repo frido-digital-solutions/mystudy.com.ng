@@ -1,11 +1,10 @@
 <?php
 /**
- * Download material with tracking.
+ * Legacy download link. Kept so bookmarks and older posts keep working; the actual
+ * hand-off (and the ownership check for paid files) lives in material_download.php.
  * Usage: download.php?id=123
- * Increments download_count then redirects to the file.
  */
 require_once __DIR__ . '/config/config.php';
-require_once __DIR__ . '/models/Material.php';
 
 $id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
 if ($id <= 0) {
@@ -13,18 +12,5 @@ if ($id <= 0) {
     exit('Invalid material ID.');
 }
 
-$materialModel = new Material($pdo);
-$material = $materialModel->getById($id);
-
-if (!$material || $material['status'] !== 'approved') {
-    http_response_code(404);
-    exit('Material not found.');
-}
-
-// Increment download count
-$materialModel->incrementDownloads($id);
-
-// Build file URL and redirect
-$fileUrl = SITE_URL . '/assets/uploads/materials/' . basename($material['file_path']);
-header('Location: ' . $fileUrl);
+header('Location: ' . SITE_URL . '/material_download.php?id=' . $id);
 exit;

@@ -8,7 +8,68 @@ if (!admin_can('materials')) {
 }
 $page_title = 'Manage Study Materials';
 require_once __DIR__ . '/../models/Material.php';
+require_once __DIR__ . '/../models/MaterialPayment.php';
+require_once __DIR__ . '/../includes/materials_paid.php';
 $materialModel = new Material($pdo);
+
+// Price changes go through here so the file can move into the locked store in the
+// same breath — a paid document must never stay reachable at its old public URL.
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['admin_action'] ?? '') === 'set_price') {
+    if (!validate_csrf_token($_POST['csrf_token'] ?? '')) {
+        set_flash_message('error', 'Your session expired. Please try again.');
+        redirect(SITE_URL . '/admin/materials.php?status=' . ($_POST['return_status'] ?? 'approved'));
+    }
+    $mid = (int)($_POST['material_id'] ?? 0);
+    $raw = trim((string)($_POST['price'] ?? ''));
+    $row = $mid > 0 ? $materialModel->getById($mid) : null;
+
+    if (!$row) {
+        set_flash_message('error', 'Material not found.');
+    } else {
+        $wantPaid = $raw !== '';
+        $newPrice = 0.0;
+        if ($wantPaid) {
+            $newPrice = (float)str_replace([',', ' '], '', $raw);
+            if ($newPrice < 50 || $newPrice > 5000000) {
+                set_flash_message('error', 'Enter a price between ₦50 and ₦5,000,000, or leave it empty to make the material free.');
+                $wantPaid = false;
+                $newPrice = 0.0;
+            }
+        }
+
+        if ($wantPaid && !material_is_paid($row)) {
+            // Moving into the guarded folder before the flag flips, so there is never
+            // a moment where a paid file sits at a public path marked as sold.
+            $from = material_resolve_file($row);
+            $to = null;
+            if ($from !== null) {
+                $dir = material_secure_base();
+                $target = $dir . '/' . bin2hex(random_bytes(16)) . '.' . strtolower(pathinfo($from, PATHINFO_EXTENSION));
+                if (@rename($from, $target)) {
+                    $to = MATERIAL_SECURE_DIR . '/' . basename($target);
+                }
+            }
+            if ($to === null) {
+                set_flash_message('error', 'The file could not be moved into the locked store, so the price was not changed.');
+                $wantPaid = false;
+                $newPrice = 0.0;
+            } else {
+                $materialModel->updateFilePath($mid, $to);
+            }
+        }
+
+        if ($wantPaid || (!$wantPaid && material_is_paid($row))) {
+            $materialModel->setPricing($mid, $wantPaid, $wantPaid ? $newPrice : null);
+            log_admin_activity($pdo, 'Material pricing', ($wantPaid ? 'Set ₦' . number_format($newPrice, 0) . ' for #' : 'Made free #') . $mid);
+            set_flash_message('success', $wantPaid
+                ? 'Locked behind Paystack at ₦' . number_format($newPrice, 0) . '. Buyers keep it for life.'
+                : 'This material is free again. Anyone signed in can download it.');
+        }
+    }
+    redirect(SITE_URL . '/admin/materials.php?status=' . rawurlencode((string)($_POST['return_status'] ?? 'approved')) . '&page=' . max(1, (int)($_POST['return_page'] ?? 1)));
+}
+
+$paidStats = (new MaterialPayment($pdo))->totals();
 $status = isset($_GET['status']) && in_array($_GET['status'], ['pending','approved','rejected'], true) ? $_GET['status'] : 'pending';
 $counts = $materialModel->moderationCounts();
 
@@ -34,6 +95,19 @@ include __DIR__ . '/includes/header.php';
         </div>
       </div>
       <?php echo display_flash_message(); ?>
+      <style>
+        .mat-price-input{width:96px;flex:0 0 auto}
+        .mat-naira-sm{color:var(--text-muted,#64748b);font-weight:700}
+        .mat-price-form{margin:0}
+        .mat-sales-strip{display:flex;flex-wrap:wrap;gap:.5rem 1.25rem;font-size:.85rem;color:#475569}
+        .mat-sales-strip strong{color:#0f172a}
+      </style>
+      <div class="alert alert-light border py-2 mat-sales-strip mb-3">
+        <span>Paid materials: <strong><?php echo number_format($paidStats['sales']); ?></strong> sale<?php echo $paidStats['sales'] === 1 ? '' : 's'; ?></span>
+        <span>Revenue: <strong>&#8358;<?php echo number_format($paidStats['revenue'], 0); ?></strong></span>
+        <span>Unfinished checkouts: <strong><?php echo number_format($paidStats['open']); ?></strong></span>
+        <span class="text-muted">Set a price to lock a file behind Paystack; clear it to make the material free again.</span>
+      </div>
 
       <ul class="nav nav-pills mb-3">
         <li class="nav-item me-2"><a class="nav-link <?php echo $status==='pending'?'active':''; ?>" href="?status=pending">Pending <span class="badge bg-light text-dark ms-1"><?php echo (int)($counts['pending'] ?? 0); ?></span></a></li>
@@ -66,19 +140,20 @@ include __DIR__ . '/includes/header.php';
                   <th>Category</th>
                   <th>Level</th>
                   <th>Visibility</th>
+                  <th>Price</th>
                   <th>Uploaded</th>
                   <th class="text-end">Actions</th>
                 </tr>
               </thead>
               <tbody>
                 <?php if (empty($materials)): ?>
-                  <tr><td colspan="7" class="text-center text-muted py-4">No materials found.</td></tr>
+                  <tr><td colspan="8" class="text-center text-muted py-4">No materials found.</td></tr>
                 <?php else: foreach ($materials as $m): ?>
                   <tr>
                     <td><input type="checkbox" class="row-check" value="<?php echo (int)$m['id']; ?>" onchange="updateCount()"></td>
                     <td data-label="Title">
                       <div class="fw-semibold"><?php echo htmlspecialchars($m['title']); ?></div>
-                      <div class="small text-muted text-truncate" style="max-width:420px;">ID: <?php echo (int)$m['id']; ?> �� <?php echo htmlspecialchars(mb_strimwidth($m['description'] ?? '', 0, 90, '...')); ?></div>
+                      <div class="small text-muted text-truncate" style="max-width:420px;">ID: <?php echo (int)$m['id']; ?> �� <?php echo htmlspecialchars(mb_strimwidth($m['description'] ?? '', 0, 90, '...')); ?></div>
                     </td>
                     <td data-label="Category" class="text-muted"><?php echo htmlspecialchars($m['category_name'] ?? ''); ?></td>
                     <td data-label="Level">
@@ -91,9 +166,31 @@ include __DIR__ . '/includes/header.php';
                       <?php endif; ?>
                     </td>
                     <td data-label="Visibility"><span class="badge <?php echo ($m['visibility'] ?? 'public') === 'public' ? 'bg-success' : 'bg-secondary'; ?>"><?php echo htmlspecialchars($m['visibility'] ?? 'public'); ?></span></td>
+                    <td data-label="Price">
+                      <form method="post" class="mat-price-form">
+                        <input type="hidden" name="admin_action" value="set_price">
+                        <input type="hidden" name="material_id" value="<?php echo (int)$m['id']; ?>">
+                        <input type="hidden" name="return_status" value="<?php echo htmlspecialchars($status); ?>">
+                        <input type="hidden" name="return_page" value="<?php echo (int)$page; ?>">
+                        <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars(csrf_token()); ?>">
+                        <div class="d-flex align-items-center gap-1">
+                          <span class="mat-naira-sm">&#8358;</span>
+                          <input type="number" name="price" class="form-control form-control-sm mat-price-input" min="50" max="5000000" step="50"
+                                 placeholder="free" value="<?php echo material_is_paid($m) ? htmlspecialchars((string)(float)$m['price']) : ''; ?>">
+                          <button type="submit" class="btn btn-sm btn-outline-primary" title="Save price (empty = free)"><i class="fas fa-check"></i></button>
+                        </div>
+                        <div class="small text-muted mt-1">
+                          <?php if (material_is_paid($m)): ?>
+                            <i class="fas fa-lock me-1"></i>Paystack only
+                          <?php else: ?>
+                            Free
+                          <?php endif; ?>
+                        </div>
+                      </form>
+                    </td>
                     <td data-label="Uploaded"><?php echo htmlspecialchars(isset($m['created_at']) ? date('M j, Y', strtotime($m['created_at'])) : ''); ?></td>
                     <td data-label="Actions" class="text-end">
-                      <button class="btn btn-sm btn-outline-secondary me-1" data-bs-toggle="modal" data-bs-target="#previewModal" data-file="<?php echo SITE_URL . '/' . ltrim(($m['file_path'] ?? ''), '/'); ?>" data-mime="<?php echo htmlspecialchars($m['mime_type'] ?? ''); ?>">Preview</button>
+                      <button class="btn btn-sm btn-outline-secondary me-1" data-bs-toggle="modal" data-bs-target="#previewModal" data-file="<?php echo htmlspecialchars(SITE_URL . '/material_download.php?id=' . (int)$m['id'] . '&inline=1'); ?>" data-mime="<?php echo htmlspecialchars($m['mime_type'] ?? ''); ?>">Preview</button>
                       <?php if ($status === 'pending'): ?>
                         <button class="btn btn-sm btn-success" onclick="bulkAction('approve','material',[<?= (int)$m['id'] ?>])">Approve</button>
                         <button class="btn btn-sm btn-outline-warning" onclick="bulkAction('reject','material',[<?= (int)$m['id'] ?>])">Reject</button>

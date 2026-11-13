@@ -48,11 +48,14 @@ function paystack_fetch_transaction(string $ref): array
 }
 
 /**
- * A reference may only unlock the quiz, user and amount it was created for.
+ * The rules every product shares: Paystack must say success, the reference must be
+ * the one we asked about, the currency must be naira, the amount must cover what we
+ * charged, and the metadata must still point at the same buyer and item.
  *
+ * @param array $metaExpect e.g. ['quiz_id' => 12, 'user_id' => 3]
  * @return array{ok:bool,reason:string,paid:float}
  */
-function paystack_transaction_matches(array $tx, string $ref, float $expectedAmount, int $quizId, int $userId): array
+function paystack_transaction_binds(array $tx, string $ref, float $expectedAmount, array $metaExpect = []): array
 {
     if (($tx['status'] ?? '') !== 'success') {
         return ['ok' => false, 'reason' => 'Transaction status: ' . (($tx['status'] ?? '') ?: 'unknown'), 'paid' => 0.0];
@@ -64,7 +67,7 @@ function paystack_transaction_matches(array $tx, string $ref, float $expectedAmo
         return ['ok' => false, 'reason' => 'Unsupported currency: ' . ($tx['currency'] ?? 'none'), 'paid' => 0.0];
     }
 
-    // Paystack reports amounts in kobo; entry fees are naira.
+    // Paystack reports amounts in kobo; our prices are naira.
     $paid = ((int)($tx['amount'] ?? 0)) / 100;
     if ($paid + 0.01 < $expectedAmount) {
         return ['ok' => false, 'reason' => 'Underpayment: paid ' . $paid . ' of ' . $expectedAmount, 'paid' => $paid];
@@ -72,15 +75,24 @@ function paystack_transaction_matches(array $tx, string $ref, float $expectedAmo
 
     $meta = $tx['metadata'] ?? [];
     if (is_array($meta)) {
-        if (isset($meta['quiz_id']) && (int)$meta['quiz_id'] !== $quizId) {
-            return ['ok' => false, 'reason' => 'Metadata quiz_id mismatch', 'paid' => $paid];
-        }
-        if (isset($meta['user_id']) && (int)$meta['user_id'] !== $userId) {
-            return ['ok' => false, 'reason' => 'Metadata user_id mismatch', 'paid' => $paid];
+        foreach ($metaExpect as $key => $value) {
+            if (isset($meta[$key]) && (int)$meta[$key] !== (int)$value) {
+                return ['ok' => false, 'reason' => 'Metadata ' . $key . ' mismatch', 'paid' => $paid];
+            }
         }
     }
 
     return ['ok' => true, 'reason' => '', 'paid' => $paid];
+}
+
+/**
+ * A reference may only unlock the quiz, user and amount it was created for.
+ *
+ * @return array{ok:bool,reason:string,paid:float}
+ */
+function paystack_transaction_matches(array $tx, string $ref, float $expectedAmount, int $quizId, int $userId): array
+{
+    return paystack_transaction_binds($tx, $ref, $expectedAmount, ['quiz_id' => $quizId, 'user_id' => $userId]);
 }
 
 /** Credit a verified transaction and return the student's access code. */
@@ -129,6 +141,74 @@ function paystack_grant_access(PDO $pdo, int $userId, int $quizId, array $quiz, 
 
     unset($_SESSION['paystack_pending'][$ref]);
     return (string)$code;
+}
+
+/**
+ * Credit a quiz from a transaction payload we did not obtain from the buyer's
+ * browser (the webhook). The reference is the only claim, so the metadata has to
+ * name a real paid quiz and the amount has to cover it.
+ *
+ * @return array{ok:bool,reason:string}
+ */
+function paystack_credit_quiz_transaction(PDO $pdo, string $ref, array $tx): array
+{
+    $paymentModel = new Payment($pdo);
+    $existing = $paymentModel->getPaymentByRef($ref);
+    if ($existing && $existing['status'] === 'successful') {
+        return ['ok' => false, 'reason' => 'Already credited'];
+    }
+
+    $quizId = (int)($tx['metadata']['quiz_id'] ?? 0);
+    $userId = (int)($tx['metadata']['user_id'] ?? 0);
+    if ($quizId <= 0 || $userId <= 0) {
+        return ['ok' => false, 'reason' => 'Transaction carries no quiz/user metadata'];
+    }
+
+    $stmt = $pdo->prepare('SELECT * FROM quizzes WHERE id = :id');
+    $stmt->execute([':id' => $quizId]);
+    $quiz = $stmt->fetch(PDO::FETCH_ASSOC);
+    if (!$quiz) {
+        return ['ok' => false, 'reason' => 'Quiz no longer exists'];
+    }
+
+    // What we charged for this quiz, not what the payload claims.
+    $fee = (float)($quiz['entry_fee'] ?? 0);
+    if ($fee <= 0) {
+        return ['ok' => false, 'reason' => 'Quiz is not a paid quiz'];
+    }
+
+    $check = paystack_transaction_binds($tx, $ref, $fee, ['quiz_id' => $quizId, 'user_id' => $userId]);
+    if (!$check['ok']) {
+        return ['ok' => false, 'reason' => $check['reason']];
+    }
+
+    // Paystack can deliver the same event twice, or while a browser is mid-checkout.
+    $lock = 'msb_quiz_' . md5($ref);
+    $locked = false;
+    try {
+        $locked = (int)$pdo->query("SELECT GET_LOCK('" . $lock . "', 5)")->fetchColumn() === 1;
+    } catch (Throwable $e) {
+        $locked = false;
+    }
+
+    // Re-read under the lock - a browser may have credited it while we were talking to Paystack.
+    $fresh = $paymentModel->getPaymentByRef($ref);
+    if ($fresh && $fresh['status'] === 'successful') {
+        if ($locked) {
+            try { $pdo->query("SELECT RELEASE_LOCK('" . $lock . "')"); } catch (Throwable $e) {}
+        }
+        return ['ok' => false, 'reason' => 'Already credited'];
+    }
+
+    paystack_grant_access($pdo, $userId, $quizId, (array)$quiz, $ref, $check['paid']);
+
+    if ($locked) {
+        try {
+            $pdo->query("SELECT RELEASE_LOCK('" . $lock . "')");
+        } catch (Throwable $e) { /* lock dies with the connection */ }
+    }
+
+    return ['ok' => true, 'reason' => ''];
 }
 
 /**
