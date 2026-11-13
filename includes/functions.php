@@ -399,6 +399,29 @@ function site_setting($key, $default = '') {
 }
 
 /**
+ * The account students transfer to when they pay by bank transfer.
+ *
+ * Admin → Settings → Payments owns all three fields. Nothing is shown on the
+ * payment modal and no receipt is accepted until every one of them is filled in,
+ * so a half-configured account can never send money to the wrong place.
+ *
+ * @return array{bank_name:string,account_name:string,account_number:string}|null
+ */
+function payment_bank_details() {
+    $bank_name = trim((string)site_setting('payment_bank_name', ''));
+    $account_name = trim((string)site_setting('payment_account_name', ''));
+    $account_number = preg_replace('/\D+/', '', (string)site_setting('payment_account_number', ''));
+    if ($bank_name === '' || $account_name === '' || strlen((string)$account_number) < 10) {
+        return null;
+    }
+    return [
+        'bank_name' => $bank_name,
+        'account_name' => $account_name,
+        'account_number' => $account_number,
+    ];
+}
+
+/**
  * Every social network the admin can fill in, in display order.
  *
  * Single source of truth: the settings form renders one field per entry here and

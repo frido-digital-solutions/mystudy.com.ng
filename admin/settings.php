@@ -24,6 +24,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $admin_email = trim($_POST['admin_email'] ?? '');
     $allow_registration = isset($_POST['allow_registration']) ? 1 : 0;
     $whatsapp_number = trim($_POST['whatsapp_number'] ?? '');
+    $payment_account_number = preg_replace('/\D+/', '', (string)($_POST['payment_account_number'] ?? ''));
+
+    if ($payment_account_number !== '' && strlen($payment_account_number) !== 10) {
+        set_flash_message('error', 'The bank account number must be exactly 10 digits. Nothing was saved.');
+        header('Location: settings.php');
+        exit;
+    }
     
     try {
         // Ensure settings table exists
@@ -54,7 +61,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'social_instagram' => trim($_POST['social_instagram'] ?? ''),
             'social_youtube' => trim($_POST['social_youtube'] ?? ''),
             'social_tiktok' => trim($_POST['social_tiktok'] ?? ''),
-            'social_linkedin' => trim($_POST['social_linkedin'] ?? '')
+            'social_linkedin' => trim($_POST['social_linkedin'] ?? ''),
+            'payment_bank_name' => trim($_POST['payment_bank_name'] ?? ''),
+            'payment_account_name' => trim($_POST['payment_account_name'] ?? ''),
+            'payment_account_number' => $payment_account_number
         ];
         
         foreach ($settingsData as $key => $value) {
@@ -148,9 +158,18 @@ include __DIR__ . '/includes/header.php';
         </div>
       <?php endif; ?>
 
+      <div class="settings-jumpnav mb-3">
+        <a href="#sec-general">General</a>
+        <a href="#sec-payments">Bank Transfer</a>
+        <a href="#sec-social">Social Links</a>
+        <a href="#sec-contact">Contact &amp; SEO</a>
+        <a href="#sec-users">Users &amp; System</a>
+        <a href="#sec-logo">Logo</a>
+      </div>
+
       <form method="post" enctype="multipart/form-data" id="settingsForm">
       <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars(csrf_token()); ?>">
-      <div class="row">
+      <div class="row" id="sec-general">
         <!-- Maintenance Settings -->
         <div class="col-lg-6 mb-4">
           <div class="card border-0 shadow-sm h-100">
@@ -158,23 +177,21 @@ include __DIR__ . '/includes/header.php';
               <h5 class="mb-0"><i class="fas fa-tools me-2 text-warning"></i> Maintenance Mode</h5>
             </div>
             <div class="card-body">
-              <form method="post">
-                <div class="mb-3">
-                  <div class="form-check form-switch">
-                    <input class="form-check-input" type="checkbox" name="maintenance_mode" 
-                           id="maintenance_mode" <?php echo $settings['maintenance_mode'] == '1' ? 'checked' : ''; ?>>
-                    <label class="form-check-label" for="maintenance_mode">
-                      <strong>Enable Maintenance Mode</strong>
-                      <div class="text-muted small">Blocks user access to the entire site</div>
-                    </label>
-                  </div>
+              <div class="mb-3">
+                <div class="form-check form-switch">
+                  <input class="form-check-input" type="checkbox" name="maintenance_mode" 
+                         id="maintenance_mode" <?php echo $settings['maintenance_mode'] == '1' ? 'checked' : ''; ?>>
+                  <label class="form-check-label" for="maintenance_mode">
+                    <strong>Enable Maintenance Mode</strong>
+                    <div class="text-muted small">Blocks user access to the entire site</div>
+                  </label>
                 </div>
-                
-                <div class="mb-3">
-                  <label for="maintenance_message" class="form-label">Maintenance Message</label>
-                  <textarea class="form-control" id="maintenance_message" name="maintenance_message" rows="3"><?php echo htmlspecialchars($settings['maintenance_message'] ?? ''); ?></textarea>
-                  <div class="form-text">This message will be shown to users during maintenance</div>
-                </div>
+              </div>
+
+              <div class="mb-3">
+                <label for="maintenance_message" class="form-label">Maintenance Message</label>
+                <textarea class="form-control" id="maintenance_message" name="maintenance_message" rows="3"><?php echo htmlspecialchars($settings['maintenance_message'] ?? ''); ?></textarea>
+                <div class="form-text">This message will be shown to users during maintenance</div>
               </div>
             </div>
           </div>
@@ -221,8 +238,50 @@ include __DIR__ . '/includes/header.php';
         </div>
       </div>
 
+      <!-- Bank transfer (manual payment) details -->
+      <div class="row" id="sec-payments">
+        <div class="col-12 mb-4">
+          <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white border-bottom py-3">
+              <h5 class="mb-0"><i class="fas fa-university me-2 text-success"></i> Bank Transfer Details</h5>
+            </div>
+            <div class="card-body">
+              <div class="alert alert-success py-2 small mb-3">
+                <i class="fas fa-check-circle me-1"></i>
+                These are the account details a student sees in the <strong>Pay by Bank Transfer</strong> box on every paid quiz, and the account your receipt uploads are checked against. Fill in all three to offer bank transfer; clear any one of them to hide that option and take online (Paystack) payments only.
+              </div>
+              <div class="row">
+                <div class="col-md-4 mb-3">
+                  <label for="payment_bank_name" class="form-label">Bank Name</label>
+                  <input type="text" class="form-control" id="payment_bank_name" name="payment_bank_name"
+                         value="<?php echo htmlspecialchars($settings['payment_bank_name'] ?? ''); ?>"
+                         placeholder="Access Bank">
+                </div>
+                <div class="col-md-4 mb-3">
+                  <label for="payment_account_number" class="form-label">Account Number</label>
+                  <input type="text" class="form-control" id="payment_account_number" name="payment_account_number"
+                         inputmode="numeric" maxlength="20"
+                         value="<?php echo htmlspecialchars($settings['payment_account_number'] ?? ''); ?>"
+                         placeholder="0123456789">
+                  <div class="form-text">Exactly 10 digits. Spaces and dashes are stripped when you save.</div>
+                </div>
+                <div class="col-md-4 mb-3">
+                  <label for="payment_account_name" class="form-label">Account Name</label>
+                  <input type="text" class="form-control" id="payment_account_name" name="payment_account_name"
+                         value="<?php echo htmlspecialchars($settings['payment_account_name'] ?? ''); ?>"
+                         placeholder="MyStudy Educational Ltd">
+                </div>
+              </div>
+              <div class="text-muted small">
+                <i class="fas fa-info-circle me-1"></i>Online payments run through Paystack using the secret key on the server, so they keep working regardless of this card.
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- Social Media Settings -->
-      <div class="row">
+      <div class="row" id="sec-social">
         <div class="col-12 mb-4">
           <div class="card border-0 shadow-sm">
             <div class="card-header bg-white border-bottom py-3">
@@ -248,7 +307,7 @@ include __DIR__ . '/includes/header.php';
       </div>
 
       <!-- Contact, SEO and Arena settings -->
-      <div class="row">
+      <div class="row" id="sec-contact">
         <div class="col-lg-6 mb-4">
           <div class="card border-0 shadow-sm h-100">
             <div class="card-header bg-white border-bottom py-3">
@@ -318,7 +377,7 @@ include __DIR__ . '/includes/header.php';
       </div>
 
       <!-- User Settings -->
-      <div class="row">
+      <div class="row" id="sec-users">
         <div class="col-lg-6 mb-4">
           <div class="card border-0 shadow-sm">
             <div class="card-header bg-white border-bottom py-3">
@@ -382,7 +441,7 @@ include __DIR__ . '/includes/header.php';
       </div>
 
       <!-- Logo Upload -->
-      <div class="row">
+      <div class="row" id="sec-logo">
         <div class="col-lg-6 mb-4">
           <div class="card border-0 shadow-sm">
             <div class="card-header bg-white border-bottom py-3">
@@ -408,15 +467,16 @@ include __DIR__ . '/includes/header.php';
         </div>
       </div>
 
-      <!-- Save Button -->
-      <div class="card border-0 shadow-sm mb-4">
-        <div class="card-body">
+      <!-- Save Button: stays pinned to the bottom of the screen while this long form scrolls -->
+      <div class="card border-0 shadow settings-savebar mb-0">
+        <div class="card-body py-2 d-flex flex-wrap align-items-center gap-2">
           <button type="submit" class="btn btn-primary">
             <i class="fas fa-save me-2"></i> Save All Settings
           </button>
-          <a href="backup.php" class="btn btn-outline-secondary ms-2">
+          <a href="backup.php" class="btn btn-outline-secondary">
             <i class="fas fa-database me-2"></i> Backup Database
           </a>
+          <span class="text-muted small ms-auto">Every field on this page is saved together.</span>
         </div>
       </div>
       </form>

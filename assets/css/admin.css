@@ -123,6 +123,18 @@ a:hover {
   box-shadow: none;
 }
 
+/* Desktop: the menu stays put while a long page scrolls, and gets its own
+   scrollbar when the list is taller than the screen. */
+@media (min-width: 992px) {
+  #sidebar.sidebar {
+    position: sticky;
+    top: 60px;
+    height: calc(100vh - 60px);
+    min-height: 0;
+    overflow-y: auto;
+  }
+}
+
 #sidebar .sidebar-brand {
   color: #f1f5f9;
   text-decoration: none;
@@ -390,6 +402,44 @@ a:hover {
   font-size: 3rem;
   margin-bottom: 1rem;
   color: var(--admin-border);
+}
+
+/* ── Long forms (Settings) ───────────────────── */
+.settings-jumpnav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.settings-jumpnav a {
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-decoration: none;
+  color: var(--admin-primary-dark);
+  background: var(--admin-primary-50);
+  border: 1px solid var(--admin-primary-100);
+  border-radius: 50px;
+  padding: 0.3rem 0.8rem;
+  transition: all 0.2s;
+}
+
+.settings-jumpnav a:hover {
+  background: var(--admin-primary-100);
+}
+
+/* The Save bar rides along while the page scrolls, so it is never far away. */
+.settings-savebar {
+  position: sticky;
+  bottom: 0;
+  z-index: 1020;
+}
+
+div[id^="sec-"] {
+  scroll-margin-top: 70px;
+}
+
+html {
+  scroll-behavior: smooth;
 }
 
 /* ── Responsive ───────────────────────────────── */

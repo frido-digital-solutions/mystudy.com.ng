@@ -334,6 +334,7 @@ body:not(.special-leaderboard-page) .lb-toggle-slider {
     box-shadow: 0 8px 25px rgba(0,0,0,0.06);
     transition: all 0.3s ease;
     flex: 1;
+    min-width: 0;
     max-width: 180px;
 }
 
@@ -571,11 +572,18 @@ body:not(.special-leaderboard-page) .lb-toggle-slider {
     .lb-select-wrap { width: 100%; }
     .lb-select { width: 100%; min-width: 100%; margin-bottom: 0; }
     .lb-toggle-container { max-width: 100%; margin-bottom: 1rem; }
-    .lb-podium { gap: 0.4rem; }
-    .pod { padding: 1rem 0.5rem; }
-    .pod-av { width: 42px; height: 42px; }
-    .pod-name { font-size: 0.75rem; }
-    .pod-crown { font-size: 1.1rem; top: -12px; }
+    /* Top 3: champion on its own row, runners-up side by side, instead of three
+       squeezed columns. The desktop order trick is reset so 1/2/3 keep their rows. */
+    .lb-podium { flex-wrap: wrap; align-items: stretch; gap: 0.75rem; padding: 1.25rem 0 0.25rem; }
+    .pod { flex: 1 1 auto; max-width: none; min-width: 0; padding: 1.15rem 0.75rem; }
+    .pod.p1 { order: 1; flex: 1 1 100%; }
+    .pod.p2 { order: 2; flex: 1 1 calc(50% - 0.4rem); }
+    .pod.p3 { order: 3; flex: 1 1 calc(50% - 0.4rem); }
+    .pod-av { width: 46px; height: 46px; }
+    .pod.p1 .pod-av { width: 62px; height: 62px; }
+    .pod.p1 .pod-name { font-size: 1rem; }
+    .pod-name { font-size: 0.8rem; }
+    .pod-crown { font-size: 1.15rem; top: -12px; }
     .lb-meta-inner { flex-direction: column; align-items: flex-start; }
     .lb-my-rank { flex-direction: column; gap: 0.75rem; text-align: center; }
 }

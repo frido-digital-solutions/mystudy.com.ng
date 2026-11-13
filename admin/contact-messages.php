@@ -43,13 +43,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
     
     if ($action === 'bulk_delete') {
-        $message_ids = $_POST['message_ids'] ?? [];
+        $message_ids = array_values(array_filter(array_map('intval', (array)($_POST['message_ids'] ?? []))));
         if (!empty($message_ids)) {
             $placeholders = str_repeat('?,', count($message_ids) - 1) . '?';
             $stmt = $pdo->prepare("DELETE FROM contact_messages WHERE id IN ($placeholders)");
             $stmt->execute($message_ids);
             set_flash_message('success', count($message_ids) . ' messages deleted');
         }
+        header('Location: contact-messages.php');
+        exit;
+    }
+    
+    if ($action === 'mark_all_read') {
+        $stmt = $pdo->prepare("UPDATE contact_messages SET is_read = 1 WHERE is_read = 0");
+        $stmt->execute();
+        set_flash_message('success', 'All messages marked as read');
         header('Location: contact-messages.php');
         exit;
     }
@@ -383,24 +391,14 @@ include __DIR__ . '/includes/header.php';
                             </button>
                             
                             <?php if ($isNew): ?>
-                              <form method="post" style="display: inline-block;">
-                                <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars(csrf_token()); ?>">
-                                <input type="hidden" name="action" value="mark_read">
-                                <input type="hidden" name="message_id" value="<?php echo $message['id']; ?>">
-                                <button type="submit" class="btn btn-sm btn-outline-secondary py-2 rounded-pill px-3" title="Mark as read">
-                                  <i class="fas fa-check me-1"></i> Read
-                                </button>
-                              </form>
+                              <button type="button" class="btn btn-sm btn-outline-secondary py-2 rounded-pill px-3" title="Mark as read" onclick="submitMessageAction('mark_read', <?php echo (int)$message['id']; ?>)">
+                                <i class="fas fa-check me-1"></i> Read
+                              </button>
                             <?php endif; ?>
                             
-                            <form method="post" class="ms-md-auto" style="display: inline-block;" onsubmit="return confirm('Delete this message permanently?')">
-                              <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars(csrf_token()); ?>">
-                              <input type="hidden" name="action" value="delete">
-                              <input type="hidden" name="message_id" value="<?php echo $message['id']; ?>">
-                              <button type="submit" class="btn btn-sm btn-outline-danger py-2 rounded-pill px-3" title="Delete">
-                                <i class="fas fa-trash"></i>
-                              </button>
-                            </form>
+                            <button type="button" class="btn btn-sm btn-outline-danger py-2 rounded-pill px-3 ms-md-auto" title="Delete" onclick="submitMessageAction('delete', <?php echo (int)$message['id']; ?>)">
+                              <i class="fas fa-trash"></i>
+                            </button>
                         </div>
                         
                       </div>
@@ -461,7 +459,14 @@ include __DIR__ . '/includes/header.php';
   </div>
 </div>
 
-
+<!-- One top-level form drives every single-message action and "Mark All Read".
+     A second <form> nested inside #messagesForm is dropped by browsers, which is
+     what made "Delete Selected" wipe just one message. -->
+<form method="post" id="messageActionForm" class="d-none">
+  <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars(csrf_token()); ?>">
+  <input type="hidden" name="action" id="messageActionValue" value="">
+  <input type="hidden" name="message_id" id="messageActionId" value="">
+</form>
 
 <script>
 // Select all functionality
@@ -487,13 +492,30 @@ function updateBulkDeleteBtn() {
 }
 
 function bulkDelete() {
-    if (confirm('Delete selected messages? This cannot be undone.')) {
+    const checked = document.querySelectorAll('.message-checkbox:checked');
+    if (checked.length === 0) {
+        alert('Tick at least one message first.');
+        return;
+    }
+    if (confirm('Delete ' + checked.length + ' selected message(s)? This cannot be undone.')) {
         document.getElementById('messagesForm').submit();
     }
 }
 
+// A <form> nested inside #messagesForm is ignored by browsers, so single-message
+// actions and "Mark All Read" post through the standalone form above the script.
+function submitMessageAction(action, messageId) {
+    const form = document.getElementById('messageActionForm');
+    if (!form) return;
+    if (action === 'delete' && !confirm('Delete this message permanently?')) return;
+    if (action === 'mark_all_read' && !confirm('Mark every message as read?')) return;
+    document.getElementById('messageActionValue').value = action;
+    document.getElementById('messageActionId').value = messageId || '';
+    form.submit();
+}
+
 function markAllRead() {
-    alert('This will mark all messages on this page as read.'); 
+    submitMessageAction('mark_all_read');
 }
 
 // Helper to escape output for JS template literal

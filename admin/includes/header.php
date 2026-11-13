@@ -24,8 +24,8 @@ ob_start();
     <link rel="stylesheet" href="<?php echo SITE_URL; ?>/assets/vendor/fontawesome/css/all.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     
-    <!-- Admin CSS -->
-    <link href="<?php echo SITE_URL; ?>/assets/css/admin.css" rel="stylesheet">
+    <!-- Admin CSS (version-stamped so a changed style reaches every browser immediately) -->
+    <link href="<?php echo SITE_URL; ?>/assets/css/admin.css?v=<?php echo filemtime(ROOT_PATH . '/assets/css/admin.css'); ?>" rel="stylesheet">
 </head>
 <body>
     <!-- Top Navigation -->

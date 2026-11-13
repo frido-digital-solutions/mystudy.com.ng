@@ -160,6 +160,16 @@ if (!$hasAccess && !$hasAttempted) {
     $hasPendingPayment = ($paymentModel->getPendingPayment($userId, $id) !== null);
 }
 
+// A reloaded browser can lose Paystack's callback after the money is already captured.
+if (!$hasAccess && $entryPrice > 0 && !empty($_SESSION['paystack_pending']) && $_SERVER['REQUEST_METHOD'] === 'GET') {
+    require_once __DIR__ . '/includes/paystack_reconcile.php';
+    $recoveredCode = paystack_reconcile_user($pdo, $userId, $id, $quiz, $entryPrice);
+    if ($recoveredCode !== null) {
+        set_flash_message('success', 'Payment confirmed! Your access code has been applied.');
+        redirect(SITE_URL . '/payment_success.php?code=' . urlencode($recoveredCode) . '&quiz_id=' . $id);
+    }
+}
+
 // User details for payment
 require_once __DIR__ . '/models/User.php';
 $userModel = new User($pdo);
@@ -237,6 +247,10 @@ if ($hasAttempted) {
 
 $entryFee = !empty($quiz['entry_fee']) ? (float)$quiz['entry_fee'] : 0;
 $entryFeeKobo = (int)round($entryFee * 100);
+
+// Manual (bank transfer) instructions come from Admin → Settings → Payments.
+$bank = payment_bank_details();
+$manualPaymentOpen = $bank !== null;
 
 // Bind this checkout reference to the user, quiz and exact amount server-side.
 $paystackRef = 'MSB-' . $userId . '-' . $id . '-' . bin2hex(random_bytes(5));
@@ -395,7 +409,8 @@ ob_start();
 }
 
 .sq-code-in {
-    flex: 1;
+    flex: 1 1 auto;
+    min-width: 0;
     border: 2px solid rgba(251,191,36,0.3);
     background: rgba(255,255,255,0.06);
     border-radius: 12px;
@@ -423,6 +438,7 @@ ob_start();
     cursor: pointer;
     transition: all 0.2s;
     white-space: nowrap;
+    flex: 0 0 auto;
 }
 
 .sq-code-btn:hover { transform: scale(1.03); box-shadow: 0 4px 15px rgba(251,191,36,0.3); }
@@ -434,23 +450,55 @@ ob_start();
     text-transform: uppercase;
 }
 
+.sq-pay-row {
+    display: flex;
+    gap: 0.6rem;
+    flex-wrap: wrap;
+    align-items: center;
+}
+
 .sq-pay-btn {
-    background: linear-gradient(135deg, #f59e0b, #d97706);
-    color: #fff;
+    background: linear-gradient(135deg, #fbbf24, #f59e0b);
+    color: #0f172a;
     border: none;
     border-radius: 12px;
-    padding: 0.65rem 1.5rem;
-    font-weight: 700;
-    font-size: 0.9rem;
+    padding: 0.6rem 1.15rem;
+    font-weight: 800;
+    font-size: 0.92rem;
+    line-height: 1.15;
     cursor: pointer;
     transition: all 0.2s;
     display: inline-flex;
     align-items: center;
-    gap: 0.4rem;
+    gap: 0.5rem;
+    box-shadow: 0 6px 18px rgba(245,158,11,0.25);
+}
+
+.sq-pay-btn:hover { transform: translateY(-1px); box-shadow: 0 10px 24px rgba(245,158,11,0.35); }
+
+.sq-pay-label { display: inline-flex; align-items: center; gap: 0.45rem; white-space: nowrap; }
+
+.sq-pay-badge {
+    background: #0f172a;
+    color: #fbbf24;
+    font-size: 0.6rem;
+    font-weight: 800;
+    letter-spacing: 0.6px;
+    text-transform: uppercase;
+    padding: 0.22rem 0.5rem;
+    border-radius: 50px;
     white-space: nowrap;
 }
 
-.sq-pay-btn:hover { transform: scale(1.03); box-shadow: 0 6px 20px rgba(245,158,11,0.3); }
+.sq-pay-manual {
+    background: rgba(255,255,255,0.07);
+    color: #e2e8f0;
+    border: 1.5px solid rgba(255,255,255,0.22);
+    box-shadow: none;
+    font-weight: 700;
+}
+
+.sq-pay-manual:hover { background: rgba(255,255,255,0.14); color: #fff; box-shadow: none; }
 
 .sq-code-err {
     width: 100%;
@@ -663,8 +711,13 @@ ob_start();
     .sq-cd-boxes { gap: 0.5rem; }
     .sq-cd-box { min-width: 55px; padding: 0.65rem 0.5rem; }
     .sq-cd-n { font-size: 1.3rem; }
-    .sq-access-inner { flex-direction: column; align-items: stretch; }
-    .sq-access-inner form { min-width: 0; }
+    .sq-access-inner { flex-direction: column; align-items: stretch; gap: 0.75rem; }
+    .sq-access-inner form { min-width: 0; width: 100%; }
+    .sq-code-in { padding: 0.8rem 0.7rem; font-size: 1rem; letter-spacing: 1.5px; }
+    .sq-code-btn { padding: 0.8rem 1.1rem; font-size: 0.95rem; }
+    .sq-or { text-align: center; }
+    .sq-pay-row { width: 100%; flex-direction: column; align-items: stretch; }
+    .sq-pay-btn { width: 100%; justify-content: center; flex-wrap: wrap; padding: 0.85rem 1rem; }
     .sq-granted-inner { flex-direction: column; text-align: center; }
     .sq-ended-inner { flex-direction: column; text-align: center; }
     /* Mobile: About collapsible */
@@ -957,18 +1010,21 @@ include __DIR__ . '/includes/header.php';
                         </div>
                     <?php else: ?>
                         <form method="POST">
-                            <input type="text" name="access_code" class="sq-code-in" placeholder="Enter access code" maxlength="20" required>
+                            <input type="text" name="access_code" class="sq-code-in" placeholder="Enter access code" maxlength="20" enterkeyhint="go" autocomplete="off" required>
                             <button type="submit" class="sq-code-btn"><i class="fas fa-unlock me-1"></i> Join</button>
                         </form>
                         <?php if ($entryPrice > 0): ?>
                             <span class="sq-or">or</span>
-                            <div class="d-flex gap-2">
-                                <button class="sq-pay-btn" onclick="payWithPaystack()" type="button">
-                                    <i class="fas fa-credit-card"></i> Pay ₦<?php echo number_format($entryPrice, 0); ?>
+                            <div class="sq-pay-row">
+                                <button class="sq-pay-btn sq-pay-online" onclick="payWithPaystack()" type="button">
+                                    <span class="sq-pay-label"><i class="fas fa-bolt"></i> Pay ₦<?php echo number_format($entryPrice, 0); ?> Online</span>
+                                    <span class="sq-pay-badge">Recommended</span>
                                 </button>
-                                <button class="sq-pay-btn" style="background: linear-gradient(135deg, #10b981, #059669);" onclick="openManualPaymentModal()" type="button">
-                                    <i class="fas fa-university"></i> Bank Transfer
-                                </button>
+                                <?php if ($manualPaymentOpen): ?>
+                                    <button class="sq-pay-btn sq-pay-manual" onclick="openManualPaymentModal()" type="button">
+                                        <i class="fas fa-university"></i> Pay by Bank Transfer
+                                    </button>
+                                <?php endif; ?>
                             </div>
                         <?php endif; ?>
                     <?php endif; ?>
@@ -1079,6 +1135,7 @@ include __DIR__ . '/includes/header.php';
 </div>
 
 <!-- Manual Payment Modal -->
+<?php if ($manualPaymentOpen): ?>
 <div class="modal fade" id="manualPaymentModal" tabindex="-1" aria-labelledby="manualPaymentModalLabel" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content" style="border-radius: 20px; border: none; overflow: hidden; box-shadow: 0 20px 50px rgba(0,0,0,0.1);">
@@ -1091,11 +1148,11 @@ include __DIR__ . '/includes/header.php';
         
         <div class="p-3 mb-4 rounded-3" style="background: #f8fafc; border: 1px dashed #cbd5e1;">
             <div style="font-size: 0.85rem; color: #64748b; text-transform: uppercase; font-weight: 700;">Bank Name</div>
-            <div style="font-size: 1.1rem; color: #0f172a; font-weight: 800; margin-bottom: 0.5rem;">Access Bank</div>
+            <div style="font-size: 1.1rem; color: #0f172a; font-weight: 800; margin-bottom: 0.5rem; word-break: break-word;"><?php echo htmlspecialchars($bank['bank_name']); ?></div>
             <div style="font-size: 0.85rem; color: #64748b; text-transform: uppercase; font-weight: 700;">Account Number</div>
-            <div style="font-size: 1.3rem; color: #0f172a; font-weight: 900; letter-spacing: 2px; margin-bottom: 0.5rem;">0123456789</div>
+            <div style="font-size: 1.3rem; color: #0f172a; font-weight: 900; letter-spacing: 2px; margin-bottom: 0.5rem; word-break: break-all;"><?php echo htmlspecialchars($bank['account_number']); ?></div>
             <div style="font-size: 0.85rem; color: #64748b; text-transform: uppercase; font-weight: 700;">Account Name</div>
-            <div style="font-size: 1.1rem; color: #0f172a; font-weight: 800;">MyStudy Educational Ltd</div>
+            <div style="font-size: 1.1rem; color: #0f172a; font-weight: 800; word-break: break-word;"><?php echo htmlspecialchars($bank['account_name']); ?></div>
         </div>
 
         <form id="receiptUploadForm" onsubmit="submitReceipt(event)">
@@ -1117,6 +1174,7 @@ include __DIR__ . '/includes/header.php';
     </div>
   </div>
 </div>
+<?php endif; ?>
 
 <!-- Receipt Upload Success Modal -->
 <div class="modal fade" id="receiptSuccessModal" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false" aria-hidden="true">
@@ -1169,8 +1227,10 @@ function payWithPaystack() {
 
 var manualModal = null;
 function openManualPaymentModal() {
+    var el = document.getElementById('manualPaymentModal');
+    if (!el) return;
     if (!manualModal) {
-        manualModal = new bootstrap.Modal(document.getElementById('manualPaymentModal'));
+        manualModal = new bootstrap.Modal(el);
     }
     manualModal.show();
 }

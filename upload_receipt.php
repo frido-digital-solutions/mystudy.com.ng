@@ -25,6 +25,12 @@ if ($quizId <= 0) {
     exit;
 }
 
+// Manual receipts only make sense while the admin has published bank details.
+if (payment_bank_details() === null) {
+    echo json_encode(['error' => 'Bank transfer payments are not available right now. Please pay online.']);
+    exit;
+}
+
 require_once __DIR__ . '/models/Quiz.php';
 $quizModel = new Quiz($pdo);
 $quiz = $quizModel->getById($quizId);
