@@ -16,14 +16,24 @@
 #   config/secrets.local.php and config/vapid_keys.json are gitignored, so they
 #   are absent from the clone and can never be overwritten by a deploy.
 #
+# WHY THE ORDER MATTERS
+#   index.php, bootstrap.php and .htaccess are the doorways into the site; the
+#   folders (includes/, models/, config/ ...) are the rooms behind them. If a
+#   deploy replaces the rooms but not the doorways, the old doorway asks the
+#   new rooms for things that have moved - and every page dies with a blank
+#   500. So the doorways are copied first and again last, and the folders go
+#   in between.
+#
+#   Every task ends with "|| true" so that one file the server will not let us
+#   overwrite cannot stop the rest of the site from being deployed.
+#
 # WHERE THE SITE GOES
 #   This site is an addon domain, so its files live in the addon's own folder
 #   inside public_html, not in public_html itself. deploy/target.sh works out
 #   which folder that is and prints it.
 #
 #   Every copy line below asks that script for its destination, so no line
-#   depends on a variable set by an earlier one. The first line prints the
-#   folder that was chosen, so the log always says where the site went.
+#   depends on a variable set by an earlier one.
 #
 # ADDING A NEW TOP-LEVEL PAGE
 #   New files inside admin/, includes/, models/, assets/ etc. deploy
@@ -44,14 +54,23 @@ deployment:
   tasks:
     # Say where the site is, before anything is copied into it.
     - 'echo "Deploying to: $(sh deploy/target.sh)"'
-    - DEPLOYPATH=$(sh deploy/target.sh) && /bin/cp -R admin ajax api assets cache cli config controllers database includes logs models university uploads views $DEPLOYPATH
-    - DEPLOYPATH=$(sh deploy/target.sh) && /bin/cp .htaccess manifest.json robots.txt sw.js $DEPLOYPATH
-    - DEPLOYPATH=$(sh deploy/target.sh) && /bin/cp about.php api_discussion.php api_messages.php battle_arena.php battle_hub.php battle_invite.php blog.php bootstrap.php cache_manager.php certificate.php cgpa-calculator.php challenge_results.php claim_reward.php contact.php conversation.php cookies.php $DEPLOYPATH
-    - DEPLOYPATH=$(sh deploy/target.sh) && /bin/cp dashboard.php deactivate-account.php discussion_view.php discussions.php download.php faq.php forgot-password.php frozen.php index.php leaderboard.php login.php logout.php $DEPLOYPATH
-    - DEPLOYPATH=$(sh deploy/target.sh) && /bin/cp maintenance.php material.php materials.php messages.php my_quizzes.php notifications.php notify_challenge_end.php payment_success.php performance.php post.php privacy-policy.php process_battle_action.php process_challenge.php process_open_challenge.php profile.php profile_public.php $DEPLOYPATH
-    - DEPLOYPATH=$(sh deploy/target.sh) && /bin/cp quiz.php quiz_battle.php quiz_battle_play.php quiz_battle_result.php quiz_battle_submit.php quiz_multi.php quiz_result.php quiz_special.php quiz_start.php quiz_submit.php quizzes.php $DEPLOYPATH
-    - DEPLOYPATH=$(sh deploy/target.sh) && /bin/cp register.php reset-password.php settings.php sitemap.xml.php terms.php timetable.php tools.php tutorials.php universities.php upload-material.php upload_receipt.php users.php verify-email.php verify_redirect.php $DEPLOYPATH
+
+    # The doorways first, so the site is never running old entry points
+    # against new code underneath them.
+    - DEPLOYPATH=$(sh deploy/target.sh) && /bin/cp -f .htaccess index.php bootstrap.php manifest.json robots.txt sw.js $DEPLOYPATH || true
+    - DEPLOYPATH=$(sh deploy/target.sh) && /bin/cp -f about.php api_discussion.php api_messages.php battle_arena.php battle_hub.php battle_invite.php blog.php cache_manager.php certificate.php cgpa-calculator.php challenge_results.php claim_reward.php contact.php conversation.php cookies.php $DEPLOYPATH || true
+    - DEPLOYPATH=$(sh deploy/target.sh) && /bin/cp -f dashboard.php deactivate-account.php discussion_view.php discussions.php download.php faq.php forgot-password.php frozen.php leaderboard.php login.php logout.php $DEPLOYPATH || true
+    - DEPLOYPATH=$(sh deploy/target.sh) && /bin/cp -f maintenance.php material.php materials.php messages.php my_quizzes.php notifications.php notify_challenge_end.php payment_success.php performance.php post.php privacy-policy.php process_battle_action.php process_challenge.php process_open_challenge.php profile.php profile_public.php $DEPLOYPATH || true
+    - DEPLOYPATH=$(sh deploy/target.sh) && /bin/cp -f quiz.php quiz_battle.php quiz_battle_play.php quiz_battle_result.php quiz_battle_submit.php quiz_multi.php quiz_result.php quiz_special.php quiz_start.php quiz_submit.php quizzes.php $DEPLOYPATH || true
+    - DEPLOYPATH=$(sh deploy/target.sh) && /bin/cp -f register.php reset-password.php settings.php sitemap.xml.php terms.php timetable.php tools.php tutorials.php universities.php upload-material.php upload_receipt.php users.php verify-email.php verify_redirect.php $DEPLOYPATH || true
     # The paid-materials flow and the document reader. These are root pages,
     # so like every root page they have to be named here - a /bin/cp of a
     # directory does not pick up a file that sits beside it.
-    - DEPLOYPATH=$(sh deploy/target.sh) && /bin/cp material_checkout.php material_download.php material_verify.php paystack_webhook.php reader.php $DEPLOYPATH
+    - DEPLOYPATH=$(sh deploy/target.sh) && /bin/cp -f material_checkout.php material_download.php material_verify.php paystack_webhook.php reader.php $DEPLOYPATH || true
+
+    # The rooms behind the doorways.
+    - DEPLOYPATH=$(sh deploy/target.sh) && /bin/cp -Rf admin ajax api assets cache cli config controllers database includes logs models university uploads views $DEPLOYPATH || true
+
+    # The doorways once more, as a safety net: if anything below changed them,
+    # they are put back exactly as the repository has them.
+    - DEPLOYPATH=$(sh deploy/target.sh) && /bin/cp -f .htaccess index.php bootstrap.php $DEPLOYPATH || true
