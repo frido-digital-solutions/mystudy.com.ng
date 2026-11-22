@@ -17,18 +17,18 @@
 #   are absent from the clone and can never be overwritten by a deploy.
 #
 # DEPLOY PATH
-#   This site is an ADDON domain, so its files do not necessarily sit in
-#   $HOME/public_html/. The line below works out where the site actually
-#   lives by looking for the folder, in order:
+#   This site is an ADDON domain, so its files do not sit in $HOME/public_html/
+#   - they sit in the addon's own folder. The line below works out where that
+#   is by looking for it, in order:
 #
-#     1. $HOME/public_html/mystudy.com.ng/   (the usual addon layout)
-#     2. $HOME/domains/mystudy.com.ng/public_html/
-#     3. $HOME/public_html/                  (the main domain's folder)
+#     1. $HOME/public_html/newmystudy.com.ng/   ← this account's addon
+#     2. $HOME/domains/newmystudy.com.ng/public_html/
+#     3. $HOME/public_html/                     (the main domain's folder)
 #
 #   It prints the folder it chose into the deploy log, so the first deploy
 #   shows which one was used. If that is not where the site lives, edit the
 #   DEPLOYPATH= line below to the exact path - cPanel shows it under
-#   Domains -> mystudy.com.ng -> Document Root.
+#   Domains -> the addon -> Document Root.
 #
 #   IMPORTANT: point the clone somewhere else entirely (not the site's own
 #   folder). The clone is the source, the site folder is the destination.
@@ -53,10 +53,10 @@ deployment:
     # Where the site lives. Chosen by looking, not by guessing - see DEPLOY
     # PATH above. One line, one shell block, and the answer is in the log.
     - |
-      if [ -d "$HOME/public_html/mystudy.com.ng" ]; then
-        export DEPLOYPATH="$HOME/public_html/mystudy.com.ng/"
-      elif [ -d "$HOME/domains/mystudy.com.ng/public_html" ]; then
-        export DEPLOYPATH="$HOME/domains/mystudy.com.ng/public_html/"
+      if [ -d "$HOME/public_html/newmystudy.com.ng" ]; then
+        export DEPLOYPATH="$HOME/public_html/newmystudy.com.ng/"
+      elif [ -d "$HOME/domains/newmystudy.com.ng/public_html" ]; then
+        export DEPLOYPATH="$HOME/domains/newmystudy.com.ng/public_html/"
       else
         export DEPLOYPATH="$HOME/public_html/"
       fi

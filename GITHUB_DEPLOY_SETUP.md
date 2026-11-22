@@ -1,9 +1,9 @@
 # Putting the site under GitHub control (TrueHost + cPanel)
 
 This is the setup that replaces uploading files by hand. It is written for
-this account specifically: **TrueHost, with mystudy.com.ng as an addon
-domain**, and the site folder on the server being whatever cPanel lists as
-that domain's Document Root.
+this account specifically: **TrueHost, with the site as an addon domain whose
+folder is `public_html/newmystudy.com.ng`**, and the repository at
+`github.com/frido-digital-solutions/mystudy.com.ng`.
 
 ## What it actually does
 
@@ -41,40 +41,35 @@ result is always exactly what the repository says - no drift, no
 
 ## One-time setup
 
-### 1. Create the GitHub repository
+### 1. The GitHub repository
 
-On GitHub: **New repository** → name it `mystudybase.ng` → choose **Private**
-→ create. Do not add a README, a .gitignore or a licence - the repository
-already has all of that.
-
-A private repository is the right choice here: cPanel can clone it using an
-SSH key (step 4), and nothing about the site is visible to the public.
+It already exists: **github.com/frido-digital-solutions/mystudy.com.ng**
+(under the `frido-digital-solutions` account, private).
 
 ### 2. Point this folder at it, and push
 
-Run these in a terminal on your own machine (not on the server):
-
 ```bash
 cd "C:\Users\USER\Downloads\mystudybase.com.ng-main"
-git remote set-url origin https://github.com/YOUR-USERNAME/mystudybase.ng.git
+git remote set-url origin https://github.com/frido-digital-solutions/mystudy.com.ng.git
 git push -u origin main
 ```
 
-Git will ask for your GitHub username and a **Personal Access Token** (not your
+Git asks for your GitHub username and a **Personal Access Token** (not your
 password - GitHub stopped accepting passwords in 2021). Create one at
 **Settings → Developer settings → Personal access tokens → Fine-grained
 tokens**, give it `Contents: Read and write` on that one repository, and paste
-it when Git asks for a password.
+it when Git asks for a password. On this machine Git Credential Manager is
+installed, so it can also just open a browser and sign you in.
 
-### 3. Tell cPanel where the site lives
+### 3. Check where the site lives
 
-In cPanel: **Domains → mystudy.com.ng** → look at **Document Root**. It will
-be something like `/home/youruser/public_html/mystudy.com.ng` or
-`/home/youruser/domains/mystudy.com.ng/public_html`.
+The addon folder is **`public_html/newmystudy.com.ng`**, so the deploy path
+is `/home/youruser/public_html/newmystudy.com.ng/`.
 
-`.cpanel.yml` already works this out by looking for the folder, but if the
-deploy log says it chose the wrong one, open `.cpanel.yml` and change the one
-`DEPLOYPATH=` line to the exact path from the Domain page.
+`.cpanel.yml` already looks for that folder by name and prints the one it
+chose into the deploy log (`Deploying to: …`). If the log names a different
+folder, open `.cpanel.yml` and change the `DEPLOYPATH=` line to the exact
+path from **Domains → newmystudy.com.ng → Document Root**.
 
 ### 4. Point cPanel at the repository
 
@@ -82,7 +77,7 @@ In cPanel: **Git Version Control → Create Repository**
 
 | Field | What to put |
 |---|---|
-| Repository URL | `git@github.com:YOUR-USERNAME/mystudybase.ng.git` |
+| Repository URL | `git@github.com:frido-digital-solutions/mystudy.com.ng.git` |
 | Repository path | `git/mystudybase` - a **new, empty** folder, not the site's own folder |
 | Branch | `main` |
 
