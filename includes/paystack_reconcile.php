@@ -24,7 +24,7 @@ function paystack_fetch_transaction(string $ref): array
         CURLOPT_CONNECTTIMEOUT => 10,
         CURLOPT_TIMEOUT        => 20,
         CURLOPT_HTTPHEADER     => [
-            'Authorization: Bearer ' . PAYSTACK_SECRET_KEY,
+            'Authorization: Bearer ' . msb_paystack_key(true),
             'Accept: application/json',
             'Cache-Control: no-cache',
         ],

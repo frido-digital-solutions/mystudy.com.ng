@@ -73,6 +73,13 @@ foreach ([
     $v = (string)constant($c);
     if ($c === 'DB_PASS') {
         msb_health_line('  ' . $c, $v === '' ? 'EMPTY' : 'set');
+    } elseif ($c === 'PAYSTACK_PUBLIC_KEY' || $c === 'PAYSTACK_SECRET_KEY') {
+        // A key that does not look like a Paystack key is not one, so it is
+        // reported the way the checkout will treat it: off.
+        $usable = function_exists('msb_paystack_key')
+            ? msb_paystack_key($c === 'PAYSTACK_SECRET_KEY')
+            : ($v !== '');
+        msb_health_line('  ' . $c, $usable ? $v : ($v === '' ? 'EMPTY (feature off)' : 'not a Paystack key - treated as EMPTY (feature off)'));
     } else {
         msb_health_line('  ' . $c, $v === '' ? 'EMPTY (feature off)' : $v);
     }

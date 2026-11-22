@@ -42,7 +42,7 @@ if (!material_is_paid($material)) {
 // Checked before any payment row exists: with no key configured the browser would
 // open a Paystack popup that cannot work, and the admin queue would fill with
 // pending rows that no student could ever have completed.
-if (trim((string)PAYSTACK_SECRET_KEY) === '' || trim((string)PAYSTACK_PUBLIC_KEY) === '') {
+if (msb_paystack_key(true) === '' || msb_paystack_key(false) === '') {
     http_response_code(503);
     echo json_encode(['error' => 'Payments are not configured on this site yet. Please check back soon.']);
     exit;
@@ -98,7 +98,7 @@ echo json_encode([
     'ref' => $ref,
     'email' => $email,
     'amount' => (int)round($price * 100), // Paystack works in kobo
-    'key' => PAYSTACK_PUBLIC_KEY,
+    'key' => msb_paystack_key(false),
     'metadata' => [
         'material_id' => $materialId,
         'user_id' => $userId,

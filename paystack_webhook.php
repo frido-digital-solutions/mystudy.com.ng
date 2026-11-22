@@ -29,7 +29,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST' || $raw === '') {
 }
 
 // The signature is over the exact bytes we received, so verify before parsing.
-$expected = hash_hmac('sha512', $raw, PAYSTACK_SECRET_KEY);
+$expected = hash_hmac('sha512', $raw, msb_paystack_key(true));
 if (!is_string($signature) || $signature === '' || !hash_equals($expected, strtolower($signature))) {
     log_error('Paystack webhook rejected: bad signature', ['ip' => get_client_ip()]);
     webhook_reply('invalid signature', 401);

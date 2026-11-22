@@ -49,6 +49,28 @@ foreach (['DB_HOST', 'DB_USER', 'DB_PASS', 'DB_NAME'] as $__msbDbKey) {
 }
 unset($__msbDbKey);
 
+/**
+ * A Paystack key that does not look like a Paystack key is not one.
+ *
+ * The secrets file is written by hand on a shared host, and a line that still
+ * holds a placeholder - "PASTE_SECRET_KEY_HERE" - is the normal state of a
+ * half-finished file. Treating that as a configured key is worse than treating
+ * it as missing: the checkout opens, the payment is attempted, and Paystack
+ * refuses it, so the student is asked for money and then told there was an
+ * error. A public key begins "pk_" and a secret key begins "sk_"; anything
+ * else is read as not configured, and the paid features say so plainly.
+ *
+ * @return string the key, or an empty string when it is not usable
+ */
+function msb_paystack_key(bool $secret): string
+{
+    $constant = $secret ? 'PAYSTACK_SECRET_KEY' : 'PAYSTACK_PUBLIC_KEY';
+    $prefix = $secret ? 'sk_' : 'pk_';
+    if (!defined($constant)) return '';
+    $value = trim((string)constant($constant));
+    return strpos($value, $prefix) === 0 ? $value : '';
+}
+
 // Site configuration fallbacks. The admin Settings page is authoritative at
 // runtime; these apply on a fresh install or if the database is unreachable.
 define('SITE_NAME_DEFAULT', 'MyStudy Base');

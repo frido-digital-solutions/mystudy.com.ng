@@ -267,7 +267,7 @@ function challenge_state(PDO $pdo, array $quiz, array $user, array $opts = []): 
     $quizType = (string)($quiz['type'] ?? 'both');
 
     $bank = payment_bank_details();
-    $paystackReady = defined('PAYSTACK_SECRET_KEY') && trim((string)PAYSTACK_SECRET_KEY) !== '';
+    $paystackReady = msb_paystack_key(true) !== '';
 
     return [
         'ok' => true,
@@ -397,7 +397,7 @@ if ($action === 'pay_init') {
     if (!$isPaid) {
         api_err('not_paid', 'This challenge does not have an entry fee.');
     }
-    if (!defined('PAYSTACK_SECRET_KEY') || trim((string)PAYSTACK_SECRET_KEY) === '') {
+    if (msb_paystack_key(true) === '') {
         api_err('payments_offline', 'Online payment is not available right now. Please use bank transfer or an access code.', 503);
     }
     if ($paymentModel->hasPaid($userId, $quizId) || $accessCodeModel->hasUserUsedACodeForQuiz($userId, $quizId)) {
@@ -437,7 +437,7 @@ if ($action === 'pay_init') {
         CURLOPT_CONNECTTIMEOUT => 10,
         CURLOPT_TIMEOUT => 25,
         CURLOPT_HTTPHEADER => [
-            'Authorization: Bearer ' . PAYSTACK_SECRET_KEY,
+            'Authorization: Bearer ' . msb_paystack_key(true),
             'Content-Type: application/json',
             'Accept: application/json',
             'Cache-Control: no-cache',
