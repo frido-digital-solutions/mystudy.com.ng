@@ -96,6 +96,36 @@ try {
         $users = $pdo->query('SELECT COUNT(*) FROM users')->fetchColumn();
         msb_health_line('  rows in users', (string)$users);
         msb_health_line('  tables', implode(', ', $tables));
+
+        // The columns, compared against the ones the code expects. A table that
+        // exists but is a column short is the quiet kind of wrong: the page
+        // that needs the column asks for something the database cannot give it.
+        if (function_exists('msb_schema_columns')) {
+            $drift = [];
+            $expectedTables = 0;
+            $expectedColumns = 0;
+            foreach (msb_schema_columns() as $table => $definitions) {
+                if (!in_array($table, $tables, true)) continue;
+                $expectedTables++;
+                $expectedColumns += count($definitions);
+                try {
+                    $have = [];
+                    foreach ($pdo->query('SHOW COLUMNS FROM `' . $table . '`')->fetchAll(PDO::FETCH_ASSOC) as $column) {
+                        $have[strtolower((string)$column['Field'])] = true;
+                    }
+                } catch (Throwable $e) {
+                    $drift[] = $table . ': unreadable';
+                    continue;
+                }
+                $missing = [];
+                foreach ($definitions as $name => $definition) {
+                    if (!isset($have[strtolower((string)$name)])) $missing[] = $name;
+                }
+                if ($missing) $drift[] = $table . ': missing ' . implode(', ', $missing);
+            }
+            msb_health_line('  columns expected', (string)$expectedColumns . ' across ' . $expectedTables . ' tables');
+            msb_health_line('  column drift', $drift ? implode(' | ', $drift) : 'none - every expected column is present');
+        }
     }
 } catch (Throwable $e) {
     msb_health_line('database FAILED', get_class($e) . ': ' . $e->getMessage());

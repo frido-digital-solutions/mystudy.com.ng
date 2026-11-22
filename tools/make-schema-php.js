@@ -30,14 +30,38 @@ if (!blocks.length) {
 }
 
 // A table that another table points at has to exist before the one that points
-// at it, or the foreign key cannot be made. `users` is the parent of most of
-// them, so it goes first and the rest keep the order the dump had.
-const sorted = [];
-const users = blocks.find((x) => x.name === 'users');
-if (users) sorted.push(users);
+// at it, or the foreign key cannot be made. The tables are therefore ordered
+// by their foreign keys first (a parent before its children) and by name
+// after that, so the order is the same every time the file is generated.
+const byName = {};
+for (const b of blocks) byName[b.name] = b;
+
+const parentsOf = {};
 for (const b of blocks) {
-  if (!sorted.includes(b)) sorted.push(b);
+  const parents = [];
+  const re = /REFERENCES `([^`]+)`/g;
+  let r;
+  while ((r = re.exec(b.body)) !== null) {
+    if (r[1] !== b.name && !parents.includes(r[1])) parents.push(r[1]);
+  }
+  parentsOf[b.name] = parents;
 }
+
+const sorted = [];
+const placed = new Set();
+const place = (name, seen) => {
+  if (placed.has(name) || seen.has(name)) return;
+  seen.add(name);
+  for (const parent of parentsOf[name] || []) {
+    if (byName[parent]) place(parent, seen);
+  }
+  seen.delete(name);
+  if (!placed.has(name)) {
+    placed.add(name);
+    sorted.push(byName[name]);
+  }
+};
+for (const name of Object.keys(byName).sort()) place(name, new Set());
 
 const statements = sorted.map((b) => ({
   name: b.name,
@@ -47,9 +71,31 @@ const statements = sorted.map((b) => ({
     `\n) ENGINE=${b.engine};`,
 }));
 
+// The columns of each table, so a table that exists but is missing a column
+// can be brought up to date as well. The dump writes one column per line, so a
+// line that opens with a backtick is a column and everything else is a key.
+const columns = {};
+for (const b of sorted) {
+  const list = [];
+  for (const rawLine of b.body.split('\n')) {
+    const line = rawLine.trim().replace(/,$/, '');
+    if (!line.startsWith('`')) continue;
+    const name = line.match(/^`([^`]+)`/);
+    if (!name) continue;
+    list.push({ name: name[1], def: line });
+  }
+  columns[b.name] = list;
+}
+
 const version = crypto
   .createHash('sha1')
   .update(statements.map((s) => s.sql).join('\n'))
+  .update('\n--columns--\n')
+  .update(
+    Object.keys(columns)
+      .map((t) => t + ':' + columns[t].map((c) => c.def).join(','))
+      .join('\n')
+  )
   .digest('hex')
   .slice(0, 12);
 
@@ -62,6 +108,17 @@ const body = statements
       `        // ${s.name}\n` +
       `        <<<'SQL'\n${s.sql}\nSQL,\n`
   )
+  .join('\n');
+
+// The same columns again, one list per table, for the check that brings a
+// table that exists but is a column short up to date.
+const columnBody = Object.keys(columns)
+  .map((table) => {
+    const list = columns[table]
+      .map((c) => `            ${JSON.stringify(c.name)} => ${JSON.stringify(c.def)},`)
+      .join('\n');
+    return `        ${JSON.stringify(table)} => [\n${list}\n        ],`;
+  })
   .join('\n');
 
 const php = `<?php
@@ -114,10 +171,28 @@ ${body}    ];
 }
 
 /**
+ * The columns of every table, so a table that exists but is short of a column
+ * can be brought up to date as well.
+ *
+ * @return array<string, array<int, string>>
+ */
+function msb_schema_columns(): array
+{
+    static $columns = null;
+    if ($columns !== null) return $columns;
+
+    $columns = [
+${columnBody}
+    ];
+
+    return $columns;
+}
+
+/**
  * Make sure every table this site needs exists, once per schema version.
  *
  * @param PDO $pdo
- * @return array{ok:bool, created:int, version:string, error:?string}
+ * @return array{ok:bool, created:int, added:int, version:string, error:?string}
  */
 function msb_ensure_schema_tables(PDO $pdo): array
 {
@@ -148,6 +223,7 @@ function msb_ensure_schema_tables(PDO $pdo): array
     }
 
     $created = 0;
+    $added = 0;
     $error = null;
     foreach (msb_schema_statements() as $sql) {
         try {
@@ -161,6 +237,42 @@ function msb_ensure_schema_tables(PDO $pdo): array
         }
     }
 
+    /**
+     * A table can be present and still be a column short - that is what
+     * happens when a column is added to the code and the server keeps the
+     * table it already had. Such a column is added here, and it is added
+     * nullable if the server will not have it the way the development machine
+     * has it: a column that exists is worth more than a column that is exactly
+     * right, and the code that reads it can cope with an empty one.
+     */
+    foreach (msb_schema_columns() as $table => $definitions) {
+        try {
+            $present = [];
+            foreach ($pdo->query('SHOW COLUMNS FROM \`' . $table . '\`')->fetchAll(PDO::FETCH_ASSOC) as $column) {
+                $present[strtolower((string)$column['Field'])] = true;
+            }
+        } catch (Throwable $e) {
+            continue; // The table itself could not be read; nothing to add to.
+        }
+
+        foreach ($definitions as $colName => $definition) {
+            $name = strtolower((string)$colName);
+            if ($name === '' || isset($present[$name])) continue;
+            try {
+                $pdo->exec('ALTER TABLE \`' . $table . '\` ADD COLUMN ' . $definition);
+                $added++;
+            } catch (Throwable $e) {
+                $looser = preg_replace('/\\bNOT NULL\\b/i', 'NULL', $definition);
+                try {
+                    $pdo->exec('ALTER TABLE \`' . $table . '\` ADD COLUMN ' . $looser);
+                    $added++;
+                } catch (Throwable $e2) {
+                    $error = 'column ' . $table . '.' . $name . ': ' . $e2->getMessage();
+                }
+            }
+        }
+    }
+
     if ($error === null) {
         @file_put_contents($marker, MSB_SCHEMA_VERSION);
         @unlink($failed);
@@ -168,7 +280,7 @@ function msb_ensure_schema_tables(PDO $pdo): array
         @file_put_contents($failed, (string)time());
     }
 
-    return ['ok' => $error === null, 'created' => $created, 'version' => MSB_SCHEMA_VERSION, 'error' => $error];
+    return ['ok' => $error === null, 'created' => $created, 'added' => $added, 'version' => MSB_SCHEMA_VERSION, 'error' => $error];
 }
 `;
 
