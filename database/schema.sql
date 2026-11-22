@@ -44,8 +44,11 @@ CREATE TABLE IF NOT EXISTS user_sessions (
     INDEX idx_user_id (user_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Admin user (default credentials should be changed after first login)
--- Password: Admin@123 (will be hashed in the actual implementation)
-INSERT INTO users (name, email, password_hash, user_type, email_verified) 
-VALUES ('Admin', 'admin@mystudy.com.ng', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'admin', TRUE)
-ON DUPLICATE KEY UPDATE name='Admin';
+-- No admin row is seeded here.
+--
+-- This file used to create an admin account whose password was a well-known
+-- default. That is a real login, not a placeholder, and this repository is
+-- the one the mobile app's backend is deployed from - so the row is gone.
+--
+-- The administrator account is created by the person who owns the site, with
+-- a password only they choose, and it is never written down in source.
