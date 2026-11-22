@@ -193,6 +193,19 @@ require_once __DIR__ . '/../includes/email-config.php';
 // Initialize database connection using the singleton pattern
 $pdo = getDbConnection();
 
+/**
+ * Make sure the tables this site needs exist on this server.
+ *
+ * A table that is missing is a feature that is quietly broken: the page that
+ * needs it either dies or shows nothing, and the cause is on the server
+ * rather than in the code that is being read. The tables are shipped with the
+ * code and created here if they are absent, so the live site cannot end up
+ * with less than the development machine has. Everything it creates is
+ * "IF NOT EXISTS", so an existing table is never touched.
+ */
+require_once __DIR__ . '/../includes/schema-tables.php';
+msb_ensure_schema_tables($pdo);
+
 // Site identity, resolved after the connection opens so the admin Settings page
 // actually changes the live site. WHATSAPP_NUMBER is stored digits-only because
 // wa.me rejects a leading '+'.
