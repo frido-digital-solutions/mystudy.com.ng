@@ -135,6 +135,37 @@ if ($aiAllowed && mentor_configured()) {
         // model actually used are added here.
         mentor_spend_neurons($pdo, $userId, $aiAnswer['neurons']);
 
+        // The entry the model named is the one the answer is really about, and
+        // it decides the button. So the button can no longer point somewhere
+        // else from what was just said: an answer about uploading notes and a
+        // button that opens the page of materials already downloaded cannot
+        // both be right, and now they cannot both happen.
+        $named = $aiAnswer['entry'] ?? null;
+        $chosen = null;
+        if ($named !== null && $named !== 'none') {
+            foreach ($matched as $m) {
+                if (strtolower((string)($m['entry']['id'] ?? '')) === $named) {
+                    $chosen = $m['entry'];
+                    break;
+                }
+            }
+        }
+        if ($chosen !== null) {
+            $fallback = [
+                'answer' => (string)$chosen['text'],
+                'link' => mentor_link($chosen['go'] ?? null),
+                'entry' => $chosen,
+            ];
+        } elseif ($named === 'none') {
+            // The model says the guide does not cover this question. That is
+            // taken at its word: the answer stands and carries no button,
+            // because there is nothing in the guide to point at. A student who
+            // asked about mitosis must not be handed the app-versus-website
+            // page because both sentences happen to contain the word
+            // "difference".
+            $fallback = null;
+        }
+
         // The model sometimes hedges on a question the knowledge file does
         // answer. Its wording is nicer and its facts are not - so when it
         // admits it is unsure and a real entry is sitting right there, the
@@ -371,6 +402,30 @@ function mentor_facts(PDO $pdo, array $user): array
 /** Does this question ask about the student's own record? */
 function mentor_is_personal(string $norm): bool
 {
+    // "How do I ..." is a request for the steps, not for a figure of the
+    // student's own, and it is the most common way anybody asks for anything
+    // in this app. Read as a question about their own record it answered
+    // half the app with somebody else's answer: "how do I upload materials"
+    // was answered with a page about the materials they had already saved.
+    //
+    // A how-to that really is about their own record is still one - "how many
+    // quizzes have I done", "how do I find my streak" - so those words still
+    // count.
+    $asksHow = (bool)preg_match(
+        '/\b(how\s+(do|can|should|would|could)\s+i|how\s+to|where\s+(do|can)\s+i)\b/u',
+        $norm
+    );
+
+    if ($asksHow) {
+        // "my" alone is not enough: in "how do I change my password" and
+        // "where do I upload my notes" it names the thing the student is
+        // asking about, not a figure of their record.
+        return (bool)preg_match(
+            '/\b(how\s+(many|much)|mine|myself|have\s+i|do\s+i\s+have|is\s+my|am\s+i)\b/u',
+            $norm
+        );
+    }
+
     // Both orders of "i have" and "have i", because "how many quizzes have i
     // done" is the same lookup as "how many quizzes do i have".
     return (bool)preg_match(
@@ -446,7 +501,8 @@ function mentor_personal(string $norm, array $f): ?array
             : 'You have not fought a battle yet, so your record is empty and your rating starts at 1000 when you do. '
                 . 'Open the Battle tab, pick someone in the Arena or post a challenge in the Hub.';
         $link = ['type' => 'screen', 'target' => 'Battles', 'label' => 'Open Battle'];
-    } elseif ($has('/\b(materials?|downloads?|reading|notes?)\b/') && !$has('/quiz/')) {
+    } elseif ($has('/\b(materials?|downloads?|reading|notes?)\b/')
+        && !$has('/quiz|upload|share|submit|contribute|add/')) {
         $answer = 'You have opened ' . $f['read_materials'] . ' material' . ($f['read_materials'] === 1 ? '' : 's')
             . ' and bought ' . $f['purchased'] . '. Your reading position is saved, so My Study offers Continue on each one.';
         $link = ['type' => 'screen', 'target' => 'Learn', 'label' => 'Open My Study'];
@@ -585,7 +641,10 @@ function mentor_hits(string $norm, string $phrase): bool
         static fn(string $w): string => preg_quote($w, '/') . '(?:s|es|ed|ing|ly|z(?:es|ed|ing))?',
         preg_split('/\s+/u', $phrase, -1, PREG_SPLIT_NO_EMPTY)
     );
-    $pattern = '/(?<![\\p{L}\\p{N}])' . implode('[\\s]+', $words) . '(?![\\p{L}\\p{N}])/u';
+    $filler = '(?:a|an|the|my|our|this|that|some)';
+    $pattern = '/(?<![\\p{L}\\p{N}])'
+        . implode('[\\s]+(?:' . $filler . '[\\s]+)?', $words)
+        . '(?![\\p{L}\\p{N}])/u';
     return (bool)preg_match($pattern, $norm);
 }
 
@@ -646,7 +705,7 @@ function mentor_knowledge_block(array $matched): string
     }
     $out = [];
     foreach ($matched as $m) {
-        $out[] = '- ' . $m['entry']['topic'] . ': ' . preg_replace('/\s+/', ' ', (string)$m['entry']['text']);
+        $out[] = '- [' . (string)($m['entry']['id'] ?? '?') . '] ' . $m['entry']['topic'] . ': ' . preg_replace('/\s+/', ' ', (string)$m['entry']['text']);
     }
     return implode("\n", $out);
 }
@@ -663,6 +722,7 @@ function mentor_best_answer(string $norm, array $knowledge): ?array
     return [
         'answer' => (string)$e['text'],
         'link' => mentor_link($e['go'] ?? null),
+        'entry' => $e,
     ];
 }
 
@@ -796,9 +856,20 @@ function mentor_generate(string $persona, string $knowledge, string $facts, arra
     $system = $persona
         . "\n\nTwo kinds of question. About this app: say only what KNOWLEDGE states, and when KNOWLEDGE covers it, answer it straight out - never tell a student you are unsure of something that is written there. Keep the exact button names KNOWLEDGE gives; a one-line reply that drops them is no help. A price that is not written there is set by the school on that item, so say the price shows on the item itself."
         . "\n\nAbout a school subject - maths, biology, chemistry, economics, anything: that is not in KNOWLEDGE because it is not about the app, so answer it yourself from what you know, simply, with one example a Nigerian student can picture. Never send a study question to Contact support."
-        . "\n\nHow to answer. Say the thing that was actually asked, in the first sentence - if the question has two parts, answer both parts. Then give the step, the number or the reason that makes it usable. Write two to five short sentences: a reply of one line has almost always left the student still asking. Never reply with only a pointer to a page ('go to Settings') without saying what to do once there. If you genuinely do not know, say so in one sentence and stop."
+        . "\n\nHow to answer. Say the thing that was actually asked, in the first sentence - if the question has two parts, answer both parts. Then give the step, the number or the reason that makes it usable. Write two to five short sentences: a reply of one line has almost always left the student still asking. Never reply with only a pointer to a page ('go to Settings') without saying what to do once there. Do not invent a 'tap ...' step that the entry does not state: if the entry explains a rule rather than a route, say the rule, because 'tap' in front of a sentence that is not a route makes the whole reply read as broken. If you genuinely do not know, say so in one sentence and stop."
         . "\n\nKNOWLEDGE (the only thing you may state about the app):\n" . $knowledge
         . "\n\nSTUDENT NUMBERS (the only figures you may quote):\n" . $facts;
+
+    // The entry the answer is really about is what decides the button the
+    // student presses, so the model is asked to name it. Without this the
+    // button came from a separate word-matching pass and the two could
+    // disagree: an answer about uploading notes with a button that opened the
+    // page of materials already downloaded.
+    $system .= "\n\nWhich entry. Begin your reply with a line that reads exactly ENTRY: <id>, "
+        . "where <id> is the id in square brackets of the ONE entry above that answers the "
+        . "question - the one the student actually meant. If none of them answers it, write "
+        . "ENTRY: none and then answer from what you know. Name only that one entry, and do "
+        . "not write the ENTRY line again afterwards.";
 
     $messages = [['role' => 'system', 'content' => $system]];
     foreach ($history as $turn) {
@@ -877,8 +948,18 @@ function mentor_generate(string $persona, string $knowledge, string $facts, arra
             continue;
         }
 
+        // The entry the model named comes off the front of its reply: the
+        // student reads the answer, not the bookkeeping that decided the button.
+        // The id may come back in square brackets, so both are accepted.
+        $entryId = null;
+        if (preg_match('/^\s*ENTRY:\s*\[?([a-z0-9_-]+)\]?/mi', $text, $m)) {
+            $entryId = strtolower(trim($m[1]));
+            $text = preg_replace('/^\s*ENTRY:\s*\[?[a-z0-9_-]+\]?\s*/i', '', $text);
+        }
+
         return [
             'text' => mentor_clean($text),
+            'entry' => $entryId,
             'neurons' => (float)($json['result']['usage']['neurons'] ?? 0),
         ];
     }

@@ -48,7 +48,7 @@ return [
         [
             'id' => 'what-is-mystudybase',
             'topic' => 'What MyStudyBase is',
-            'keywords' => ['about the app', 'what is this', 'what is this app', 'what does mystudybase do', 'purpose of the app', 'who are you', 'what can you do', 'help me study', 'is mystudybase', 'mystudybase'],
+            'keywords' => ['about the app', 'what is this', 'what is this app', 'what does mystudybase do', 'purpose of the app', 'what can you do', 'help me study', 'is mystudybase', 'mystudybase'],
             'text' => 'MyStudyBase is a study platform for Nigerian secondary school and university students. '
                 . 'You practise with timed CBT quizzes, read and download study materials, watch video '
                 . 'tutorials, battle other students on a quiz, post in the community and earn points that '
@@ -68,7 +68,7 @@ return [
         [
             'id' => 'navigate-tabs',
             'topic' => 'The bottom navigation',
-            'keywords' => ['how do i get', 'navigate', 'bottom', 'menu', 'tabs', 'find a page', 'can t find', 'cant find', 'screen', 'which tab'],
+            'keywords' => ['how do i get to', 'navigate', 'bottom', 'menu', 'tabs', 'find a page', 'can t find', 'cant find', 'screen', 'which tab', 'bottom bar'],
             'text' => 'Along the bottom of the app are Home, CBT, Chats, a raised More button in the middle, '
                 . 'Community, Battle and My Study. More opens a floating card holding everything the seven tabs '
                 . 'cannot: video tutorials, leaderboard, blog, upload notes, the study tools, rewards, '
@@ -119,7 +119,7 @@ return [
         [
             'id' => 'certificate',
             'topic' => 'Certificates',
-            'keywords' => ['certificate', 'cert', 'download certificate', 'my certificate', 'certificate button', 'proof', 'pass mark', '50'],
+            'keywords' => ['certificate', 'cert', 'download certificate', 'my certificate', 'certificate button', 'get a certificate', 'get certificate', 'get my certificates', 'proof', 'pass mark', '50'],
             'text' => 'A certificate is issued for any sitting at the 50% pass mark or above. On the result page '
                 . 'press Download certificate, and the same button is on your My Quizzes card once a set has '
                 . 'earned one. It opens a certificate in your name that you can save as an image or as a PDF. '
@@ -130,7 +130,7 @@ return [
         [
             'id' => 'paid-quiz',
             'topic' => 'Paid quizzes and access codes',
-            'keywords' => ['paid quiz', 'entry fee', 'access code', 'pay for quiz', 'unlock quiz', 'code', 'price'],
+            'keywords' => ['paid quiz', 'entry fee', 'access code', 'pay for quiz', 'pay for a quiz', 'pay for quizzes', 'payment for quiz', 'unlock quiz', 'unlock a quiz', 'code', 'price'],
             'text' => 'Some sets are paid, and the fee is written on the set itself - the school that made it '
                 . 'decides the amount, so it is different from quiz to quiz and is shown before you pay. '
                 . 'Open one and you are asked for the entry fee: pay with a card or '
@@ -171,7 +171,7 @@ return [
         [
             'id' => 'upload-material',
             'topic' => 'Uploading your own notes',
-            'keywords' => ['upload', 'share notes', 'add material', 'contribute', 'submit material', 'my upload'],
+            'keywords' => ['upload', 'upload material', 'upload materials', 'upload notes', 'uploading', 'share notes', 'add material', 'contribute', 'submit material', 'my upload', 'send my notes', 'post my notes'],
             'text' => 'More, then Upload notes under Study. Pick the file, set the subject, level and title, '
                 . 'and send it. An admin reviews new uploads before they reach the list, so a contribution shows '
                 . 'up once it is approved rather than immediately.',
@@ -215,7 +215,7 @@ return [
         [
             'id' => 'claim-reward',
             'topic' => 'Claiming a prize',
-            'keywords' => ['claim', 'claim reward', 'bank details', 'withdraw', 'get my money', 'paid yet', 'when will i get'],
+            'keywords' => ['claim', 'claim reward', 'claim my prize', 'claim prize', 'claim my reward', 'prize claim', 'bank details', 'withdraw', 'get my money', 'paid yet', 'when will i get'],
             'text' => 'Open the claim page from the winner card, or More then Rewards. You give your bank name, '
                 . 'account number, account name and phone, and an admin sends the money. The claim then reads '
                 . 'pending, processing or paid. If it is rejected the reason is shown on the claim so you can fix '
@@ -229,6 +229,7 @@ return [
             'text' => 'Finishing a quiz gives 10 points, plus up to 10 more for the mark you got, plus 20 for a '
                 . 'perfect paper, plus 15 more when it is a challenge. Battles pay the pot to the winner. Nothing '
                 . 'else adds points, so the way up the board is to keep finishing papers well.',
+            'go' => ['screen' => 'Leaderboard', 'label' => 'Open Leaderboard'],
         ],
         [
             'id' => 'levels',
@@ -247,6 +248,7 @@ return [
             'text' => 'Your streak counts days in a row on which you finished a quiz. One a day keeps it '
                 . 'growing; miss a whole day and it starts again from one, though your best run is kept '
                 . 'forever as the longest streak. At 3, 7, 14 and 30 days it awards badges.',
+            'go' => ['screen' => 'Quizzes', 'label' => 'Open CBT'],
         ],
         [
             'id' => 'badges',
@@ -395,7 +397,7 @@ return [
         [
             'id' => 'app-vs-website',
             'topic' => 'The app and the website',
-            'keywords' => ['website', 'site', 'browser', 'mystudy', 'difference', 'same account', 'computer', 'phone'],
+            'keywords' => ['website', 'site', 'browser', 'mystudy', 'difference between the app and the website', 'same account', 'computer', 'phone'],
             'text' => 'They are the same account on purpose. Points, results, materials and messages are one set '
                 . 'of records, so work done on mystudy.com.ng appears in the app and the other way round. The '
                 . 'website holds the pages the app has not rebuilt, which open inside the app when you tap them.',
@@ -431,7 +433,7 @@ return [
         [
             'id' => 'offline-app',
             'topic' => 'The app with no connection',
-            'keywords' => ['app not loading', 'blank', 'stuck', 'spinner', 'loading forever', 'not working', 'error', 'something went wrong'],
+            'keywords' => ['app not loading', 'not loading', 'app is not loading', 'blank', 'stuck', 'spinner', 'loading forever', 'not working', 'not responding', 'error', 'something went wrong'],
             'text' => 'With no signal, the app still shows your saved quizzes and the profile it last read, so '
                 . 'you are not locked out. If a page keeps failing, check the connection, then sign out and in '
                 . 'again - that refreshes the session. If it is still wrong, tell support what you tapped first.',
