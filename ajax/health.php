@@ -58,6 +58,26 @@ try {
     exit(0);
 }
 
+echo "\n-- configured keys (now that the site has loaded them) --\n";
+foreach ([
+    'DB_HOST', 'DB_USER', 'DB_NAME',
+    'PAYSTACK_PUBLIC_KEY', 'PAYSTACK_SECRET_KEY',
+    'BREVO_API_KEY', 'BREVO_FROM_EMAIL', 'BREVO_FROM_NAME',
+    'CLOUDFLARE_ACCOUNT_ID', 'CLOUDFLARE_AI_TOKEN',
+    'SITE_DOMAIN', 'ADMIN_EMAIL_DEFAULT',
+] as $c) {
+    if (!defined($c)) {
+        msb_health_line('  ' . $c, 'NOT DEFINED');
+        continue;
+    }
+    $v = (string)constant($c);
+    if ($c === 'DB_PASS') {
+        msb_health_line('  ' . $c, $v === '' ? 'EMPTY' : 'set');
+    } else {
+        msb_health_line('  ' . $c, $v === '' ? 'EMPTY (feature off)' : $v);
+    }
+}
+
 echo "\n-- database --\n";
 try {
     global $pdo;

@@ -8,6 +8,47 @@ if (!file_exists($__localSecrets)) {
 }
 require_once $__localSecrets;
 
+/**
+ * Every optional key gets a default here, so that a server whose secrets file
+ * is missing one loses that one feature instead of losing the whole site.
+ *
+ * This is not tidiness - it is the difference between one broken checkout and
+ * a blank page on every URL. The secrets file is written by hand on a shared
+ * host, and a half-finished one is the normal state of a file like that. The
+ * code already knows what to do with a missing key: a blank Paystack key
+ * refuses to charge anybody, a blank Brevo key skips email and logs why, and
+ * a blank Cloudflare key makes the Mentor answer from its built-in knowledge
+ * instead of the model. All three are decisions, not accidents.
+ */
+if (!defined('SITE_DOMAIN')) define('SITE_DOMAIN', 'mystudy.com.ng');
+if (!defined('ADMIN_EMAIL_DEFAULT')) define('ADMIN_EMAIL_DEFAULT', 'admin@' . SITE_DOMAIN);
+if (!defined('PAYSTACK_PUBLIC_KEY')) define('PAYSTACK_PUBLIC_KEY', '');
+if (!defined('PAYSTACK_SECRET_KEY')) define('PAYSTACK_SECRET_KEY', '');
+if (!defined('BREVO_API_KEY')) define('BREVO_API_KEY', '');
+if (!defined('BREVO_FROM_EMAIL')) define('BREVO_FROM_EMAIL', 'no-reply@' . SITE_DOMAIN);
+if (!defined('BREVO_FROM_NAME')) define('BREVO_FROM_NAME', 'MyStudy Base');
+if (!defined('BREVO_REPLY_TO_EMAIL')) define('BREVO_REPLY_TO_EMAIL', 'support@' . SITE_DOMAIN);
+if (!defined('BREVO_REPLY_TO_NAME')) define('BREVO_REPLY_TO_NAME', 'MyStudy Support');
+if (!defined('CLOUDFLARE_ACCOUNT_ID')) define('CLOUDFLARE_ACCOUNT_ID', '');
+if (!defined('CLOUDFLARE_AI_TOKEN')) define('CLOUDFLARE_AI_TOKEN', '');
+
+/**
+ * The database is the one thing that gets no default.
+ *
+ * A wrong database name would quietly open a different site - or an empty one -
+ * and the site would look alive while serving nothing. So when a database key
+ * is missing, the server says exactly which one is missing instead of dying
+ * with "Undefined constant DB_HOST", which is a sentence nobody can act on.
+ */
+foreach (['DB_HOST', 'DB_USER', 'DB_PASS', 'DB_NAME'] as $__msbDbKey) {
+    if (!defined($__msbDbKey)) {
+        http_response_code(500);
+        die('Configuration incomplete: config/secrets.local.php does not define ' . $__msbDbKey
+            . '. Add it (cPanel -> MySQL Databases has the name, the user and the password).');
+    }
+}
+unset($__msbDbKey);
+
 // Site configuration fallbacks. The admin Settings page is authoritative at
 // runtime; these apply on a fresh install or if the database is unreachable.
 define('SITE_NAME_DEFAULT', 'MyStudy Base');
