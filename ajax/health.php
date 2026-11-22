@@ -73,9 +73,53 @@ try {
         foreach (['users', 'site_settings', 'notifications'] as $t) {
             msb_health_line('  table ' . $t, in_array($t, $tables, true) ? 'present' : 'MISSING');
         }
+        $users = $pdo->query('SELECT COUNT(*) FROM users')->fetchColumn();
+        msb_health_line('  rows in users', (string)$users);
     }
 } catch (Throwable $e) {
     msb_health_line('database FAILED', get_class($e) . ': ' . $e->getMessage());
+}
+
+/**
+ * Which database actually holds the site's data?
+ *
+ * The database name in secrets.local.php is sometimes wrong - a copy of the
+ * settings was made for a side database, or the site was moved. When the
+ * configured name is not the one with the students in it, this walks every
+ * database the account can see and counts the accounts in each, so the right
+ * name can be read straight off the screen instead of guessed at.
+ */
+echo "\n-- every database this account can see --\n";
+try {
+    $host = defined('DB_HOST') ? DB_HOST : 'localhost';
+    $user = defined('DB_USER') ? DB_USER : '';
+    $pass = defined('DB_PASS') ? DB_PASS : '';
+    $server = new PDO('mysql:host=' . $host . ';charset=utf8mb4', $user, $pass, [
+        PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+    ]);
+    $dbs = $server->query('SHOW DATABASES')->fetchAll(PDO::FETCH_COLUMN);
+    foreach ($dbs as $db) {
+        if (strpos($db, 'information_schema') === 0) continue;
+        $note = 'no users table';
+        try {
+            $probe = new PDO('mysql:host=' . $host . ';dbname=' . $db . ';charset=utf8mb4', $user, $pass, [
+                PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+            ]);
+            $tables = $probe->query('SHOW TABLES')->fetchAll(PDO::FETCH_COLUMN);
+            if (in_array('users', $tables, true)) {
+                $n = (int)$probe->query('SELECT COUNT(*) FROM users')->fetchColumn();
+                $note = $n . ' user(s)';
+            } else {
+                $note = count($tables) . ' tables, no users';
+            }
+        } catch (Throwable $e) {
+            $note = 'cannot open';
+        }
+        $mark = (defined('DB_NAME') && $db === DB_NAME) ? ' <- configured' : '';
+        msb_health_line('  ' . $db, $note . $mark);
+    }
+} catch (Throwable $e) {
+    msb_health_line('could not list databases', $e->getMessage());
 }
 
 echo "\n-- writes --\n";
