@@ -1,5 +1,11 @@
 <?php
 require_once __DIR__ . '/../config/config.php';
+require_once __DIR__ . '/../includes/schema-ensure.php';
+
+// The permissions table is created here rather than assumed - see
+// includes/schema-ensure.php for why.
+msb_ensure_admin_tables($pdo);
+
 require_admin();
 
 if (!admin_can('users')) {

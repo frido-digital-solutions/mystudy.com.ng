@@ -2,6 +2,12 @@
 require_once __DIR__ . '/../config/config.php';
 require_once __DIR__ . '/../models/User.php';
 require_once __DIR__ . '/../includes/functions.php';
+require_once __DIR__ . '/../includes/schema-ensure.php';
+
+// The admin tables are created here rather than assumed: a database set up by
+// hand on shared hosting does not have them, and a missing table is a page
+// that throws instead of a page that works.
+msb_ensure_admin_tables($pdo);
 
 // Only super admins can access this page
 require_super_admin();

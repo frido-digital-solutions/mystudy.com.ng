@@ -95,6 +95,7 @@ try {
         }
         $users = $pdo->query('SELECT COUNT(*) FROM users')->fetchColumn();
         msb_health_line('  rows in users', (string)$users);
+        msb_health_line('  tables', implode(', ', $tables));
     }
 } catch (Throwable $e) {
     msb_health_line('database FAILED', get_class($e) . ': ' . $e->getMessage());

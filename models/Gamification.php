@@ -56,6 +56,12 @@ class Gamification {
 
     public function __construct($pdo) {
         $this->pdo = $pdo;
+
+        // The badge table is created here rather than assumed. A badge that
+        // cannot be written is a badge that never appears, and nobody would
+        // ever find out why - so the table is made if it is not there.
+        require_once __DIR__ . '/../includes/schema-ensure.php';
+        msb_ensure_badge_tables($this->pdo);
     }
 
     /**
