@@ -1,4 +1,19 @@
 # ============================================================
+# LOCAL CHECK SCAFFOLDING — throwaway probes and their screenshots.
+# These are only ever for my own machine; they must never be pushed.
+# ============================================================
+_tmp_*
+_shot_*
+__pycache__/
+
+# Whole-tree backups taken during the redesign passes. Local history only.
+/_flat_backup/
+/_strip_backup/
+/_strip_list.txt
+/_rooms_block.css
+/_zzdl.bin
+
+# ============================================================
 # SERVER-ONLY SECRETS — must never reach GitHub
 # ============================================================
 config/secrets.local.php

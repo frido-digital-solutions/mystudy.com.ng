@@ -194,11 +194,15 @@ class Material
         ?int $universityId = null,
         int $limit = 20,
         int $offset = 0,
-        string $status = 'approved'
+        string $status = 'approved',
+        ?int $paid = null
     ): array {
         $where = [];
         $params = [];
         if ($status) { $where[] = 'm.status = :status'; $params[':status'] = $status; }
+        // null keeps free and paid together, which is what a student browsing
+        // the whole shelf wants; 0 and 1 narrow it to one of them.
+        if ($paid === 0 || $paid === 1) { $where[] = 'm.is_paid = :paid'; $params[':paid'] = $paid; }
         if ($q && trim($q) !== '') {
             $where[] = '(m.title LIKE :q1 OR m.description LIKE :q2)';
             $params[':q1'] = '%' . trim($q) . '%';
@@ -244,11 +248,13 @@ class Material
         ?string $secondaryBoard = null,
         ?int $isUniversityGeneral = null,
         ?int $universityId = null,
-        string $status = 'approved'
+        string $status = 'approved',
+        ?int $paid = null
     ): int {
         $where = [];
         $params = [];
         if ($status) { $where[] = 'm.status = :status'; $params[':status'] = $status; }
+        if ($paid === 0 || $paid === 1) { $where[] = 'm.is_paid = :paid'; $params[':paid'] = $paid; }
         if ($q && trim($q) !== '') {
             $where[] = '(m.title LIKE :q1 OR m.description LIKE :q2)';
             $params[':q1'] = '%' . trim($q) . '%';

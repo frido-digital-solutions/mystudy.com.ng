@@ -39,6 +39,15 @@ if (!material_is_paid($material)) {
     exit;
 }
 
+// Checked before any payment row exists: with no key configured the browser would
+// open a Paystack popup that cannot work, and the admin queue would fill with
+// pending rows that no student could ever have completed.
+if (trim((string)PAYSTACK_SECRET_KEY) === '' || trim((string)PAYSTACK_PUBLIC_KEY) === '') {
+    http_response_code(503);
+    echo json_encode(['error' => 'Payments are not configured on this site yet. Please check back soon.']);
+    exit;
+}
+
 $payments = new MaterialPayment($pdo);
 if ($payments->owns($userId, $materialId)) {
     echo json_encode([

@@ -8,6 +8,7 @@
 require_once __DIR__ . '/config/config.php';
 require_once __DIR__ . '/models/Material.php';
 require_once __DIR__ . '/includes/materials_paid.php';
+require_once __DIR__ . '/includes/app_ticket.php';
 
 $id = (int)($_GET['id'] ?? 0);
 $inline = (($_GET['inline'] ?? '') === '1');
@@ -24,6 +25,15 @@ if (!$material || ($isModerator ? false : $material['status'] !== 'approved')) {
 }
 
 $userId = isset($_SESSION['user_id']) ? (int)$_SESSION['user_id'] : 0;
+// The mobile app holds a bearer token, not a cookie, so api/v1 hands it a link
+// with a ten-minute ticket scoped to this one file. The ticket is the login.
+$ticket = trim((string)($_GET['t'] ?? ''));
+if ($ticket !== '') {
+    $ticketUser = app_ticket_resolve($pdo, $ticket, 'read:' . $id);
+    if ($ticketUser) {
+        $userId = (int)$ticketUser['id'];
+    }
+}
 material_require_access($pdo, $material, $userId > 0 ? $userId : null);
 
 $path = material_resolve_file($material);
