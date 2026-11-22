@@ -190,6 +190,12 @@ try {
                     Admin Broadcasts
                 </a>
             </li>
+            <li class="nav-item">
+                <a class="nav-link <?php echo $current_page === 'app_push.php' ? 'active' : ''; ?>" href="<?php echo SITE_URL; ?>/admin/app_push.php">
+                    <i class="fas fa-mobile-screen-button me-2"></i>
+                    App Push Broadcast
+                </a>
+            </li>
             <?php endif; ?>
             
             <?php if (is_super_admin()): ?>

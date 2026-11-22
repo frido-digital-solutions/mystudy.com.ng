@@ -54,4 +54,8 @@ api_out([
     'token' => $issued['token'],
     'token_expires_in_days' => $issued['expires_in_days'],
     'user' => api_user_payload($user, $pdo),
+    // A brand new account has never been logged in, so the app shows the
+    // welcome the website shows on the first sign-in. The same flag the
+    // login endpoint returns, for the same reason.
+    'first_login' => true,
 ], 201);

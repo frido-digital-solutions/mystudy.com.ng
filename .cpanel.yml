@@ -27,11 +27,21 @@
 #   New files inside admin/, includes/, models/, assets/ etc. deploy
 #   automatically. A new .php file in the ROOT folder must also be added to
 #   one of the /bin/cp lines below, or it will not reach the server.
+#
+# THE MOBILE API
+#   api/ is the backend the Expo app talks to (api/v1/*.php). It is copied
+#   here like every other directory, because an app that cannot reach its own
+#   API is an app that does not work: without this line the clone lands
+#   without api/ and every request to /api/v1/ is a 404.
+#
+#   cli/ holds the terminal commands (the broadcast one, for example). It is
+#   copied for the same reason - a command that only exists on a laptop is
+#   not a command.
 # ============================================================================
 deployment:
   tasks:
     - export DEPLOYPATH=$HOME/public_html/
-    - /bin/cp -R admin ajax assets cache config controllers database includes logs models university uploads views $DEPLOYPATH
+    - /bin/cp -R admin ajax api assets cache cli config controllers database includes logs models university uploads views $DEPLOYPATH
     - /bin/cp .htaccess manifest.json robots.txt sw.js $DEPLOYPATH
     - /bin/cp about.php api_discussion.php api_messages.php battle_arena.php battle_hub.php battle_invite.php blog.php bootstrap.php cache_manager.php certificate.php cgpa-calculator.php challenge_results.php claim_reward.php contact.php conversation.php cookies.php $DEPLOYPATH
     - /bin/cp dashboard.php deactivate-account.php discussion_view.php discussions.php download.php faq.php forgot-password.php frozen.php index.php leaderboard.php login.php logout.php $DEPLOYPATH
