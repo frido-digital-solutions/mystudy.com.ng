@@ -16,23 +16,15 @@
 #   config/secrets.local.php and config/vapid_keys.json are gitignored, so they
 #   are absent from the clone and can never be overwritten by a deploy.
 #
-# DEPLOY PATH
-#   This site is an ADDON domain, so its files do not sit in $HOME/public_html/
-#   - they sit in the addon's own folder. The line below works out where that
-#   is by looking for it, in order:
+# WHERE THE SITE GOES
+#   This site is an addon domain, so its files live in the addon's own folder
+#   inside public_html, not in public_html itself. deploy/target.sh works out
+#   which folder that is and prints it.
 #
-#     1. $HOME/public_html/newmystudy.com.ng/   ← this account's addon
-#     2. $HOME/domains/newmystudy.com.ng/public_html/
-#     3. $HOME/public_html/                     (the main domain's folder)
+#   Every copy line below asks that script for its destination, so no line
+#   depends on a variable set by an earlier one. The first line prints the
+#   folder that was chosen, so the log always says where the site went.
 #
-#   It prints the folder it chose into the deploy log, so the first deploy
-#   shows which one was used. If that is not where the site lives, edit the
-#   DEPLOYPATH= line below to the exact path - cPanel shows it under
-#   Domains -> the addon -> Document Root.
-#
-#   IMPORTANT: point the clone somewhere else entirely (not the site's own
-#   folder). The clone is the source, the site folder is the destination.
-# ============================================================================
 # ADDING A NEW TOP-LEVEL PAGE
 #   New files inside admin/, includes/, models/, assets/ etc. deploy
 #   automatically. A new .php file in the ROOT folder must also be added to
@@ -50,25 +42,16 @@
 # ============================================================================
 deployment:
   tasks:
-    # Where the site lives. Chosen by looking, not by guessing - see DEPLOY
-    # PATH above. One line, one shell block, and the answer is in the log.
-    - |
-      if [ -d "$HOME/public_html/newmystudy.com.ng" ]; then
-        export DEPLOYPATH="$HOME/public_html/newmystudy.com.ng/"
-      elif [ -d "$HOME/domains/newmystudy.com.ng/public_html" ]; then
-        export DEPLOYPATH="$HOME/domains/newmystudy.com.ng/public_html/"
-      else
-        export DEPLOYPATH="$HOME/public_html/"
-      fi
-      echo "Deploying to: $DEPLOYPATH"
-    - /bin/cp -R admin ajax api assets cache cli config controllers database includes logs models university uploads views $DEPLOYPATH
-    - /bin/cp .htaccess manifest.json robots.txt sw.js $DEPLOYPATH
-    - /bin/cp about.php api_discussion.php api_messages.php battle_arena.php battle_hub.php battle_invite.php blog.php bootstrap.php cache_manager.php certificate.php cgpa-calculator.php challenge_results.php claim_reward.php contact.php conversation.php cookies.php $DEPLOYPATH
-    - /bin/cp dashboard.php deactivate-account.php discussion_view.php discussions.php download.php faq.php forgot-password.php frozen.php index.php leaderboard.php login.php logout.php $DEPLOYPATH
-    - /bin/cp maintenance.php material.php materials.php messages.php my_quizzes.php notifications.php notify_challenge_end.php payment_success.php performance.php post.php privacy-policy.php process_battle_action.php process_challenge.php process_open_challenge.php profile.php profile_public.php $DEPLOYPATH
-    - /bin/cp quiz.php quiz_battle.php quiz_battle_play.php quiz_battle_result.php quiz_battle_submit.php quiz_multi.php quiz_result.php quiz_special.php quiz_start.php quiz_submit.php quizzes.php $DEPLOYPATH
-    - /bin/cp register.php reset-password.php settings.php sitemap.xml.php terms.php timetable.php tools.php tutorials.php universities.php upload-material.php upload_receipt.php users.php verify-email.php verify_redirect.php $DEPLOYPATH
+    # Say where the site is, before anything is copied into it.
+    - 'echo "Deploying to: $(sh deploy/target.sh)"'
+    - DEPLOYPATH=$(sh deploy/target.sh) && /bin/cp -R admin ajax api assets cache cli config controllers database includes logs models university uploads views $DEPLOYPATH
+    - DEPLOYPATH=$(sh deploy/target.sh) && /bin/cp .htaccess manifest.json robots.txt sw.js $DEPLOYPATH
+    - DEPLOYPATH=$(sh deploy/target.sh) && /bin/cp about.php api_discussion.php api_messages.php battle_arena.php battle_hub.php battle_invite.php blog.php bootstrap.php cache_manager.php certificate.php cgpa-calculator.php challenge_results.php claim_reward.php contact.php conversation.php cookies.php $DEPLOYPATH
+    - DEPLOYPATH=$(sh deploy/target.sh) && /bin/cp dashboard.php deactivate-account.php discussion_view.php discussions.php download.php faq.php forgot-password.php frozen.php index.php leaderboard.php login.php logout.php $DEPLOYPATH
+    - DEPLOYPATH=$(sh deploy/target.sh) && /bin/cp maintenance.php material.php materials.php messages.php my_quizzes.php notifications.php notify_challenge_end.php payment_success.php performance.php post.php privacy-policy.php process_battle_action.php process_challenge.php process_open_challenge.php profile.php profile_public.php $DEPLOYPATH
+    - DEPLOYPATH=$(sh deploy/target.sh) && /bin/cp quiz.php quiz_battle.php quiz_battle_play.php quiz_battle_result.php quiz_battle_submit.php quiz_multi.php quiz_result.php quiz_special.php quiz_start.php quiz_submit.php quizzes.php $DEPLOYPATH
+    - DEPLOYPATH=$(sh deploy/target.sh) && /bin/cp register.php reset-password.php settings.php sitemap.xml.php terms.php timetable.php tools.php tutorials.php universities.php upload-material.php upload_receipt.php users.php verify-email.php verify_redirect.php $DEPLOYPATH
     # The paid-materials flow and the document reader. These are root pages,
     # so like every root page they have to be named here - a /bin/cp of a
     # directory does not pick up a file that sits beside it.
-    - /bin/cp material_checkout.php material_download.php material_verify.php paystack_webhook.php reader.php $DEPLOYPATH
+    - DEPLOYPATH=$(sh deploy/target.sh) && /bin/cp material_checkout.php material_download.php material_verify.php paystack_webhook.php reader.php $DEPLOYPATH
