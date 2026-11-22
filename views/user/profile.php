@@ -48,7 +48,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !validate_csrf_token($_POST['csrf_t
     $privacy_show_discussions = isset($_POST['privacy_show_discussions']) ? 1 : 0;
     $privacy_show_badges = isset($_POST['privacy_show_badges']) ? 1 : 0;
     $privacy_show_battles = isset($_POST['privacy_show_battles']) ? 1 : 0;
+    $privacy_show_studies = isset($_POST['privacy_show_studies']) ? 1 : 0;
+    $privacy_show_quizzes = isset($_POST['privacy_show_quizzes']) ? 1 : 0;
     $privacy_allow_messages = isset($_POST['privacy_allow_messages']) ? 1 : 0;
+    $privacy_share_status = isset($_POST['privacy_share_status']) ? 1 : 0;
     $show_level_on_users_page = isset($_POST['show_level_on_users_page']) ? 1 : 0;
     
     // Validate input
@@ -69,15 +72,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !validate_csrf_token($_POST['csrf_t
     
     if (!$isPictureOnlyUpload && (!empty($current_password) || !empty($new_password) || !empty($confirm_password))) {
         if (empty($current_password)) {
-            $errors['current_password'] = 'Current password is required to change your password';
+            $errors['current_password'] = 'Please type your current password so we know it is really you.';
         } elseif (!password_verify($current_password, $user->password_hash)) {
-            $errors['current_password'] = 'Current password is incorrect';
+            $errors['current_password'] = 'The current password you entered is incorrect. Please type it again.';
         }
-        
-        if (strlen($new_password) < 8) {
-            $errors['new_password'] = 'New password must be at least 8 characters long';
+
+        if (empty($new_password)) {
+            $errors['new_password'] = 'Please type the new password you want to use.';
+        } elseif (strlen($new_password) < 8) {
+            $errors['new_password'] = 'Your new password must be at least 8 characters long.';
+        } elseif (!empty($current_password) && $new_password === $current_password) {
+            $errors['new_password'] = 'You cannot keep using your current password as the new one. Choose a different password.';
+        } elseif (empty($confirm_password)) {
+            $errors['confirm_password'] = 'Please type your new password once more in the Confirm box.';
         } elseif ($new_password !== $confirm_password) {
-            $errors['confirm_password'] = 'Passwords do not match';
+            $errors['confirm_password'] = 'The new password and the confirmation do not match. Please type the same password in both boxes.';
         }
     }
     
@@ -141,11 +150,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !validate_csrf_token($_POST['csrf_t
         $user->privacy_show_discussions = $privacy_show_discussions;
         $user->privacy_show_badges = $privacy_show_badges;
         $user->privacy_show_battles = $privacy_show_battles;
+        $user->privacy_show_studies = $privacy_show_studies;
+        $user->privacy_show_quizzes = $privacy_show_quizzes;
         $user->privacy_allow_messages = $privacy_allow_messages;
+        $user->privacy_share_status = $privacy_share_status;
         $user->show_level_on_users_page = $show_level_on_users_page;
         
         try {
             if ($user->update()) {
+                // update() writes the privacy switches but not the course
+                // details, which live in user_meta - without this the three
+                // school fields a university student fills in were discarded.
+                if ($user->user_type === 'university') {
+                    $user->saveSchoolDetails($university, $department, $level);
+                }
                 // update() never writes password_hash, so a new password must go
                 // through the model's own hasher or it is silently discarded.
                 $passwordSaved = empty($new_password) || $user->updatePassword($new_password);
@@ -288,6 +306,12 @@ include __DIR__ . '/../../includes/header.php';
                             <i class="fas fa-exclamation-circle me-2"></i> <?php echo $errors['general']; ?>
                         </div>
                     <?php endif; ?>
+
+                    <?php if (!empty($errors) && !isset($errors['general'])): ?>
+                        <div class="alert alert-danger">
+                            <i class="fas fa-exclamation-circle me-2"></i> <?php echo htmlspecialchars((string)reset($errors)); ?>
+                        </div>
+                    <?php endif; ?>
                     
                     <form method="POST" enctype="multipart/form-data" id="profileForm">
                         <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars(csrf_token()); ?>">
@@ -405,9 +429,27 @@ include __DIR__ . '/../../includes/header.php';
                         </div>
 
                         <div class="mb-4 form-check form-switch ps-5">
+                            <input class="form-check-input" style="margin-left: -2.5em; width: 2.5em; height: 1.25em; cursor: pointer;" type="checkbox" role="switch" id="privacy_show_studies" name="privacy_show_studies" <?php echo (isset($user->privacy_show_studies) ? $user->privacy_show_studies : 1) ? 'checked' : ''; ?>>
+                            <label class="form-check-label fw-medium ms-2" for="privacy_show_studies" style="cursor: pointer; padding-top: 0.15em;">Show What I Study Most</label>
+                            <div class="text-muted small ms-2">If disabled, the subjects you spend most time in are hidden from your public profile.</div>
+                        </div>
+
+                        <div class="mb-4 form-check form-switch ps-5">
+                            <input class="form-check-input" style="margin-left: -2.5em; width: 2.5em; height: 1.25em; cursor: pointer;" type="checkbox" role="switch" id="privacy_show_quizzes" name="privacy_show_quizzes" <?php echo (isset($user->privacy_show_quizzes) ? $user->privacy_show_quizzes : 1) ? 'checked' : ''; ?>>
+                            <label class="form-check-label fw-medium ms-2" for="privacy_show_quizzes" style="cursor: pointer; padding-top: 0.15em;">Show my Quiz History</label>
+                            <div class="text-muted small ms-2">If disabled, your quiz attempts, best scores and average are hidden from your public profile.</div>
+                        </div>
+
+                        <div class="mb-4 form-check form-switch ps-5">
                             <input class="form-check-input" style="margin-left: -2.5em; width: 2.5em; height: 1.25em; cursor: pointer;" type="checkbox" role="switch" id="privacy_allow_messages" name="privacy_allow_messages" <?php echo (isset($user->privacy_allow_messages) ? $user->privacy_allow_messages : 1) ? 'checked' : ''; ?>>
                             <label class="form-check-label fw-medium ms-2" for="privacy_allow_messages" style="cursor: pointer; padding-top: 0.15em;">Allow Direct Messages</label>
                             <div class="text-muted small ms-2">If disabled, other users will not be able to start new conversations with you.</div>
+                        </div>
+
+                        <div class="mb-4 form-check form-switch ps-5">
+                            <input class="form-check-input" style="margin-left: -2.5em; width: 2.5em; height: 1.25em; cursor: pointer;" type="checkbox" role="switch" id="privacy_share_status" name="privacy_share_status" <?php echo (isset($user->privacy_share_status) ? $user->privacy_share_status : 1) ? 'checked' : ''; ?>>
+                            <label class="form-check-label fw-medium ms-2" for="privacy_share_status" style="cursor: pointer; padding-top: 0.15em;">Share my Active Status</label>
+                            <div class="text-muted small ms-2">If disabled, chats and the people directory show you as Offline — no Online dot, no last-seen time and no typing light.</div>
                         </div>
 
                         <div class="mb-4 form-check form-switch ps-5">

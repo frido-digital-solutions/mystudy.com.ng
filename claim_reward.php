@@ -103,7 +103,10 @@ $existingClaim = $claimStmt->fetch(PDO::FETCH_ASSOC);
 // Handle form submission
 $submitSuccess = false;
 $submitError = '';
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$existingClaim) {
+// A claim an admin has sent back is the one state the student may write over:
+// the details were wrong, and a second set is the fix, not a second claim.
+$maySubmit = !$existingClaim || (string)($existingClaim['status'] ?? '') === 'rejected';
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && $maySubmit) {
     if (!validate_csrf_token($_POST['csrf_token'] ?? '')) {
         $submitError = 'Invalid CSRF token.';
     } else {
@@ -140,8 +143,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$existingClaim) {
         }
 
         if (!$submitError && $isValid) {
-            $ins = $pdo->prepare("INSERT INTO reward_claims (quiz_id, user_id, rank_position, amount, full_name, bank_name, account_number, account_name, phone) VALUES (?,?,?,?,?,?,?,?,?)");
-            $ins->execute([$quizId, $userId, $userRank, $calculatedAmount > 0 ? $calculatedAmount : null, $fullName, $bankName, $accountNumber, $accountName, $phone]);
+            $isNewClaim = !$existingClaim;
+            if ($existingClaim) {
+                $upd = $pdo->prepare("UPDATE reward_claims SET rank_position = ?, amount = ?, full_name = ?, bank_name = ?,
+                                      account_number = ?, account_name = ?, phone = ?, status = 'pending', admin_notes = NULL
+                                      WHERE id = ?");
+                $upd->execute([$userRank, $calculatedAmount > 0 ? $calculatedAmount : null, $fullName, $bankName,
+                               $accountNumber, $accountName, $phone, (int)$existingClaim['id']]);
+            } else {
+                $ins = $pdo->prepare("INSERT INTO reward_claims (quiz_id, user_id, rank_position, amount, full_name, bank_name, account_number, account_name, phone) VALUES (?,?,?,?,?,?,?,?,?)");
+                $ins->execute([$quizId, $userId, $userRank, $calculatedAmount > 0 ? $calculatedAmount : null, $fullName, $bankName, $accountNumber, $accountName, $phone]);
+            }
             $submitSuccess = true;
 
             // Re-fetch the claim
@@ -150,8 +162,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$existingClaim) {
 
             // Notify user
             $nModel = new Notification($pdo);
-            $nModel->create($userId, 'reward_claim', '✅ Reward Claim Submitted', 
-                "Your reward claim details for \"{$quiz['title']}\" have been submitted. We'll process it shortly and notify you once complete.", 
+            $nModel->create($userId, 'reward_claim', $isNewClaim ? '✅ Reward Claim Submitted' : '🔁 Claim sent again',
+                $isNewClaim
+                    ? "Your reward claim details for \"{$quiz['title']}\" have been submitted. We'll process it shortly and notify you once complete."
+                    : "Your corrected bank details for \"{$quiz['title']}\" have been sent back to the admin team for another look.",
                 SITE_URL . '/claim_reward.php?quiz_id=' . $quizId);
         }
     }
@@ -159,6 +173,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$existingClaim) {
 
 $rankEmoji = ['', '🥇', '🥈', '🥉'];
 $rankLabel = ['', '1st Place', '2nd Place', '3rd Place'];
+// A claim an admin sent back shows the form again with the old details still in
+// the boxes, so the second attempt reads as a correction, not a fresh start.
+$resubmit = (string)($existingClaim['status'] ?? '') === 'rejected';
+$old = static function (string $key) use ($existingClaim): string {
+    return htmlspecialchars((string)($existingClaim[$key] ?? ''));
+};
 $page_title = 'Claim Reward — ' . htmlspecialchars($quiz['title']);
 
 include __DIR__ . '/includes/header.php';
@@ -280,7 +300,7 @@ include __DIR__ . '/includes/header.php';
             <?php endif; ?>
         </div>
 
-        <?php if ($existingClaim): ?>
+        <?php if ($existingClaim && !$resubmit): ?>
             <!-- Reward Sent / Paid Success State -->
             <?php if (in_array($existingClaim['status'], ['sent', 'paid'])): ?>
             <div class="cr-submitted shadow-sm" style="background: linear-gradient(to bottom, #f0fdf4, #fff); border-color: #34d399;">
@@ -343,7 +363,15 @@ include __DIR__ . '/includes/header.php';
 
         <?php else: ?>
             <!-- Claim Form -->
-            <h4 class="fw-bold mb-1">Claim Your Reward</h4>
+            <?php if ($resubmit): ?>
+                <?php $returnReason = trim((string)($existingClaim['admin_notes'] ?? '')); ?>
+                <div class="alert" style="border-radius:14px;background:#fef2f2;border:1px solid #fecaca;border-left:4px solid #ef4444;color:#991b1b;">
+                    <div class="fw-bold mb-1"><i class="fas fa-times-circle me-1"></i> An admin sent your claim back</div>
+                    <div class="mb-1"><?php echo $returnReason !== '' ? htmlspecialchars($returnReason) : 'The bank details on the claim could not be used as they were.'; ?></div>
+                    <small>Correct the details below and send it again.</small>
+                </div>
+            <?php endif; ?>
+            <h4 class="fw-bold mb-1"><?php echo $resubmit ? 'Send your claim again' : 'Claim Your Reward'; ?></h4>
             <?php if (in_array($quiz['prize_type'] ?? '', ['airtime', 'data'])): ?>
                 <p class="text-muted mb-4" style="font-size:0.9rem;">Please select your network provider and enter your phone number so we can send your <?php echo htmlspecialchars($quiz['prize_type']); ?>.</p>
             <?php elseif ($quiz['prize_type'] === 'money'): ?>
@@ -370,87 +398,63 @@ include __DIR__ . '/includes/header.php';
                 <?php if ($quiz['prize_type'] === 'money'): ?>
                     <div class="cr-form-group mb-3">
                         <label for="full_name" class="form-label">Full Name <span class="text-danger">*</span></label>
-                        <input type="text" class="form-control" id="full_name" name="full_name" required placeholder="Your full legal name">
+                        <input type="text" class="form-control" id="full_name" name="full_name" required placeholder="Your full legal name" value="<?php echo $old('full_name'); ?>">
                     </div>
                     
                     <div class="cr-form-group mb-3">
                         <label for="bank_name" class="form-label">Bank Name <span class="text-danger">*</span></label>
                         <select class="form-control" id="bank_name" name="bank_name" required>
                             <option value="">Select your bank...</option>
-                            <option value="Access Bank">Access Bank</option>
-                            <option value="Citibank">Citibank</option>
-                            <option value="Ecobank">Ecobank</option>
-                            <option value="Fidelity Bank">Fidelity Bank</option>
-                            <option value="First Bank of Nigeria">First Bank of Nigeria</option>
-                            <option value="FCMB">First City Monument Bank</option>
-                            <option value="Globus Bank">Globus Bank</option>
-                            <option value="GTBank">Guaranty Trust Bank</option>
-                            <option value="Heritage Bank">Heritage Bank</option>
-                            <option value="Keystone Bank">Keystone Bank</option>
-                            <option value="Kuda Bank">Kuda Microfinance Bank</option>
-                            <option value="Moniepoint">Moniepoint</option>
-                            <option value="OPay">OPay</option>
-                            <option value="PalmPay">PalmPay</option>
-                            <option value="Polaris Bank">Polaris Bank</option>
-                            <option value="Providus Bank">Providus Bank</option>
-                            <option value="Stanbic IBTC">Stanbic IBTC Bank</option>
-                            <option value="Standard Chartered">Standard Chartered</option>
-                            <option value="Sterling Bank">Sterling Bank</option>
-                            <option value="SunTrust Bank">SunTrust Bank</option>
-                            <option value="Titan Trust Bank">Titan Trust Bank</option>
-                            <option value="Union Bank">Union Bank</option>
-                            <option value="UBA">United Bank for Africa (UBA)</option>
-                            <option value="Unity Bank">Unity Bank</option>
-                            <option value="Wema Bank">Wema Bank</option>
-                            <option value="Zenith Bank">Zenith Bank</option>
+                            <?php foreach (reward_bank_options() as $value => $label): ?>
+                                <option value="<?php echo htmlspecialchars($value); ?>" <?php echo $resubmit && $existingClaim['bank_name'] === $value ? 'selected' : ''; ?>><?php echo htmlspecialchars($label); ?></option>
+                            <?php endforeach; ?>
                         </select>
                     </div>
                     
                     <div class="cr-form-group mb-3">
                         <label for="account_number" class="form-label">Account Number <span class="text-danger">*</span></label>
-                        <input type="text" class="form-control" id="account_number" name="account_number" required placeholder="10-digit account number" maxlength="20">
+                        <input type="text" class="form-control" id="account_number" name="account_number" required placeholder="10-digit account number" maxlength="20" value="<?php echo $old('account_number'); ?>">
                     </div>
                     
                     <div class="cr-form-group mb-3">
                         <label for="account_name" class="form-label">Account Name <span class="text-danger">*</span></label>
-                        <input type="text" class="form-control" id="account_name" name="account_name" required placeholder="Name on your bank account">
+                        <input type="text" class="form-control" id="account_name" name="account_name" required placeholder="Name on your bank account" value="<?php echo $old('account_name'); ?>">
                     </div>
                     
                     <div class="cr-form-group mb-4">
                         <label for="phone" class="form-label">Phone Number <span class="text-muted">(optional)</span></label>
-                        <input type="tel" class="form-control" id="phone" name="phone" placeholder="For follow-up contact">
+                        <input type="tel" class="form-control" id="phone" name="phone" placeholder="For follow-up contact" value="<?php echo $old('phone'); ?>">
                     </div>
                 <?php elseif (in_array($quiz['prize_type'] ?? '', ['airtime', 'data'])): ?>
                     <div class="cr-form-group mb-3">
                         <label for="bank_name" class="form-label">Network Provider <span class="text-danger">*</span></label>
                         <select class="form-control" id="bank_name" name="bank_name" required>
                             <option value="">Select Network...</option>
-                            <option value="MTN">MTN</option>
-                            <option value="Airtel">Airtel</option>
-                            <option value="Glo">Glo</option>
-                            <option value="9mobile">9mobile</option>
+                            <?php foreach (reward_network_options() as $value => $label): ?>
+                                <option value="<?php echo htmlspecialchars($value); ?>" <?php echo $resubmit && $existingClaim['bank_name'] === $value ? 'selected' : ''; ?>><?php echo htmlspecialchars($label); ?></option>
+                            <?php endforeach; ?>
                         </select>
                     </div>
                     
                     <div class="cr-form-group mb-4">
                         <label for="phone" class="form-label">Phone Number <span class="text-danger">*</span></label>
-                        <input type="tel" class="form-control" id="phone" name="phone" required placeholder="e.g. 08012345678" maxlength="15">
+                        <input type="tel" class="form-control" id="phone" name="phone" required placeholder="e.g. 08012345678" maxlength="15" value="<?php echo $old('phone'); ?>">
                     </div>
                 <?php else: ?>
                     <!-- Fallback: prize_type is empty or text — show Full Name + Phone -->
                     <div class="cr-form-group mb-3">
                         <label for="full_name" class="form-label">Full Name <span class="text-danger">*</span></label>
-                        <input type="text" class="form-control" id="full_name" name="full_name" required placeholder="Your full legal name">
+                        <input type="text" class="form-control" id="full_name" name="full_name" required placeholder="Your full legal name" value="<?php echo $old('full_name'); ?>">
                     </div>
                     <div class="cr-form-group mb-4">
                         <label for="phone" class="form-label">Phone Number <span class="text-danger">*</span></label>
-                        <input type="tel" class="form-control" id="phone" name="phone" required placeholder="e.g. 08012345678" maxlength="15">
+                        <input type="tel" class="form-control" id="phone" name="phone" required placeholder="e.g. 08012345678" maxlength="15" value="<?php echo $old('phone'); ?>">
                     </div>
                 <?php endif; ?>
                 
                 <div class="text-center">
                     <button type="submit" class="cr-submit-btn">
-                        <i class="fas fa-paper-plane"></i> Submit Claim
+                        <i class="fas fa-paper-plane"></i> <?php echo $resubmit ? 'Send claim again' : 'Submit Claim'; ?>
                     </button>
                 </div>
             </form>

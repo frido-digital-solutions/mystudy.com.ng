@@ -226,6 +226,27 @@ body {
   z-index: 2;
 }
 
+/* A question picture is a figure, not decoration: it gets its own white plate
+   and keeps its proportions, so a diagram is readable on the green stem and an
+   option's picture is the same size in every row. */
+.quiz-picture {
+  margin-top: .75rem;
+  background: #fff;
+  border: 1px solid rgba(15, 23, 42, .12);
+  border-radius: 12px;
+  padding: .5rem;
+  text-align: center;
+}
+.quiz-picture img {
+  max-width: 100%;
+  max-height: 240px;
+  height: auto;
+  object-fit: contain;
+  border-radius: 8px;
+}
+.quiz-question .options .quiz-picture { margin: .5rem 0 0; }
+.quiz-question .options .quiz-picture img { max-height: 150px; }
+
 /* Options Container */
 .quiz-question .options {
   padding: 1rem 1.5rem 1.5rem;
@@ -641,6 +662,16 @@ body {
   }
   .quiz-question .question-stem::before {
     display: none !important; /* hide huge overlapping icon to preserve space */
+  }
+  /* The stem is sticky on a phone, so a picture inside it must stay short or it
+     pushes the answer options off the screen. */
+  .quiz-picture {
+    padding: 0.35rem;
+    margin-top: 0.5rem;
+  }
+  .quiz-question .question-stem .quiz-picture img,
+  .quiz-question .options .quiz-picture img {
+    max-height: 118px;
   }
   .question-number-label {
     margin-bottom: 0.25rem !important;
@@ -1927,6 +1958,7 @@ endif; ?>
   endif; ?>
                                     <span class="question-number-label">Question <?php echo($index + 1); ?> of <?php echo count($questions); ?></span>
                                     <div class="question-text"><?php echo nl2br(safe_quiz_html($q['question'])); ?></div>
+                                    <?php echo quiz_picture_html($q['image_path'] ?? '', 'Picture for question ' . ($index + 1)); ?>
                                 </div>
                                 <div class="options">
                                 <?php if (($q['question_type'] ?? 'objective') === 'subjective'): ?>
@@ -1944,8 +1976,12 @@ endif; ?>
                                             <input class="form-check-input answer-input" type="radio" name="q[<?php echo (int)$q['id']; ?>]" id="q<?php echo (int)$q['id']; ?>o<?php echo (int)$opt['id']; ?>" value="<?php echo (int)$opt['id']; ?>">
                                             <label class="form-check-label" for="q<?php echo (int)$q['id']; ?>o<?php echo (int)$opt['id']; ?>">
                                                 <?php
-      $label = chr(65 + $optIdx) . '. ' . safe_quiz_html($opt['option_text']);
-      echo $label;
+      // A picture can be the whole option, so an empty text box is not an empty answer.
+      $optWords = trim((string)($opt['option_text'] ?? ''));
+      if ($optWords !== '') {
+          echo chr(65 + $optIdx) . '. ' . safe_quiz_html($opt['option_text']);
+      }
+      echo quiz_picture_html($opt['image_path'] ?? '', 'Picture for option ' . chr(65 + $optIdx));
 ?>
                                             </label>
                                         </div>

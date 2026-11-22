@@ -97,11 +97,31 @@ class Message {
     // ─── Typing Indicator ────────────────────────────────────────
 
     public function setTyping(int $userId, int $partnerId): void {
+        // Was the other side already being told? A typing light that is pushed to
+        // somebody's shade needs a beat of its own: once every twenty seconds
+        // keeps it alive without turning a sentence into twenty notifications.
+        $was = $this->pdo->prepare('SELECT last_typing_at FROM typing_status WHERE user_id = ? AND partner_id = ?');
+        $was->execute([$userId, $partnerId]);
+        $before = $was->fetchColumn();
+        $since = $before ? time() - strtotime((string)$before) : null;
+
         $stmt = $this->pdo->prepare("
             INSERT INTO typing_status (user_id, partner_id, last_typing_at) VALUES (?, ?, NOW())
             ON DUPLICATE KEY UPDATE last_typing_at = NOW()
         ");
         $stmt->execute([$userId, $partnerId]);
+
+        if ($since !== null && $since < 20) return;
+
+        $conv = $this->pdo->prepare('SELECT id FROM conversations WHERE (user_one_id = ? AND user_two_id = ?) OR (user_one_id = ? AND user_two_id = ?)');
+        $conv->execute([$userId, $partnerId, $partnerId, $userId]);
+        $conversationId = (int)$conv->fetchColumn();
+        if ($conversationId <= 0) return;
+
+        $file = __DIR__ . '/Push.php';
+        if (!is_file($file)) return;
+        require_once $file;
+        msb_notify_typing($this->pdo, $conversationId, $userId);
     }
 
     public function stopTyping(int $userId, int $partnerId): void {
@@ -269,7 +289,30 @@ class Message {
             WHERE m.id = ?
         ");
         $fetch->execute([$msgId]);
-        return $fetch->fetch();
+        $saved = $fetch->fetch();
+
+        // The other side's phone hears about it here, which is the one place both
+        // the website and the app insert a message, so neither can forget to tell.
+        $this->pushNewMessage($conversationId, $senderId, $body, $msgId);
+
+        return $saved;
+    }
+
+    /**
+     * Queue the other side's notification. It leaves after their sender has got
+     * his own answer back, so a slow push gateway can never show up to a human
+     * as a slow message, and a broken one can never lose a message.
+     */
+    private function pushNewMessage(int $conversationId, int $senderId, string $body, int $messageId): void
+    {
+        $file = __DIR__ . '/Push.php';
+        if (!is_file($file)) return;
+        require_once $file;
+        try {
+            msb_notify_message($this->pdo, $conversationId, $senderId, $body, $messageId);
+        } catch (Throwable $e) {
+            // Nothing here is worth failing a send over.
+        }
     }
 
     /**

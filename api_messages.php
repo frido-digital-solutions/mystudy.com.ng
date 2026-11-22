@@ -72,23 +72,13 @@ switch ($action) {
                 fastcgi_finish_request();
             }
 
-            // Send Web Push notification to recipient
-            try {
-                require_once __DIR__ . '/includes/WebPushService.php';
-                require_once __DIR__ . '/models/User.php';
-                $pushSvc = new WebPushService($pdo);
-                $senderUser = new User($pdo);
-                $senderUser->getById($userId);
-                $senderName = $senderUser->name ?? 'Someone';
-                $preview = mb_substr(strip_tags($body), 0, 80);
-                $pushSvc->sendToUser(
-                    $recipientId,
-                    "💬 New message from $senderName",
-                    $preview,
-                    SITE_URL . '/conversation.php?with=' . $userId
-                );
-            } catch (\Throwable $e) {
-                error_log('Message push failed: ' . $e->getMessage());
+            // The notification itself - browser tab and phone alike - was put on
+            // the queue by Message::sendMessage, and runs only now that this
+            // person has their own message back on the screen. One queue, one
+            // set of rules, so a send from the website and a send from the app
+            // cannot drift into notifying differently.
+            if (function_exists('msb_flush_response_jobs')) {
+                msb_flush_response_jobs();
             }
         } else {
             echo json_encode(['error' => 'Failed to send message.']);
@@ -150,14 +140,18 @@ switch ($action) {
 
         $partnerReadId = $msgModel->getPartnerReadId($conv['id'], $partnerId);
         
-        // Fetch partner's latest last_active
+        // Fetch partner's latest last_active, and withhold it — with the typing
+        // light that would give the same fact away — when they switched their
+        // active status off. The phone applies the same rule in api/v1/chats.php.
         $partnerModel = new User($pdo);
         $partnerLastActive = null;
+        $partnerShares = true;
         if ($partnerModel->getById($partnerId)) {
-            $partnerLastActive = $partnerModel->last_active;
+            $partnerShares = !empty($partnerModel->privacy_share_status);
+            $partnerLastActive = $partnerShares ? $partnerModel->last_active : null;
         }
 
-        $partnerTyping = $msgModel->isPartnerTyping($userId, $partnerId);
+        $partnerTyping = $partnerShares && $msgModel->isPartnerTyping($userId, $partnerId);
 
         echo json_encode(['success' => true, 'messages' => $newMsgs, 'deleted_updates' => $deletedUpdates, 'edited_updates' => $editedUpdates, 'partnerReadId' => $partnerReadId, 'partner_last_active' => $partnerLastActive, 'partner_typing' => $partnerTyping, 'server_time' => time()]);
         break;

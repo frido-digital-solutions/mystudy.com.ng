@@ -39,7 +39,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     $newStatus = trim($_POST['status']);
     $adminNotes = trim($_POST['admin_notes'] ?? '');
     
-    if (in_array($newStatus, ['pending', 'processing', 'sent'])) {
+    if (in_array($newStatus, ['pending', 'processing', 'sent', 'rejected'])) {
         $stmt = $pdo->prepare("SELECT c.*, q.title as quiz_title FROM reward_claims c JOIN quizzes q ON c.quiz_id = q.id WHERE c.id = ?");
         $stmt->execute([$claimId]);
         $claim = $stmt->fetch();
@@ -49,16 +49,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             if ($upd->execute([$newStatus, $adminNotes, $claimId])) {
                 set_flash_message('success', 'Claim status updated to ' . ucfirst($newStatus) . '.');
                 
+                require_once __DIR__ . '/../models/Notification.php';
+                $notif = new Notification($pdo);
+
                 // Notify user if sent
                 if ($newStatus === 'sent' && $claim['status'] !== 'sent') {
-                    require_once __DIR__ . '/../models/Notification.php';
-                    $notif = new Notification($pdo);
                     $notif->create(
                         (int)$claim['user_id'],
                         'reward_sent',
                         'Reward Sent: ' . $claim['quiz_title'],
                         "Congratulations! Your reward for ranking #" . $claim['rank_position'] . " in '" . $claim['quiz_title'] . "' has been completely processed and sent.\n\nAdmin Note: " . $adminNotes,
                         SITE_URL . '/quiz_special.php?id=' . $claim['quiz_id']
+                    );
+                }
+
+                // A claim that cannot be paid as submitted goes BACK to the
+                // student with the reason, not into a dead end: the reason is the
+                // one thing that lets them fix the account details and try again.
+                if ($newStatus === 'rejected') {
+                    $reason = $adminNotes !== '' ? $adminNotes : 'The bank details on the claim could not be used as they were.';
+                    $notif->create(
+                        (int)$claim['user_id'],
+                        'reward_returned',
+                        'Action needed: ' . $claim['quiz_title'],
+                        "Your reward claim for ranking #" . $claim['rank_position'] . " in '" . $claim['quiz_title'] . "' has been sent back by an admin.\n\nReason: " . $reason . "\n\nOpen the claim, correct your bank details and send it again.",
+                        SITE_URL . '/claim_reward.php?quiz_id=' . $claim['quiz_id']
                     );
                 }
             } else {
@@ -72,7 +87,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 $statusFilter = isset($_GET['status']) ? trim($_GET['status']) : '';
 $whereClause = "";
 $params = [];
-if ($statusFilter && in_array($statusFilter, ['pending', 'processing', 'sent'])) {
+if ($statusFilter && in_array($statusFilter, ['pending', 'processing', 'sent', 'rejected'])) {
     $whereClause = "WHERE c.status = ?";
     $params[] = $statusFilter;
 }
@@ -101,6 +116,7 @@ include __DIR__ . '/includes/header.php';
             <a href="?status=pending" class="btn btn-sm <?php echo $statusFilter === 'pending' ? 'btn-warning' : 'btn-outline-warning'; ?>">Pending</a>
             <a href="?status=processing" class="btn btn-sm <?php echo $statusFilter === 'processing' ? 'btn-info' : 'btn-outline-info'; ?>">Processing</a>
             <a href="?status=sent" class="btn btn-sm <?php echo $statusFilter === 'sent' ? 'btn-success' : 'btn-outline-success'; ?>">Sent</a>
+            <a href="?status=rejected" class="btn btn-sm <?php echo $statusFilter === 'rejected' ? 'btn-danger' : 'btn-outline-danger'; ?>">Sent back</a>
         </div>
       </div>
       
@@ -116,17 +132,19 @@ include __DIR__ . '/includes/header.php';
                 if ($c['status'] === 'pending') { $badgeClass = 'bg-warning text-dark'; $bgColor = '#fffbeb'; }
                 elseif ($c['status'] === 'processing') { $badgeClass = 'bg-info text-dark'; $bgColor = '#eff6ff'; }
                 elseif ($c['status'] === 'sent') { $badgeClass = 'bg-success'; $bgColor = '#f0fdf4'; }
+                elseif ($c['status'] === 'rejected') { $badgeClass = 'bg-danger'; $bgColor = '#fef2f2'; }
                 
                 $prizeType = $c['prize_type'] ?? 'money';
+                $topColor = ['sent' => '#10b981', 'processing' => '#3b82f6', 'rejected' => '#ef4444'][$c['status']] ?? '#f59e0b';
             ?>
             <div class="col-md-6 col-lg-4">
-                <div class="card h-100 shadow-sm border-0" style="border-radius:12px; border-top: 4px solid <?php echo $c['status'] === 'sent' ? '#10b981' : ($c['status'] === 'processing' ? '#3b82f6' : '#f59e0b'); ?> !important; background: <?php echo $bgColor; ?>;">
+                <div class="card h-100 shadow-sm border-0" style="border-radius:12px; border-top: 4px solid <?php echo $topColor; ?> !important; background: <?php echo $bgColor; ?>;">
                     <div class="card-body">
                         <div class="d-flex justify-content-between align-items-start mb-2">
                             <h5 class="card-title fw-bold mb-0 text-truncate" title="<?php echo htmlspecialchars($c['quiz_title']); ?>">
                                 <?php echo htmlspecialchars($c['quiz_title']); ?>
                             </h5>
-                            <span class="badge <?php echo $badgeClass; ?>"><?php echo ucfirst($c['status']); ?></span>
+                            <span class="badge <?php echo $badgeClass; ?>"><?php echo $c['status'] === 'rejected' ? 'Sent back' : ucfirst($c['status']); ?></span>
                         </div>
                         
                         <div class="mb-3 text-muted small">
@@ -169,12 +187,17 @@ include __DIR__ . '/includes/header.php';
                                     <option value="pending" <?php echo $c['status'] === 'pending' ? 'selected' : ''; ?>>Pending</option>
                                     <option value="processing" <?php echo $c['status'] === 'processing' ? 'selected' : ''; ?>>Processing</option>
                                     <option value="sent" <?php echo $c['status'] === 'sent' ? 'selected' : ''; ?>>Sent (Notifies User)</option>
+                                    <option value="rejected" <?php echo $c['status'] === 'rejected' ? 'selected' : ''; ?>>Send back - ask for a fix (Notifies User)</option>
                                 </select>
+                                <div class="small text-muted">
+                                    <i class="fas fa-undo me-1"></i>On <strong>Send back</strong> the note below becomes the reason the
+                                    student sees, and their claim page re-opens with the details editable so they can send it again.
+                                </div>
                             </div>
                             
                             <div class="mb-3">
                                 <label class="form-label small fw-bold">Admin Notes</label>
-                                <textarea name="admin_notes" class="form-control form-control-sm" rows="2" placeholder="Tracking ID, transaction ref, or reasons delay..."><?php echo htmlspecialchars($c['admin_notes'] ?? ''); ?></textarea>
+                                <textarea name="admin_notes" class="form-control form-control-sm" rows="2" placeholder="Tracking ID, transaction ref, or the exact detail that is wrong..."><?php echo htmlspecialchars($c['admin_notes'] ?? ''); ?></textarea>
                             </div>
                             
                             <button type="submit" class="btn btn-sm btn-dark w-100">Save Update</button>

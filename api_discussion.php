@@ -170,6 +170,14 @@ try {
                 exit;
             }
 
+            // Reporting your own content to the moderators is not a report, it
+            // is noise in their queue, so it is refused here as well as hidden
+            // in the page.
+            if ($discussionModel->getAuthorIdByTarget($targetType, $targetId) === $userId) {
+                echo json_encode(['success' => false, 'message' => 'You cannot report your own content.']);
+                exit;
+            }
+
             $discussionModel->report($userId, $targetType, $targetId, $reason);
             echo json_encode(['success' => true, 'message' => 'Report submitted successfully. Our moderators will review it.']);
             break;

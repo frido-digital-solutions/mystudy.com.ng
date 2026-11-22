@@ -14,6 +14,35 @@ $errors = [];
 $editingId = isset($_GET['id']) ? (int)$_GET['id'] : 0;
 $quiz = $editingId ? $admin->getFull($editingId) : null;
 
+/**
+ * The one picture control a question or an option gets.
+ *
+ * It is deliberately not a plain file input inside the form. A quiz can carry
+ * a hundred and twenty of those, and PHP discards every upload past the
+ * twentieth in a single submit; and a picture the admin uploaded but never
+ * saved would sit in the folder forever. So the button posts the file away on
+ * its own, and this field only ever holds the path that came back.
+ */
+function quiz_image_field(string $name, $path, bool $compact = false): string
+{
+    $path = trim((string)$path);
+    $url = $path !== '' ? SITE_URL . '/' . $path : '';
+    $uid = preg_replace('/[^a-zA-Z0-9]/', '_', $name);
+    ob_start(); ?>
+    <div class="qimg-field<?php echo $compact ? ' qimg-compact' : ''; ?> <?php echo $compact ? 'mt-1' : 'mb-2'; ?>" data-qimg>
+      <input type="hidden" name="<?php echo htmlspecialchars($name); ?>" value="<?php echo htmlspecialchars($path); ?>">
+      <div class="d-flex align-items-center gap-2 flex-wrap">
+        <button type="button" class="btn btn-sm btn-outline-primary btnQuizImage">
+          <i class="fas fa-image me-1"></i><?php echo $path !== '' ? ($compact ? 'Change' : 'Change picture') : ($compact ? 'Picture' : 'Add picture'); ?>
+        </button>
+        <button type="button" class="btn btn-sm btn-outline-danger btnQuizImageRemove"<?php echo $path === '' ? ' style="display:none;"' : ''; ?>>Remove</button>
+        <span class="small text-muted btnQuizImageStatus" style="display:none;">Uploading&hellip;</span>
+      </div>
+      <img class="qimg-thumb rounded border mt-2<?php echo $path === '' ? ' d-none' : ''; ?>"<?php echo $path !== '' ? ' src="' . htmlspecialchars($url) . '"' : ''; ?> alt="Attached picture">
+    </div>
+    <?php return ob_get_clean();
+}
+
 // Fetch all approved materials for the multi-select
 $allMaterials = $pdo->query("SELECT id, title, original_name FROM materials WHERE status = 'approved' ORDER BY title ASC")->fetchAll(PDO::FETCH_ASSOC);
 
@@ -96,6 +125,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Questions structure
     $questions = $_POST['questions'] ?? [];
     $normalized = [];
+    // A picture only reaches the database as a path this page's own uploader
+    // handed back. Anything else - someone typing ../config/secrets.local.php
+    // into the field, for instance - is dropped, because quiz images are
+    // published to every student who opens the quiz.
+    $keptImage = static function ($path): string {
+        $path = trim((string)$path);
+        return preg_match('#^assets/uploads/quiz_images/[a-f0-9]{16}\.(?:jpg|jpeg|png|gif|webp)$#', $path) ? $path : '';
+    };
     foreach ($questions as $q) {
         $qText = trim($q['question'] ?? '');
         if ($qText === '') { continue; }
@@ -107,9 +144,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($qType === 'objective') {
             foreach ($opts as $opt) {
                 $t = trim($opt['text'] ?? '');
-                if ($t === '') { continue; }
+                $optImage = $keptImage($opt['image_path'] ?? '');
+                // A picture can be the whole option, so an empty text box is not
+                // an empty option any more.
+                if ($t === '' && $optImage === '') { continue; }
                 $normOpts[] = [
                     'text' => $t,
+                    'image_path' => $optImage,
                     'is_correct' => !empty($opt['is_correct']) ? 1 : 0,
                 ];
             }
@@ -119,12 +160,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'explanation' => $qExpl,
             'question_type' => $qType,
             'correct_answer' => $qType === 'subjective' ? $correctAns : '',
+            'image_path' => $keptImage($q['image_path'] ?? ''),
             'options' => $normOpts,
         ];
     }
 
     if (empty($errors)) {
         try {
+            // Pictures already on file for this quiz, taken before the rows are
+            // rewritten. Whatever is not referenced again afterwards is a file
+            // the admin just replaced or deleted, and it goes.
+            $beforeImages = [];
+            if ($editingId) {
+                $imgStmt = $pdo->prepare("SELECT q.image_path FROM quiz_questions q WHERE q.quiz_id = ?
+                                          UNION ALL
+                                          SELECT o.image_path FROM quiz_options o
+                                          JOIN quiz_questions q ON q.id = o.question_id WHERE q.quiz_id = ?");
+                $imgStmt->execute([$editingId, $editingId]);
+                $beforeImages = array_filter(array_map('strval', $imgStmt->fetchAll(PDO::FETCH_COLUMN)));
+            }
+
             if ($editingId) {
                 $admin->updateQuiz($editingId, $payload);
                 $admin->saveQuestions($editingId, $normalized);
@@ -136,6 +191,46 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $quizIdForMaterials = $newId;
                 set_flash_message('success', 'Quiz created successfully.');
                 $editingId = $newId;
+            }
+
+            if ($beforeImages) {
+                // Anything no row anywhere points at now is a picture this save
+                // replaced or deleted. Checked across the whole library rather
+                // than just this quiz, because two questions are allowed to share
+                // one picture and the other one is not ours to throw away.
+                $mineStmt = $pdo->prepare("SELECT image_path FROM quiz_questions WHERE quiz_id = ? AND image_path IS NOT NULL AND image_path <> ''
+                                           UNION
+                                           SELECT o.image_path FROM quiz_options o
+                                           JOIN quiz_questions q ON q.id = o.question_id
+                                           WHERE q.quiz_id = ? AND o.image_path IS NOT NULL AND o.image_path <> ''");
+                $mineStmt->execute([$editingId, $editingId]);
+                $mineImages = array_filter(array_map('strval', $mineStmt->fetchAll(PDO::FETCH_COLUMN)));
+
+                $stillUsed = [];
+                $usedStmt = $pdo->query("SELECT image_path FROM quiz_questions WHERE image_path IS NOT NULL AND image_path <> ''
+                                        UNION
+                                        SELECT image_path FROM quiz_options WHERE image_path IS NOT NULL AND image_path <> ''");
+                if ($usedStmt) {
+                    foreach (array_map('strval', $usedStmt->fetchAll(PDO::FETCH_COLUMN)) as $keep) {
+                        if ($keep !== '') { $stillUsed[$keep] = true; }
+                    }
+                }
+
+                // The library-wide read has to agree with what this very quiz just
+                // saved. If it does not, the read is broken rather than empty, and
+                // guessing would delete pictures students are looking at.
+                $libraryReadOk = true;
+                foreach ($mineImages as $mine) {
+                    if (!isset($stillUsed[$mine])) { $libraryReadOk = false; break; }
+                }
+
+                if ($libraryReadOk) {
+                    foreach ($beforeImages as $gone) {
+                        if (isset($stillUsed[$gone]) || strpos($gone, 'assets/uploads/quiz_images/') !== 0) { continue; }
+                        $file = ROOT_PATH . '/' . $gone;
+                        if (is_file($file)) { @unlink($file); }
+                    }
+                }
             }
 
             // Save attached materials (sync: delete old, insert new)
@@ -214,6 +309,11 @@ include __DIR__ . '/includes/header.php';
     <script>document.getElementById('quizErrors').scrollIntoView({behavior:'smooth'});</script>
   <?php endif; ?>
 
+  <style>
+    .qimg-thumb { max-width: 100%; max-height: 170px; object-fit: contain; background: #f8fafc; }
+    .qimg-compact .qimg-thumb { max-height: 84px; }
+    .qimg-compact .btn-quiz-image-label { font-size: .78rem; }
+  </style>
   <form method="post" action="" enctype="multipart/form-data">
     <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars(csrf_token()); ?>">
 
@@ -435,6 +535,7 @@ include __DIR__ . '/includes/header.php';
                   <label class="form-label">Text</label>
                   <textarea class="form-control" name="questions[<?php echo $idx; ?>][question]" rows="2" required><?php echo htmlspecialchars($q['question']); ?></textarea>
                 </div>
+                <?php echo quiz_image_field('questions[' . (int)$idx . '][image_path]', $q['image_path'] ?? ''); ?>
                 <div class="mb-2">
                   <label class="form-label">Explanation (optional)</label>
                   <textarea class="form-control" name="questions[<?php echo $idx; ?>][explanation]" rows="2"><?php echo htmlspecialchars($q['explanation'] ?? ''); ?></textarea>
@@ -461,6 +562,9 @@ include __DIR__ . '/includes/header.php';
                       </div>
                       <div class="col-md-1 text-end">
                         <button type="button" class="btn btn-sm btn-outline-danger btnRemoveOption">×</button>
+                      </div>
+                      <div class="col-12 ps-md-4">
+                        <?php echo quiz_image_field('questions[' . (int)$idx . '][options][' . (int)$o . '][image_path]', $opt['image_path'] ?? '', true); ?>
                       </div>
                     </div>
                   <?php $o++; endforeach; ?>
@@ -541,6 +645,84 @@ include __DIR__ . '/includes/header.php';
   }
   isPaidEl && isPaidEl.addEventListener('change', updatePaid);
   updatePaid();
+  function qimgMarkup(name, path, compact){
+    path = path || '';
+    var shown = path !== '';
+    return '<div class="qimg-field' + (compact ? ' qimg-compact mt-1' : ' mb-2') + '" data-qimg>' +
+      '<input type="hidden" name="' + name + '" value="' + path + '">' +
+      '<div class="d-flex align-items-center gap-2 flex-wrap">' +
+        '<button type="button" class="btn btn-sm btn-outline-primary btnQuizImage"><i class="fas fa-image me-1"></i>' + (shown ? 'Change picture' : 'Add picture') + '</button>' +
+        '<button type="button" class="btn btn-sm btn-outline-danger btnQuizImageRemove"' + (shown ? '' : ' style="display:none;"') + '>Remove</button>' +
+        '<span class="small text-muted btnQuizImageStatus" style="display:none;">Uploading&hellip;</span>' +
+      '</div>' +
+      '<img class="qimg-thumb rounded border mt-2' + (shown ? '' : ' d-none') + '"' + (shown ? ' src="' + imageBase + path + '"' : '') + ' alt="Attached picture">' +
+    '</div>';
+  }
+
+  // One hidden file box for the whole form. Every "Add picture" button borrows
+  // it, so a hundred-row quiz never posts a hundred file inputs - and each
+  // picture is stored the moment it is picked, where the admin can see it.
+  var imageEndpoint = <?php echo json_encode(SITE_URL . '/admin/ajax/quiz_image.php'); ?>;
+  var imageBase = <?php echo json_encode(SITE_URL . '/'); ?>;
+  var csrfField = document.querySelector('input[name="csrf_token"]');
+  var picker = document.createElement('input');
+  picker.type = 'file';
+  picker.accept = 'image/jpeg,image/png,image/gif,image/webp';
+  picker.style.display = 'none';
+  document.body.appendChild(picker);
+  var picking = null;
+
+  function qimgSet(field, path, label){
+    var thumb = field.querySelector('.qimg-thumb');
+    var hideBtn = field.querySelector('.btnQuizImageRemove');
+    var addBtn = field.querySelector('.btnQuizImage');
+    field.querySelector('input[type="hidden"]').value = path || '';
+    if (path) {
+      thumb.setAttribute('src', imageBase + path);
+      thumb.classList.remove('d-none');
+      hideBtn.style.display = '';
+    } else {
+      thumb.removeAttribute('src');
+      thumb.classList.add('d-none');
+      hideBtn.style.display = 'none';
+    }
+    addBtn.innerHTML = '<i class="fas fa-image me-1"></i>' + (path ? 'Change picture' : 'Add picture');
+    if (label) { qimgStatus(field, label, true); }
+  }
+
+  function qimgStatus(field, msg, isError){
+    var el = field.querySelector('.btnQuizImageStatus');
+    el.textContent = msg;
+    el.style.display = msg ? '' : 'none';
+    el.className = 'small btnQuizImageStatus ' + (isError ? 'text-danger' : 'text-muted');
+  }
+
+  function sendQuizImage(field, file){
+    qimgStatus(field, 'Uploading…', false);
+    var body = new FormData();
+    body.append('image', file, file.name);
+    if (csrfField) { body.append('csrf_token', csrfField.value); }
+    fetch(imageEndpoint, { method: 'POST', body: body, credentials: 'same-origin' })
+      .then(function(r){ return r.json(); })
+      .then(function(data){
+        if (data && data.ok) {
+          qimgSet(field, data.path);
+        } else {
+          qimgStatus(field, (data && data.error) || 'Upload failed. Please try again.', true);
+        }
+      })
+      .catch(function(){ qimgStatus(field, 'Upload failed. Check your connection and try again.', true); });
+  }
+
+  picker.addEventListener('change', function(){
+    var file = picker.files && picker.files[0];
+    var field = picking;
+    picking = null;
+    if (!field || !file) return;
+    if (file.size > 3 * 1024 * 1024) { qimgStatus(field, 'That picture is over 3MB. Pick a smaller one.', true); return; }
+    sendQuizImage(field, file);
+  });
+
   function newOptionRow(qIdx, optIdx){
     var wrap = document.createElement('div');
     wrap.className = 'row g-2 align-items-center option-item mb-2';
@@ -556,7 +738,8 @@ include __DIR__ . '/includes/header.php';
       </div>\
       <div class="col-md-1 text-end">\
         <button type="button" class="btn btn-sm btn-outline-danger btnRemoveOption">×</button>\
-      </div>';
+      </div>\
+      <div class="col-12 ps-md-4">' + qimgMarkup('questions['+qIdx+'][options]['+optIdx+'][image_path]', '', true) + '</div>';
     return wrap;
   }
 
@@ -581,6 +764,7 @@ include __DIR__ . '/includes/header.php';
         <label class="form-label">Text</label>\
         <textarea class="form-control" name="questions['+idx+'][question]" rows="2" required></textarea>\
       </div>\
+      ' + qimgMarkup('questions['+idx+'][image_path]', '') + '\
       <div class="mb-2">\
         <label class="form-label">Explanation (optional)</label>\
         <textarea class="form-control" name="questions['+idx+'][explanation]" rows="2"></textarea>\
@@ -752,7 +936,28 @@ include __DIR__ . '/includes/header.php';
     }
     if (e.target.classList.contains('btnRemoveOption')){
       var oi = e.target.closest('.option-item');
+      var list = oi.parentNode;
       oi.parentNode.removeChild(oi);
+      // The slots are named by position, so a gap would make two rows share a
+      // name and the later one silently overwrite the first on save.
+      list.querySelectorAll('.option-item').forEach(function(row, oi2){
+        row.querySelectorAll('[name]').forEach(function(input){
+          input.name = input.name.replace(/options\[[0-9]+\]/, 'options['+oi2+']');
+        });
+      });
+    }
+    var imgBtn = e.target.closest && e.target.closest('.btnQuizImage');
+    if (imgBtn) {
+      picking = imgBtn.closest('.qimg-field');
+      qimgStatus(picking, '', false);
+      picker.value = '';
+      picker.click();
+    }
+    var rmImgBtn = e.target.closest && e.target.closest('.btnQuizImageRemove');
+    if (rmImgBtn) {
+      // The file on the server stays until the save actually lands: this row
+      // may still be pointing at it in the database until then.
+      qimgSet(rmImgBtn.closest('.qimg-field'), '');
     }
   });
 

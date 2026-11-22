@@ -370,6 +370,25 @@ function safe_quiz_html($text) {
 }
 
 /**
+ * The picture attached to a question or an answer option, as the exam pages print it.
+ *
+ * Question text can never carry an <img>, because safe_quiz_html() strips tags that
+ * a student could paste into the paper - so a real picture lives in its own column
+ * and reaches the page only through this function. It fits the image inside a plate
+ * rather than cropping it: a diagram of a cell or a circuit means nothing with the
+ * edges cut off, and the admin cannot know which edge a phone would choose.
+ */
+function quiz_picture_html($path, $alt = '') {
+    $path = trim((string)$path);
+    if ($path === '') {
+        return '';
+    }
+    $src = htmlspecialchars(SITE_URL . '/' . ltrim($path, '/'), ENT_QUOTES, 'UTF-8');
+    $altText = htmlspecialchars($alt, ENT_QUOTES, 'UTF-8');
+    return '<div class="quiz-picture"><img src="' . $src . '" alt="' . $altText . '" loading="lazy"></div>';
+}
+
+/**
  * Read a value from site_settings, falling back when it is absent or empty.
  *
  * The whole table is loaded once per request, so calling this in a loop is free.
@@ -418,6 +437,58 @@ function payment_bank_details() {
         'bank_name' => $bank_name,
         'account_name' => $account_name,
         'account_number' => $account_number,
+    ];
+}
+
+/**
+ * The banks a challenge winner can be paid into, and the networks an airtime or
+ * data prize can be sent to.
+ *
+ * Single source of truth: claim_reward.php draws its <select> from here and
+ * api/v1/rewards.php validates against it, so a claim submitted on the phone is
+ * a bank the rewards team already recognises in admin/rewards.php. The key is
+ * what lands in reward_claims.bank_name; the label is what the student reads.
+ *
+ * @return array<string, string>
+ */
+function reward_bank_options() {
+    return [
+        'Access Bank' => 'Access Bank',
+        'Citibank' => 'Citibank',
+        'Ecobank' => 'Ecobank',
+        'Fidelity Bank' => 'Fidelity Bank',
+        'First Bank of Nigeria' => 'First Bank of Nigeria',
+        'FCMB' => 'First City Monument Bank',
+        'Globus Bank' => 'Globus Bank',
+        'GTBank' => 'Guaranty Trust Bank',
+        'Heritage Bank' => 'Heritage Bank',
+        'Keystone Bank' => 'Keystone Bank',
+        'Kuda Bank' => 'Kuda Microfinance Bank',
+        'Moniepoint' => 'Moniepoint',
+        'OPay' => 'OPay',
+        'PalmPay' => 'PalmPay',
+        'Polaris Bank' => 'Polaris Bank',
+        'Providus Bank' => 'Providus Bank',
+        'Stanbic IBTC' => 'Stanbic IBTC Bank',
+        'Standard Chartered' => 'Standard Chartered',
+        'Sterling Bank' => 'Sterling Bank',
+        'SunTrust Bank' => 'SunTrust Bank',
+        'Titan Trust Bank' => 'Titan Trust Bank',
+        'Union Bank' => 'Union Bank',
+        'UBA' => 'United Bank for Africa (UBA)',
+        'Unity Bank' => 'Unity Bank',
+        'Wema Bank' => 'Wema Bank',
+        'Zenith Bank' => 'Zenith Bank',
+    ];
+}
+
+/** @return array<string, string> */
+function reward_network_options() {
+    return [
+        'MTN' => 'MTN',
+        'Airtel' => 'Airtel',
+        'Glo' => 'Glo',
+        '9mobile' => '9mobile',
     ];
 }
 
@@ -602,5 +673,84 @@ function rate_limit_check($key, $maxHits, $windowSeconds) {
         log_error('Rate limit check failed', ['err' => $e->getMessage()]);
         return $open;
     }
+}
+
+/**
+ * Presence for as many people as you like, in one query.
+ *
+ * Two rules live here and nowhere else, so the website's message list, a public
+ * profile and the phone can never disagree about whether someone is "Online":
+ *
+ *   · a person counts as online while their last activity is inside $window
+ *     seconds. The web marks it in includes/header.php and the token API marks
+ *     it in api/v1/_bootstrap.php - one minute apart at the coarsest.
+ *   · `privacy_share_status` off means the timestamp is withheld, not faked. The
+ *     caller gets null, which every surface already renders as its neutral word
+ *     ("Offline"), so a hidden person never looks like they went quiet today.
+ *
+ * The key is newer than the accounts, so a missing row means "shares".
+ *
+ * @return array<int, array{online: bool, last_active: ?string, share: bool}>
+ */
+function presence_for_users(array $ids, $pdo, int $window = 300)
+{
+    $ids = array_values(array_unique(array_filter(array_map('intval', $ids))));
+    if (!$ids || !($pdo instanceof PDO)) {
+        return [];
+    }
+
+    $placeholders = implode(',', array_fill(0, count($ids), '?'));
+    try {
+        $stmt = $pdo->prepare(
+            "SELECT u.id, u.last_active, COALESCE(m.meta_value, '1') AS share_status
+               FROM users u
+               LEFT JOIN user_meta m ON m.user_id = u.id AND m.meta_key = 'privacy_share_status'
+              WHERE u.id IN ({$placeholders})"
+        );
+        $stmt->execute($ids);
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    } catch (Throwable $e) {
+        log_error('Presence lookup failed', ['err' => $e->getMessage()]);
+        return [];
+    }
+
+    $now = time();
+    $out = [];
+    foreach ($rows as $r) {
+        $share = (int)$r['share_status'] !== 0;
+        $seen = !empty($r['last_active']) ? strtotime($r['last_active']) : 0;
+        $out[(int)$r['id']] = [
+            'share' => $share,
+            'online' => $share && $seen > 0 && ($now - $seen) < $window,
+            'last_active' => $share && $seen > 0 ? $r['last_active'] : null,
+        ];
+    }
+    return $out;
+}
+
+/**
+ * Message::canMessage() answers with a sentence meant for a person. A phone has
+ * to pick a screen from it, so the same five answers get five machine words
+ * here - the one place that reads them, so the API cannot drift from the model.
+ */
+function message_gate_code($reason)
+{
+    $reason = (string)$reason;
+    if ($reason === '') {
+        return 'allowed';
+    }
+    if (stripos($reason, 'disabled direct messages') !== false) {
+        return 'dm_disabled';
+    }
+    if (stripos($reason, 'You have blocked') !== false) {
+        return 'you_blocked';
+    }
+    if (stripos($reason, 'User not found') !== false) {
+        return 'no_user';
+    }
+    if (stripos($reason, 'yourself') !== false) {
+        return 'self';
+    }
+    return 'blocked';
 }
 ?>

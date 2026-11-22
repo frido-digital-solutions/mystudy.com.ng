@@ -77,7 +77,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             // Save reply to database
             $stmt = $pdo->prepare("UPDATE contact_messages SET admin_reply = ?, replied_at = NOW(), is_read = 1 WHERE id = ?");
             $stmt->execute([$reply_message, $message_id]);
-            
+
+            // Copy it into the conversation thread as well. The mobile app reads
+            // that table, so the student sees the answers in the order they came
+            // rather than only the most recent one, and an install where the app
+            // has never been used simply has no thread to write into.
+            try {
+                $hasThread = (int)$pdo->query("SELECT COUNT(*) FROM information_schema.TABLES
+                                        WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'contact_replies'")->fetchColumn() > 0;
+                if ($hasThread) {
+                    $pdo->prepare('INSERT INTO contact_replies (message_id, user_id, body, from_user) VALUES (?, ?, ?, 0)')
+                        ->execute([$message_id, $original_message['user_id'] ?? null, $reply_message]);
+                }
+            } catch (Throwable $e) {
+                error_log('contact thread staff reply: ' . $e->getMessage());
+            }
             // Send email if requested
             if ($send_email) {
                 require_once __DIR__ . '/../includes/EmailService.php';
@@ -153,6 +167,26 @@ if (isset($_GET['action']) && $_GET['action'] === 'view' && isset($_GET['id'])) 
                 $updateStmt->execute([$messageId]);
                 $message['is_read'] = 1; // Update for current response
             }
+
+            // The student's side of the conversation, when there is one. The
+            // mobile app writes follow-ups here, and the app's own reply is the
+            // admin_reply column above, so this list only ever carries the
+            // messages the student sent.
+            $message['thread'] = [];
+            $message['closed_by_user'] = !empty($message['resolved_at'] ?? null);
+            try {
+                $hasThread = (int)$pdo->query("SELECT COUNT(*) FROM information_schema.TABLES
+                                        WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'contact_replies'")->fetchColumn() > 0;
+                if ($hasThread) {
+                    $tStmt = $pdo->prepare('SELECT body, from_user, created_at FROM contact_replies
+                                             WHERE message_id = ? ORDER BY created_at ASC, id ASC');
+                    $tStmt->execute([$messageId]);
+                    $message['thread'] = $tStmt->fetchAll(PDO::FETCH_ASSOC);
+                }
+            } catch (Exception $e) {
+                error_log('contact thread read: ' . $e->getMessage());
+            }
+
             echo json_encode($message);
         } else {
             echo json_encode(['error' => 'Message not found']);
@@ -179,6 +213,44 @@ $stmt = $pdo->prepare("
 ");
 $stmt->execute([$per_page, $offset]);
 $messages = $stmt->fetchAll();
+
+/**
+ * A student who replies from the mobile app writes into contact_replies. The
+ * table is created by that endpoint the first time it is used, so on a database
+ * which has never seen an app ticket there is simply nothing to read here and
+ * this inbox behaves exactly as it always did.
+ */
+$repliesBy = [];
+try {
+    $hasThread = (int)$pdo->query("SELECT COUNT(*) FROM information_schema.TABLES
+                                   WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'contact_replies'")->fetchColumn() > 0;
+    if ($hasThread && $messages) {
+        $ids = implode(',', array_map(static fn ($m) => (int)$m['id'], $messages));
+        $rows = $pdo->query("SELECT message_id, body, from_user, created_at FROM contact_replies
+                              WHERE message_id IN ($ids) ORDER BY created_at ASC, id ASC")->fetchAll(PDO::FETCH_ASSOC);
+        foreach ($rows as $row) {
+            $repliesBy[(int)$row['message_id']][] = $row;
+        }
+    }
+} catch (Throwable $e) {
+    error_log('contact inbox thread: ' . $e->getMessage());
+}
+
+/** Anything the student wrote after the last answer is a ticket waiting again. */
+function contact_waiting(array $replies, $replied_at): array
+{
+    $waited = [];
+    foreach ($replies as $r) {
+        if ((int)$r['from_user'] !== 1) {
+            continue;
+        }
+        if ($replied_at && strtotime((string)$r['created_at']) <= strtotime((string)$replied_at)) {
+            continue;
+        }
+        $waited[] = $r;
+    }
+    return $waited;
+}
 
 // Get unread count
 $unread_count = $pdo->query("SELECT COUNT(*) FROM contact_messages WHERE is_read = 0")->fetchColumn();
@@ -274,6 +346,10 @@ include __DIR__ . '/includes/header.php';
 .badge-new { background: #fee2e2; color: #dc2626; }
 .badge-read { background: #e2e8f0; color: #475569; }
 .badge-replied { background: #d1fae5; color: #059669; }
+.badge-waiting { background: #fef3c7; color: #b45309; }
+.thread-post { border-radius: 12px; padding: 0.9rem 1.1rem; font-size: 0.98rem; line-height: 1.6; white-space: pre-wrap; word-break: break-word; }
+.thread-user { background: #f1f5f9; color: #1e293b; border-left: 3px solid #cbd5e1; }
+.thread-staff { background: #d1fae5; color: #064e3b; border-left: 3px solid #10b981; }
 </style>
 
 <div class="container-fluid">
@@ -336,6 +412,7 @@ include __DIR__ . '/includes/header.php';
                 <?php foreach ($messages as $message): 
                     $isNew = !$message['is_read'];
                     $hasReplied = !empty($message['admin_reply']);
+                    $waiting = contact_waiting($repliesBy[(int)$message['id']] ?? [], $message['replied_at'] ?? null);
                     $initials = strtoupper(substr($message['name'], 0, 1));
                     if (strpos($message['name'], ' ') !== false) {
                         $parts = explode(' ', $message['name']);
@@ -363,6 +440,11 @@ include __DIR__ . '/includes/header.php';
                           
                           <div class="text-md-end">
                               <div class="mb-2">
+                                <?php if ($waiting): ?>
+                                  <span class="status-badge badge-waiting">
+                                    <i class="fas fa-comment-dots me-1"></i><?php echo count($waiting); ?> waiting on you
+                                  </span>
+                                <?php endif; ?>
                                 <?php if ($hasReplied): ?>
                                   <span class="status-badge badge-replied"><i class="fas fa-reply-all me-1"></i>Replied</span>
                                 <?php elseif ($isNew): ?>
@@ -616,7 +698,24 @@ window.viewMessage = function(messageId) {
             
             <div class="p-4 bg-light" style="font-size: 1.05rem; line-height: 1.7; color: #334155; white-space: pre-wrap;">${escapeHtml(data.message)}</div>
         `;
-            
+
+        // Anything the student wrote afterwards, from the mobile app.
+        (Array.isArray(data.thread) ? data.thread : []).forEach((t) => {
+            const when = t.created_at ? new Date(t.created_at).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }) : '';
+            const staff = Number(t.from_user) === 0;
+            html += `
+                <div class="p-4 border-top bg-white">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <h6 class="mb-0 fw-bold ${staff ? 'text-success' : ''}">
+                            <i class="fas ${staff ? 'fa-headset' : 'fa-user'} me-1"></i>${staff ? 'Support reply' : escapeHtml(data.name) + ' replied'}
+                        </h6>
+                        <span class="text-muted small"><i class="far fa-clock me-1"></i>${when}</span>
+                    </div>
+                    <div class="thread-post ${staff ? 'thread-staff' : 'thread-user'}">${escapeHtml(t.body)}</div>
+                </div>
+            `;
+        });
+
         if (hasReply) {
             let repliedDateStr = data.replied_at ? new Date(data.replied_at).toLocaleString([], { dateStyle: 'long', timeStyle: 'short' }) : '';
             html += `
@@ -631,10 +730,17 @@ window.viewMessage = function(messageId) {
                     <div class="bg-success bg-opacity-10 p-4 rounded-3 text-dark" style="white-space: pre-wrap; line-height: 1.6;">${escapeHtml(data.admin_reply)}</div>
                 </div>
             `;
-        } else {
-            html += `
+        }
+
+        // The answer box is never hidden. A student who replies from the app
+        // sends the ticket back to unread, and the conversation only ends when
+        // they mark it resolved on their own phone.
+        const closedNote = data.closed_by_user
+            ? `<div class="alert alert-secondary m-4 mb-0 small border-0"><i class="fas fa-check-circle me-2"></i>The student marked this ticket resolved. Replying still sends the email and the notification.</div>`
+            : '';
+        html += closedNote + `
                 <div class="p-4 border-top bg-white">
-                    <h5 class="fw-bold mb-3"><i class="fas fa-reply-all me-2 text-primary"></i>Compose Reply</h5>
+                    <h5 class="fw-bold mb-3"><i class="fas fa-reply-all me-2 text-primary"></i>${hasReply ? 'Answer again' : 'Compose Reply'}</h5>
                     <form id="inlineReplyForm">
                         <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars(csrf_token()); ?>">
                         <input type="hidden" name="action" value="reply">
@@ -667,7 +773,6 @@ window.viewMessage = function(messageId) {
                     </form>
                 </div>
             `;
-        }
 
         contentDiv.innerHTML = html;
         

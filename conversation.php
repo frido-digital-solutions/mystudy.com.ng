@@ -43,9 +43,12 @@ if (!empty($messages)) {
     $msgModel->markAsRead($convId, $userId, (int)$lastMsg['id']);
 }
 
-// Last seen logic
-$lastActiveTs = isset($userModel->last_active) ? strtotime($userModel->last_active) : 0;
-$lastSeenText = '';
+// Last seen logic, from the helper that owns the rule. Whoever switched off
+// their active status reads as plain Offline here, in the message list and on
+// the phone, instead of a timestamp they never agreed to share.
+$presState = presence_for_users([$partnerId], $pdo)[$partnerId] ?? ['last_active' => null];
+$lastActiveTs = !empty($presState['last_active']) ? strtotime($presState['last_active']) : 0;
+$lastSeenText = '<span class="text-muted small" style="font-size:0.75rem;">Offline</span>';
 if ($lastActiveTs) {
     if (time() - $lastActiveTs < 300) {
         $lastSeenText = '<span class="text-success small fw-medium" style="font-size:0.75rem;"><i class="fas fa-circle me-1" style="font-size:0.5rem;"></i>Online</span>';

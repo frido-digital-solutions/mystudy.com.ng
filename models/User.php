@@ -19,7 +19,12 @@ class User
     public $privacy_show_discussions = 1;
     public $privacy_show_badges = 1;
     public $privacy_show_battles = 1;
+    // "What they study most" and the quiz history a classmate can compare with.
+    public $privacy_show_studies = 1;
+    public $privacy_show_quizzes = 1;
     public $privacy_allow_messages = 1;
+    // Whether other people may see "Online" and the last-seen time.
+    public $privacy_share_status = 1;
     public $show_level_on_users_page = 1;
 
     public $email_verified;
@@ -57,7 +62,7 @@ class User
         $this->name = htmlspecialchars(strip_tags($this->name));
         $this->email = htmlspecialchars(strip_tags($this->email));
         $this->user_type = htmlspecialchars(strip_tags($this->user_type));
-        $this->profile_picture = htmlspecialchars(strip_tags($this->profile_picture));
+        $this->profile_picture = htmlspecialchars(strip_tags($this->profile_picture ?? ''));
 
         // Bind values
         $stmt->bindParam(":name", $this->name);
@@ -107,25 +112,10 @@ class User
             $this->user_type = $row['user_type'];
             $this->profile_picture = $row['profile_picture'];
             $this->points = (int)($row['points'] ?? 0);
-            // Load meta from user_meta, since these are not columns on users
-            $this->university = null;
-            $this->department = null;
-            $this->level = null;
-            $metaKeys = "'university','department','level','privacy_show_school','privacy_show_stats','privacy_show_discussions','privacy_show_badges','privacy_show_battles'";
-            $metaStmt = $this->conn->prepare("SELECT meta_key, meta_value FROM user_meta WHERE user_id = :uid AND meta_key IN ($metaKeys)");
-            $metaStmt->execute([':uid' => $this->id]);
-            while ($m = $metaStmt->fetch(PDO::FETCH_ASSOC)) {
-                if ($m['meta_key'] === 'university')
-                    $this->university = $m['meta_value'];
-                elseif ($m['meta_key'] === 'department')
-                    $this->department = $m['meta_value'];
-                elseif ($m['meta_key'] === 'level')
-                    $this->level = $m['meta_value'];
-                if ($m['meta_key'] === 'privacy_show_badges')
-                    $this->privacy_show_badges = (int)$m['meta_value'];
-                if ($m['meta_key'] === 'privacy_show_battles')
-                    $this->privacy_show_battles = (int)$m['meta_value'];
-            }
+            // University, department, level and the privacy switches are
+            // user_meta rows, never columns, so they load the same way for
+            // every reader.
+            $this->loadMeta();
             $this->email_verified = $row['email_verified'];
             $this->verification_token = $row['verification_token'];
             $this->reset_token = $row['reset_token'];
@@ -159,33 +149,7 @@ class User
             $this->user_type = $row['user_type'];
             $this->profile_picture = $row['profile_picture'];
             $this->points = (int)($row['points'] ?? 0);
-            // Load meta from user_meta
-            $this->university = null;
-            $this->department = null;
-            $this->level = null;
-            $metaKeys = "'university','department','level','privacy_show_school','privacy_show_stats','privacy_show_discussions','privacy_show_badges','privacy_show_battles','privacy_allow_messages'";
-            $metaStmt = $this->conn->prepare("SELECT meta_key, meta_value FROM user_meta WHERE user_id = :uid AND meta_key IN ($metaKeys)");
-            $metaStmt->execute([':uid' => $this->id]);
-            while ($m = $metaStmt->fetch(PDO::FETCH_ASSOC)) {
-                if ($m['meta_key'] === 'university')
-                    $this->university = $m['meta_value'];
-                if ($m['meta_key'] === 'department')
-                    $this->department = $m['meta_value'];
-                if ($m['meta_key'] === 'level')
-                    $this->level = $m['meta_value'];
-                if ($m['meta_key'] === 'privacy_show_school')
-                    $this->privacy_show_school = (int)$m['meta_value'];
-                if ($m['meta_key'] === 'privacy_show_stats')
-                    $this->privacy_show_stats = (int)$m['meta_value'];
-                if ($m['meta_key'] === 'privacy_show_discussions')
-                    $this->privacy_show_discussions = (int)$m['meta_value'];
-                if ($m['meta_key'] === 'privacy_show_badges')
-                    $this->privacy_show_badges = (int)$m['meta_value'];
-                if ($m['meta_key'] === 'privacy_show_battles')
-                    $this->privacy_show_battles = (int)$m['meta_value'];
-                if ($m['meta_key'] === 'privacy_allow_messages')
-                    $this->privacy_allow_messages = (int)$m['meta_value'];
-            }
+            $this->loadMeta();
             $this->email_verified = $row['email_verified'];
             $this->verification_token = $row['verification_token'];
             $this->reset_token = $row['reset_token'];
@@ -203,7 +167,39 @@ class User
         return false;
     }
 
-    // Update user
+    /**
+     * School details and six of the seven privacy switches are user_meta rows,
+     * not columns, so any reader that wants the truth about a person has to
+     * load them. Both loaders go through here, which is why a profile page and
+     * a login can never disagree about what someone chose. A missing row means
+     * the switch was never touched, so it keeps its advertised default of on.
+     */
+    private function loadMeta()
+    {
+        $this->university = null;
+        $this->department = null;
+        $this->level = null;
+        $metaKeys = "'university','department','level','privacy_show_school','privacy_show_stats','privacy_show_discussions','privacy_show_badges','privacy_show_battles','privacy_show_studies','privacy_show_quizzes','privacy_allow_messages','privacy_share_status'";
+        $stmt = $this->conn->prepare("SELECT meta_key, meta_value FROM user_meta WHERE user_id = :uid AND meta_key IN ($metaKeys)");
+        $stmt->execute([':uid' => $this->id]);
+        while ($m = $stmt->fetch(PDO::FETCH_ASSOC)) {
+            switch ($m['meta_key']) {
+                case 'university': $this->university = $m['meta_value']; break;
+                case 'department': $this->department = $m['meta_value']; break;
+                case 'level': $this->level = $m['meta_value']; break;
+                case 'privacy_show_school': $this->privacy_show_school = (int)$m['meta_value']; break;
+                case 'privacy_show_stats': $this->privacy_show_stats = (int)$m['meta_value']; break;
+                case 'privacy_show_discussions': $this->privacy_show_discussions = (int)$m['meta_value']; break;
+                case 'privacy_show_badges': $this->privacy_show_badges = (int)$m['meta_value']; break;
+                case 'privacy_show_battles': $this->privacy_show_battles = (int)$m['meta_value']; break;
+                case 'privacy_show_studies': $this->privacy_show_studies = (int)$m['meta_value']; break;
+                case 'privacy_show_quizzes': $this->privacy_show_quizzes = (int)$m['meta_value']; break;
+                case 'privacy_allow_messages': $this->privacy_allow_messages = (int)$m['meta_value']; break;
+                case 'privacy_share_status': $this->privacy_share_status = (int)$m['meta_value']; break;
+            }
+        }
+    }
+
     public function update()
     {
         $query = "UPDATE " . $this->table_name . " 
@@ -247,7 +243,10 @@ class User
                 'privacy_show_discussions' => $this->privacy_show_discussions,
                 'privacy_show_badges' => $this->privacy_show_badges,
                 'privacy_show_battles' => $this->privacy_show_battles,
-                'privacy_allow_messages' => $this->privacy_allow_messages
+                'privacy_show_studies' => $this->privacy_show_studies,
+                'privacy_show_quizzes' => $this->privacy_show_quizzes,
+                'privacy_allow_messages' => $this->privacy_allow_messages,
+                'privacy_share_status' => $this->privacy_share_status
             ];
 
             foreach ($privacyMeta as $k => $v) {
@@ -264,6 +263,24 @@ class User
         }
 
         return $success;
+    }
+
+    /**
+     * University, department and level live in user_meta rather than as columns
+     * on the users row, so update() - which only carries the privacy switches -
+     * cannot save them. The profile form collects them, so this is the one place
+     * that writes them, and it writes what the form shows: an empty choice
+     * clears the value instead of leaving the old one behind.
+     */
+    public function saveSchoolDetails($university, $department, $level)
+    {
+        $stmt = $this->conn->prepare("INSERT INTO user_meta (user_id, meta_key, meta_value) VALUES (?, ?, ?)
+                                      ON DUPLICATE KEY UPDATE meta_value = VALUES(meta_value)");
+        foreach (['university' => $university, 'department' => $department, 'level' => $level] as $key => $value) {
+            $stmt->execute([$this->id, $key, ($value === null || $value === '') ? null : $value]);
+        }
+
+        return true;
     }
 
     // Update last_active timestamp

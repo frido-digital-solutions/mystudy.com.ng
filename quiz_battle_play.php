@@ -376,6 +376,31 @@ $csrf_token = csrf_token();
             flex-grow: 1;
         }
 
+        /* A question picture is a figure, not decoration: it keeps its own
+           proportions so a diagram is not cut, and it stays legible on the dark
+           arena because the plate behind it is white. */
+        .quiz-picture {
+            background: #fff;
+            border: 1px solid rgba(226, 232, 240, 0.18);
+            border-radius: 12px;
+            padding: 0.5rem;
+            text-align: center;
+        }
+        .quiz-picture img {
+            max-width: 100%;
+            max-height: 220px;
+            height: auto;
+            object-fit: contain;
+            border-radius: 8px;
+        }
+        .question-stem .quiz-picture { margin-top: 0.75rem; }
+        .battle-option .quiz-picture { flex: 0 0 min(45%, 190px); margin-left: 1rem; }
+        .battle-option .quiz-picture img { max-height: 120px; }
+        .battle-option-figure { align-items: flex-start; }
+        .battle-option-figure .battle-option-label { display: none; }
+        .battle-option-figure .quiz-picture { flex: 1 1 auto; margin-left: 0; }
+        .battle-option-figure .quiz-picture img { max-height: 160px; }
+
         /* Controls */
         .battle-controls {
             display: flex;
@@ -519,6 +544,7 @@ $csrf_token = csrf_token();
                 <div class="question-badge">Q <?php echo $index + 1; ?> / <?php echo count($questions); ?></div>
                 <div class="question-stem">
                     <?php echo nl2br(safe_quiz_html($q['question'] ?? '')); ?>
+                    <?php echo quiz_picture_html($q['image_path'] ?? '', 'Picture for question ' . ($index + 1)); ?>
                 </div>
                 
                 <div class="options-container">
@@ -538,10 +564,14 @@ $csrf_token = csrf_token();
                         foreach ($q['options'] as $opt): 
                             $optValue = safe_quiz_html(is_array($opt) ? ($opt['option_text'] ?? '') : strval($opt));
                             $optId = is_array($opt) ? ($opt['id'] ?? $optValue) : $optValue;
+                            // A picture can be the whole option, so an empty text box is not an empty answer.
+                            $optImage = is_array($opt) ? quiz_picture_html($opt['image_path'] ?? '', 'Picture for this option') : '';
+                            $isFigure = trim((string)(is_array($opt) ? ($opt['option_text'] ?? '') : strval($opt))) === '' && $optImage !== '';
                     ?>
-                        <label class="battle-option">
+                        <label class="battle-option<?php echo $isFigure ? ' battle-option-figure' : ''; ?>">
                             <input class="form-check-input battle-option-input pt-0 mt-0" type="radio" name="q[<?php echo $q['id']; ?>]" value="<?php echo htmlspecialchars($optId); ?>">
                             <span class="battle-option-label"><?php echo $optValue; ?></span>
+                            <?php echo $optImage; ?>
                         </label>
                     <?php 
                         endforeach; 

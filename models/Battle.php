@@ -244,6 +244,48 @@ class Battle
     }
 
     /**
+     * Withdraw a challenge you sent that nobody has answered yet.
+     * Money moves exactly the way the expire sweep moves it: the sender's
+     * escrow comes back whole, because the other side never put anything in.
+     */
+    public function withdrawChallenge($battleId, $challengerId)
+    {
+        $stmt = $this->pdo->prepare("SELECT * FROM battles WHERE id = ? AND challenger_id = ? AND status IN ('pending','negotiating')");
+        $stmt->execute([$battleId, $challengerId]);
+        $battle = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$battle) {
+            return false;
+        }
+
+        $wager = (int) $battle['xp_wager'];
+
+        $this->pdo->beginTransaction();
+        try {
+            $close = $this->pdo->prepare("
+                UPDATE battles SET status = 'declined', decline_reason = 'Withdrawn by the sender.', completed_at = NOW()
+                WHERE id = ? AND challenger_id = ? AND status IN ('pending','negotiating')
+            ");
+            $close->execute([$battleId, $challengerId]);
+            if ($close->rowCount() === 0) {
+                $this->pdo->rollBack();
+                return false;
+            }
+            if ($wager > 0) {
+                $this->pdo->prepare("UPDATE users SET points = points + ? WHERE id = ?")->execute([$wager, $challengerId]);
+            }
+            $this->pdo->commit();
+            return true;
+        } catch (Throwable $e) {
+            if ($this->pdo->inTransaction()) {
+                $this->pdo->rollBack();
+            }
+            log_error('withdrawChallenge failed', ['battle_id' => $battleId, 'err' => $e->getMessage()]);
+            return false;
+        }
+    }
+
+    /**
      * Propose a Change (Negotiation phase)
      */
     public function proposeChange($battleId, $opponentId, $proposedJson)
@@ -582,6 +624,114 @@ class Battle
 
         $stmt = $this->pdo->prepare("UPDATE battles SET opponent_id = ?, status = 'negotiating', proposed_changes = ? WHERE id = ?");
         return $stmt->execute([$userId, $proposedJson, $battleId]);
+    }
+
+    /**
+     * Delete an open invite you posted, but only while nobody has taken a seat.
+     * accepted_count = 0 means no child duel exists, so the creator's single
+     * reservation on the parent is always refundable here.
+     */
+    public function closeOpenInvite($battleId, $challengerId)
+    {
+        $stmt = $this->pdo->prepare("
+            SELECT * FROM battles
+            WHERE id = ? AND challenger_id = ? AND status = 'open' AND opponent_id IS NULL AND accepted_count = 0
+        ");
+        $stmt->execute([$battleId, $challengerId]);
+        $battle = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$battle) {
+            return false;
+        }
+
+        $wager = (int) $battle['xp_wager'];
+
+        $this->pdo->beginTransaction();
+        try {
+            $close = $this->pdo->prepare("
+                UPDATE battles SET status = 'completed', completed_at = NOW()
+                WHERE id = ? AND challenger_id = ? AND status = 'open' AND opponent_id IS NULL AND accepted_count = 0
+            ");
+            $close->execute([$battleId, $challengerId]);
+            if ($close->rowCount() === 0) {
+                $this->pdo->rollBack();
+                return false;
+            }
+            if ($wager > 0) {
+                $this->pdo->prepare("UPDATE users SET points = points + ? WHERE id = ?")->execute([$wager, $challengerId]);
+            }
+            $this->pdo->commit();
+            return true;
+        } catch (Throwable $e) {
+            if ($this->pdo->inTransaction()) {
+                $this->pdo->rollBack();
+            }
+            log_error('closeOpenInvite failed', ['battle_id' => $battleId, 'err' => $e->getMessage()]);
+            return false;
+        }
+    }
+
+    /**
+     * Re-price an open invite before anyone joins it. The invite is locked with
+     * FOR UPDATE first, so a join cannot slip in between reading the old stake
+     * and moving the reservation to match the new one.
+     */
+    public function editOpenInvite($battleId, $challengerId, array $changes)
+    {
+        $this->pdo->beginTransaction();
+        try {
+            $lock = $this->pdo->prepare("
+                SELECT xp_wager, match_type, custom_timer_seconds, max_participants FROM battles
+                WHERE id = ? AND challenger_id = ? AND status = 'open' AND opponent_id IS NULL AND accepted_count = 0
+                FOR UPDATE
+            ");
+            $lock->execute([$battleId, $challengerId]);
+            $battle = $lock->fetch(PDO::FETCH_ASSOC);
+            if (!$battle) {
+                $this->pdo->rollBack();
+                return false;
+            }
+
+            $old = (int) $battle['xp_wager'];
+            $new = array_key_exists('xp_wager', $changes) ? max(0, (int) $changes['xp_wager']) : $old;
+            $diff = $new - $old;
+
+            $terms = $this->pdo->prepare("
+                UPDATE battles SET quiz_id = ?, match_type = ?, xp_wager = ?, custom_timer_seconds = ?, max_participants = ?
+                WHERE id = ?
+            ");
+            $terms->execute([
+                (int) $changes['quiz_id'],
+                array_key_exists('match_type', $changes) ? $changes['match_type'] : $battle['match_type'],
+                $new,
+                array_key_exists('custom_timer_seconds', $changes) ? $changes['custom_timer_seconds'] : $battle['custom_timer_seconds'],
+                max(1, (int) (array_key_exists('max_participants', $changes) ? $changes['max_participants'] : $battle['max_participants'])),
+                $battleId,
+            ]);
+
+            if ($diff > 0) {
+                $deduct = $this->pdo->prepare("UPDATE users SET points = points - ? WHERE id = ? AND points >= ?");
+                $deduct->execute([$diff, $challengerId, $diff]);
+                if ($deduct->rowCount() === 0) {
+                    $this->pdo->rollBack();
+                    throw new Exception("insufficient_xp");
+                }
+            } elseif ($diff < 0) {
+                $this->pdo->prepare("UPDATE users SET points = points + ? WHERE id = ?")->execute([-1 * $diff, $challengerId]);
+            }
+
+            $this->pdo->commit();
+            return true;
+        } catch (Throwable $e) {
+            if ($this->pdo->inTransaction()) {
+                $this->pdo->rollBack();
+            }
+            if ($e->getMessage() === 'insufficient_xp') {
+                throw $e;
+            }
+            log_error('editOpenInvite failed', ['battle_id' => $battleId, 'err' => $e->getMessage()]);
+            return false;
+        }
     }
 
     /**

@@ -61,6 +61,7 @@ class Quiz
         try { $this->conn->exec("ALTER TABLE quiz_questions ADD COLUMN IF NOT EXISTS explanation TEXT NULL"); } catch (Throwable $e) {}
         try { $this->conn->exec("ALTER TABLE quiz_questions ADD COLUMN IF NOT EXISTS question_type VARCHAR(20) NOT NULL DEFAULT 'objective'"); } catch (Throwable $e) {}
         try { $this->conn->exec("ALTER TABLE quiz_questions ADD COLUMN IF NOT EXISTS correct_answer VARCHAR(255) DEFAULT NULL"); } catch (Throwable $e) {}
+        try { $this->conn->exec("ALTER TABLE quiz_questions ADD COLUMN IF NOT EXISTS image_path VARCHAR(255) DEFAULT NULL"); } catch (Throwable $e) {}
 
         $this->conn->exec("CREATE TABLE IF NOT EXISTS quiz_options (
             id INT AUTO_INCREMENT PRIMARY KEY,
@@ -69,6 +70,7 @@ class Quiz
             is_correct TINYINT(1) NOT NULL DEFAULT 0,
             FOREIGN KEY (question_id) REFERENCES quiz_questions(id) ON DELETE CASCADE
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+        try { $this->conn->exec("ALTER TABLE quiz_options ADD COLUMN IF NOT EXISTS image_path VARCHAR(255) DEFAULT NULL"); } catch (Throwable $e) {}
     }
 
     private function seed(): void
@@ -793,8 +795,8 @@ class QuizAdmin extends Quiz
         $delQ = $this->conn->prepare('DELETE FROM quiz_questions WHERE quiz_id = :id');
         $delQ->execute([':id' => $quizId]);
 
-        $qStmt = $this->conn->prepare('INSERT INTO quiz_questions (quiz_id, question, explanation, question_type, correct_answer) VALUES (:qid,:q,:e,:qt,:ca)');
-        $oStmt = $this->conn->prepare('INSERT INTO quiz_options (question_id, option_text, is_correct) VALUES (:qid,:txt,:ok)');
+        $qStmt = $this->conn->prepare('INSERT INTO quiz_questions (quiz_id, question, explanation, question_type, correct_answer, image_path) VALUES (:qid,:q,:e,:qt,:ca,:img)');
+        $oStmt = $this->conn->prepare('INSERT INTO quiz_options (question_id, option_text, is_correct, image_path) VALUES (:qid,:txt,:ok,:img)');
 
         foreach ($questions as $q) {
             $text = trim((string)($q['question'] ?? ''));
@@ -802,8 +804,9 @@ class QuizAdmin extends Quiz
             $explain = trim((string)($q['explanation'] ?? '')) ?: null;
             $qType = (isset($q['question_type']) && $q['question_type'] === 'subjective') ? 'subjective' : 'objective';
             $correctAns = ($qType === 'subjective') ? trim((string)($q['correct_answer'] ?? '')) ?: null : null;
+            $qImage = trim((string)($q['image_path'] ?? '')) ?: null;
 
-            $qStmt->execute([':qid' => $quizId, ':q' => $text, ':e' => $explain, ':qt' => $qType, ':ca' => $correctAns]);
+            $qStmt->execute([':qid' => $quizId, ':q' => $text, ':e' => $explain, ':qt' => $qType, ':ca' => $correctAns, ':img' => $qImage]);
             $qid = (int)$this->conn->lastInsertId();
 
             // Only save options for objective questions
@@ -811,9 +814,11 @@ class QuizAdmin extends Quiz
                 $opts = $q['options'] ?? [];
                 foreach ($opts as $opt) {
                     $optText = trim((string)($opt['text'] ?? ''));
-                    if ($optText === '') { continue; }
+                    $optImage = trim((string)($opt['image_path'] ?? '')) ?: null;
+                    // A picture can be the whole option, so text alone is not the test.
+                    if ($optText === '' && $optImage === null) { continue; }
                     $isCorrect = !empty($opt['is_correct']) ? 1 : 0;
-                    $oStmt->execute([':qid' => $qid, ':txt' => $optText, ':ok' => $isCorrect]);
+                    $oStmt->execute([':qid' => $qid, ':txt' => $optText, ':ok' => $isCorrect, ':img' => $optImage]);
                 }
             }
         }

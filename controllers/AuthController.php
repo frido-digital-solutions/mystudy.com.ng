@@ -113,68 +113,74 @@ class AuthController {
     }
     
     /**
-     * Login user
+     * Verify credentials only, with no session side effects.
+     *
+     * login() and the mobile API both call this, so a wrong password, a
+     * suspended account or a missing email can never be answered differently
+     * depending on which front door the request came through.
+     *
+     * @return array success, and on success user (the populated User model) and first_login
      */
-    public function login($email, $password) {
-        // Validate input
+    public function authenticate($email, $password) {
         $errors = [];
-        
+
         if (empty($email)) {
             $errors['email'] = 'Please enter your email';
         }
-        
+
         if (empty($password)) {
             $errors['password'] = 'Please enter your password';
         }
-        
+
         if (!empty($errors)) {
-            return [
-                'success' => false,
-                'errors' => $errors
-            ];
+            return ['success' => false, 'errors' => $errors];
         }
-        
+
         // Check if user exists
         if (!$this->userModel->getByEmail($email)) {
-            return [
-                'success' => false,
-                'errors' => ['general' => 'Invalid email or password']
-            ];
+            return ['success' => false, 'errors' => ['general' => 'Invalid email or password']];
         }
-        
+
         // Verify password
         if (!password_verify($password, $this->userModel->password_hash)) {
-            return [
-                'success' => false,
-                'errors' => ['general' => 'Invalid email or password']
-            ];
+            return ['success' => false, 'errors' => ['general' => 'Invalid email or password']];
         }
-        
+
         // Simplified: skip email verification check
-        
+
         // Check if account is active
         if ($this->userModel->status !== 'active') {
             $status = ucfirst($this->userModel->status);
-            return [
-                'success' => false,
-                'errors' => ['general' => 'Your account is ' . $status . '. Please contact support for assistance.']
-            ];
+            return ['success' => false, 'errors' => ['general' => 'Your account is ' . $status . '. Please contact support for assistance.']];
         }
-        
-        // Check if this is their very first login before updating
-        if (empty($this->userModel->last_login)) {
-            $_SESSION['is_first_login'] = true;
-        }
+
+        $firstLogin = empty($this->userModel->last_login);
 
         // Update last login
         $this->userModel->updateLastLogin();
-        
-        // Set session
-        $this->setUserSession($this->userModel);
-        
+
+        return ['success' => true, 'user' => $this->userModel, 'first_login' => $firstLogin];
+    }
+
+    /**
+     * Login user
+     */
+    public function login($email, $password) {
+        $result = $this->authenticate($email, $password);
+
+        if (empty($result['success'])) {
+            return $result;
+        }
+
+        if (!empty($result['first_login'])) {
+            $_SESSION['is_first_login'] = true;
+        }
+
+        $this->setUserSession($result['user']);
+
         return [
             'success' => true,
-            'redirect' => $this->getDashboardUrl($this->userModel->user_type)
+            'redirect' => $this->getDashboardUrl($result['user']->user_type)
         ];
     }
     

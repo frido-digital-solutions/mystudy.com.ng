@@ -1016,10 +1016,16 @@ include __DIR__ . '/includes/header.php';
                         <?php if ($entryPrice > 0): ?>
                             <span class="sq-or">or</span>
                             <div class="sq-pay-row">
+                                <?php if (trim((string)PAYSTACK_PUBLIC_KEY) === ''): ?>
+                                    <button class="sq-pay-btn sq-pay-online" type="button" disabled>
+                                        <span class="sq-pay-label"><i class="fas fa-bolt"></i> Online payment unavailable</span>
+                                    </button>
+                                <?php else: ?>
                                 <button class="sq-pay-btn sq-pay-online" onclick="payWithPaystack()" type="button">
                                     <span class="sq-pay-label"><i class="fas fa-bolt"></i> Pay ₦<?php echo number_format($entryPrice, 0); ?> Online</span>
                                     <span class="sq-pay-badge">Recommended</span>
                                 </button>
+                                <?php endif; ?>
                                 <?php if ($manualPaymentOpen): ?>
                                     <button class="sq-pay-btn sq-pay-manual" onclick="openManualPaymentModal()" type="button">
                                         <i class="fas fa-university"></i> Pay by Bank Transfer

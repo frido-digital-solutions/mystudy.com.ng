@@ -9,6 +9,11 @@ require_once __DIR__ . '/models/Message.php';
 $msgModel = new Message($pdo);
 $conversations = $msgModel->getConversations($userId);
 
+// One presence lookup for the whole page, in the single helper that owns the
+// rule, so someone who switched off their active status reads as Offline here
+// exactly as they do in a conversation and on the phone.
+$presence = presence_for_users(array_column($conversations, 'partner_id'), $pdo);
+
 include __DIR__ . '/includes/header.php';
 ?>
 
@@ -128,9 +133,13 @@ include __DIR__ . '/includes/header.php';
                         <img src="<?php echo $avatarUrl; ?>" class="conv-avatar" alt="">
                         <?php
                         $partnerOnline = false;
-                        $partnerLastSeenLabel = '';
-                        if (!empty($conv['partner_last_active'])) {
-                            $plaDiff = time() - strtotime($conv['partner_last_active']);
+                        $partnerLastSeenLabel = 'Offline';
+                        // Null for anyone who switched their active status off,
+                        // which then reads as the plain word above rather than a
+                        // last-seen time they never agreed to share.
+                        $partnerActive = ($presence[(int)$conv['partner_id']] ?? ['last_active' => $conv['partner_last_active'] ?? null])['last_active'];
+                        if (!empty($partnerActive)) {
+                            $plaDiff = time() - strtotime($partnerActive);
                             if ($plaDiff < 300) {
                                 $partnerOnline = true;
                                 $partnerLastSeenLabel = 'Online';
@@ -141,7 +150,7 @@ include __DIR__ . '/includes/header.php';
                             } elseif ($plaDiff < 604800) {
                                 $partnerLastSeenLabel = floor($plaDiff / 86400) . 'd';
                             } else {
-                                $partnerLastSeenLabel = date('M j', strtotime($conv['partner_last_active']));
+                                $partnerLastSeenLabel = date('M j', strtotime($partnerActive));
                             }
                         }
                         ?>

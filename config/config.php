@@ -35,8 +35,12 @@ function format_prize($amount, $type) {
 $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
 $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
 
-// Check if we're on localhost (development) or production
-$isLocalhost = strpos($host, 'localhost') !== false || strpos($host, '127.0.0.1') !== false;
+// A phone testing over the Wi-Fi reaches this copy by its LAN address, not by
+// the name localhost, so private ranges count as development too. Anything with
+// a real domain name is production.
+$bareHost = strtolower(preg_replace('/:\d+$/', '', $host));
+$isLocalhost = $bareHost === 'localhost' || $bareHost === '::1' || $bareHost === '[::1]'
+    || (bool) preg_match('/^(127\.|10\.|192\.168\.|172\.(1[6-9]|2[0-9]|3[01])\.)/', $bareHost);
 
 if ($isLocalhost) {
     // Local development: include subdirectory (e.g., /mystudy.com.ng)

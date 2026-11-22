@@ -1,17 +1,31 @@
 <?php
 require_once __DIR__ . '/config/config.php';
-require_login();
 require_once __DIR__ . '/models/Quiz.php';
 require_once __DIR__ . '/models/QuizAttempt.php';
+require_once __DIR__ . '/includes/app_ticket.php';
 
 $attemptId = (int)($_GET['attempt_id'] ?? 0);
+
+// The app holds a bearer token, not a cookie, so api/v1 hands it a link with a
+// ten-minute ticket scoped to this one attempt. The ticket is the login.
+$userId = isset($_SESSION['user_id']) ? (int)$_SESSION['user_id'] : 0;
+$ticketUser = null;
+$ticket = trim((string)($_GET['t'] ?? ''));
+if ($ticket !== '' && $attemptId > 0) {
+    $ticketUser = app_ticket_resolve($pdo, $ticket, 'cert:' . $attemptId);
+    if ($ticketUser) {
+        $userId = (int)$ticketUser['id'];
+    }
+}
+if ($userId <= 0) {
+    require_login();
+}
 if ($attemptId <= 0) {
     set_flash_message('error', 'Invalid certificate link.');
     redirect(SITE_URL . '/my_quizzes.php');
 }
 
 $attemptModel = new QuizAttempt($pdo);
-$userId = (int)$_SESSION['user_id'];
 
 // Get the attempt
 $attempt = $attemptModel->getAttempt($attemptId, $userId);
@@ -81,7 +95,7 @@ if ($percentage < $passMark) {
     exit();
 }
 
-$participantName = htmlspecialchars($_SESSION['user_name'] ?? 'Student');
+$participantName = htmlspecialchars((string)($_SESSION['user_name'] ?? $ticketUser['name'] ?? 'Student'));
 $quizTitle = htmlspecialchars($quiz['title'] ?? 'Assessment');
 $dateCompleted = date('j F Y', strtotime($attempt['completed_at']));
 

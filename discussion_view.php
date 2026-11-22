@@ -575,11 +575,13 @@ require_once __DIR__ . '/includes/header.php';
                 </button>
             </div>
             
-            <button class="action-btn ms-auto" onclick="reportModal('discussion', <?= $id ?>)">
-                <i class="fa-solid fa-flag"></i> Report
-            </button>
+            <?php if ((int)$discussion['user_id'] !== $userId): ?>
+                <button class="action-btn ms-auto" onclick="reportModal('discussion', <?= $id ?>)">
+                    <i class="fa-solid fa-flag"></i> Report
+                </button>
+            <?php endif; ?>
             <?php if ((int)$discussion['user_id'] === $userId): ?>
-                <button class="action-btn text-danger ms-2" onclick="deleteThread(<?= $id ?>)">
+                <button class="action-btn text-danger ms-auto" onclick="deleteThread(<?= $id ?>)">
                     <i class="fa-solid fa-trash"></i> Delete
                 </button>
             <?php endif; ?>
@@ -670,7 +672,9 @@ require_once __DIR__ . '/includes/header.php';
                                 </div>
                                 
                                 <button class="btn-reply-action ms-2" onclick="toggleReplyForm(<?= $comment['id'] ?>, <?= $comment['id'] ?>, '<?= htmlspecialchars(addslashes($comment['author_name'])) ?>', <?= $comment['user_id'] ?>)"><i class="fa-solid fa-reply me-1"></i> Reply</button>
-                                <button class="ms-3" onclick="reportModal('comment', <?= $comment['id'] ?>)"><i class="fa-regular fa-flag me-1"></i> Report</button>
+                                <?php if ((int)$comment['user_id'] !== $userId): ?>
+                                    <button class="ms-3" onclick="reportModal('comment', <?= $comment['id'] ?>)"><i class="fa-regular fa-flag me-1"></i> Report</button>
+                                <?php endif; ?>
                                 <button class="comment-share-btn ms-3" type="button" onclick="shareThreadLink('#comment-<?= $comment['id'] ?>'); return false;">
                                     <i class="fa-solid fa-share-nodes"></i> Share
                                 </button>
@@ -721,7 +725,9 @@ require_once __DIR__ . '/includes/header.php';
                                             
                                             <button class="btn-reply-action" onclick="toggleReplyForm(<?= $comment['id'] ?>, <?= $reply['id'] ?>, '<?= htmlspecialchars(addslashes($reply['author_name'])) ?>', <?= $reply['user_id'] ?>)">Reply</button>
                                             
-                                            <button class="ms-2" onclick="reportModal('comment', <?= $reply['id'] ?>)">Report</button>
+                                            <?php if ((int)$reply['user_id'] !== $userId): ?>
+                                                <button class="ms-2" onclick="reportModal('comment', <?= $reply['id'] ?>)">Report</button>
+                                            <?php endif; ?>
                                             <button class="comment-share-btn ms-2" type="button" onclick="shareThreadLink('#comment-<?= $reply['id'] ?>'); return false;">
                                                 <i class="fa-solid fa-share-nodes"></i> Share
                                             </button>

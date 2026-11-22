@@ -33,3 +33,13 @@ define('SITE_DOMAIN', 'yourdomain.ng');
 // Fallback only. The address actually used is the "Admin Email" field on the
 // admin Settings page; this applies if that field is left blank.
 define('ADMIN_EMAIL_DEFAULT', 'admin@yourdomain.ng');
+
+// --- Cloudflare Workers AI (the in-app assistant, "Mentor") ---
+// Account ID: Cloudflare dashboard → Workers & Pages → AI Sandbox → Overview.
+// Token:       My Account → API Tokens → a token with read + write on
+//              Account · Workers AI. Only the server holds it; api/v1/mentor.php
+//              is the sole caller, so no key ever ships inside the app.
+// Leave both blank and Mentor still answers — it replies straight from the
+// built-in knowledge file instead of the model, just less flexibly.
+define('CLOUDFLARE_ACCOUNT_ID', '');
+define('CLOUDFLARE_AI_TOKEN', '');

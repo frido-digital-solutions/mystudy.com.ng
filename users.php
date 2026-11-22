@@ -44,6 +44,11 @@ $stmt->bindValue(3, $offset, PDO::PARAM_INT);
 $stmt->execute();
 $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
+// The directory shows presence as well, so the same switch that hides an active
+// status in chats hides it here: no timestamp to format, and the neutral word
+// that formatUserStatus() already returns for a person nobody has just seen.
+$presence = presence_for_users(array_column($users, 'id'), $pdo);
+
 // Helper function to format last active status
 function formatUserStatus($lastActive)
 {
@@ -510,7 +515,7 @@ require_once __DIR__ . '/includes/header.php';
 
     <div class="user-grid">
         <?php foreach ($users as $u):
-            $status = formatUserStatus($u['last_active']);
+            $status = formatUserStatus($presence[(int)$u['id']]['last_active'] ?? $u['last_active']);
             $hasAvatar = !empty($u['profile_picture']);
             $userType = $u['user_type'] ?? '';
 

@@ -27,7 +27,9 @@ $targets = [
 ];
 
 // Hosts this site has previously run on. Rows may carry any of them.
-$oldDomains = ['mystudy.com.ng', 'mystudy.workvista.org'];
+// mystudybase.ng is listed because the site ran there while the domain was
+// switched, so saved rows now carry that host and must be rewritten back.
+$oldDomains = ['mystudy.com.ng', 'mystudy.workvista.org', 'mystudybase.ng'];
 
 // Links saved while the app sat on a test host under some subdirectory. The page
 // path after the prefix is still correct, so only the host and prefix are replaced.
@@ -356,7 +358,7 @@ include __DIR__ . '/includes/header.php';
                            value="<?php echo htmlspecialchars($contactDefault); ?>"
                            placeholder="An inbox you actually read, e.g. your Gmail for now">
                     <div class="form-text">
-                      The <code>@mystudybase.ng</code> mailboxes do not exist yet, so use an inbox that receives mail today.
+                      The <code>@mystudy.com.ng</code> mailboxes do not exist yet, so use an inbox that receives mail today.
                       You can change it later on the Settings page once you buy real mailboxes.
                     </div>
                   </div>

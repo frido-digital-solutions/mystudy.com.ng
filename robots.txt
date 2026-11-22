@@ -9,4 +9,4 @@ Disallow: /models/
 Disallow: /controllers/
 Disallow: /database/
 
-Sitemap: https://mystudybase.ng/sitemap.xml.php
+Sitemap: https://mystudy.com.ng/sitemap.xml.php

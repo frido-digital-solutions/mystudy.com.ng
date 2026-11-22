@@ -314,6 +314,13 @@ endif; ?>
                         <i class="fas fa-university text-info"></i> 
                         <?php echo htmlspecialchars($user->university ?? 'University Student'); ?>
                     </div>
+                    <?php if (!empty($user->department)): ?>
+                        <div class="meta-item">
+                            <i class="fas fa-book text-info"></i> 
+                            <?php echo htmlspecialchars($user->department); ?>
+                        </div>
+                    <?php
+    endif; ?>
                     <?php if (!empty($user->level)): ?>
                         <div class="meta-item">
                             <i class="fas fa-graduation-cap text-info"></i> 
@@ -365,7 +372,10 @@ endif; ?>
                     </div>
                 </div>
             </div>
-            
+            <?php
+endif; ?>
+
+            <?php if ($user->privacy_show_battles): ?>
             <div class="card border-0 shadow-sm mb-4" style="border-radius: 16px; overflow: hidden; background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);">
                 <div class="card-header border-0 pt-4 bg-transparent">
                     <h6 class="fw-bold mb-0" style="color: #0f172a;"><i class="fas fa-khanda text-danger me-2"></i>Battle Record</h6>
@@ -389,10 +399,22 @@ endif; ?>
                     </div>
                 </div>
             </div>
-
             <?php
 endif; ?>
-            
+
+            <?php if (!$user->privacy_show_battles): ?>
+            <!-- Switched off is not the same as never done, so the card says
+                 who chose to hide it instead of printing a row of zeros. -->
+            <div class="alert alert-light border d-flex align-items-center gap-3 p-4 mb-4">
+                <i class="fas fa-lock fs-3 text-muted"></i>
+                <div>
+                    <h6 class="fw-bold mb-1">Battle record private</h6>
+                    <p class="mb-0 text-muted small"><?php echo htmlspecialchars($user->name); ?> chose to keep their battles off this page.</p>
+                </div>
+            </div>
+            <?php
+endif; ?>
+
             <?php if ($user->privacy_show_badges): ?>
             <div class="card border-0 shadow-sm mb-4">
                 <div class="card-header bg-white border-bottom pb-0 pt-4">
@@ -431,7 +453,7 @@ endif; ?>
             <?php
 endif; ?>
             
-            <?php if (!$user->privacy_show_stats && !$user->privacy_show_badges && !$user->privacy_show_discussions && !$user->privacy_show_school): ?>
+            <?php if (!$user->privacy_show_stats && !$user->privacy_show_badges && !$user->privacy_show_discussions && !$user->privacy_show_school && !$user->privacy_show_battles): ?>
                 <div class="alert alert-light text-center border">
                     <i class="fas fa-user-secret fs-1 text-muted mb-3 d-block mt-3"></i>
                     This user prefers to keep their profile details completely private.

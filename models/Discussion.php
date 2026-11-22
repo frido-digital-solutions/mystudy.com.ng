@@ -411,17 +411,44 @@ class Discussion
         $stmt = $this->conn->prepare("INSERT INTO discussion_reports (user_id, target_type, target_id, reason) VALUES (?, ?, ?, ?)");
         $stmt->execute([$userId, $targetType, $targetId, trim($reason)]);
         
-        // Notify the content owner
+        // Notify the content owner. Nothing has been decided at this point, so
+        // the wording must not sound like a punishment - it says a report was
+        // made, what it was about, and that a human will look at it.
         $authorId = $this->getAuthorIdByTarget($targetType, $targetId);
         if ($authorId && $authorId !== $userId) {
+            $label = $this->contentLabel($targetType, $targetId);
             $title = "⚠️ Content Reported";
-            $message = "Your " . $targetType . " has been reported for: '" . trim($reason) . "'. An admin will review it shortly. Please review our community guidelines.";
-            
+            $message = "Your {$label} was reported by a user for: '" . trim($reason) . "'. Nothing has been removed - an admin is going to review it and decide. You will be told the outcome either way.";
+
             // Only require Notification if we need it here
             require_once __DIR__ . '/Notification.php';
             $notif = new Notification($this->conn);
             $notif->create($authorId, 'content_reported', $title, $message);
         }
+    }
+
+    /** A short, human name for the reported thing, so the owner knows which one. */
+    private function contentLabel(string $targetType, int $targetId): string
+    {
+        if ($targetType === 'discussion') {
+            $stmt = $this->conn->prepare("SELECT title FROM discussions WHERE id = ?");
+            $stmt->execute([$targetId]);
+            $title = trim((string)$stmt->fetchColumn());
+            return $title !== '' ? 'question "' . $this->clip($title, 70) . '"' : 'question';
+        }
+        $stmt = $this->conn->prepare("SELECT content FROM discussion_comments WHERE id = ?");
+        $stmt->execute([$targetId]);
+        $body = trim((string)$stmt->fetchColumn());
+        return $body !== '' ? 'comment "' . $this->clip($body, 70) . '"' : 'comment';
+    }
+
+    private function clip(string $text, int $max): string
+    {
+        $text = preg_replace('/\s+/u', ' ', $text);
+        if (function_exists('mb_strlen') && mb_strlen($text, 'UTF-8') > $max) {
+            return mb_substr($text, 0, $max - 1, 'UTF-8') . '…';
+        }
+        return strlen($text) > $max ? substr($text, 0, $max - 1) . '…' : $text;
     }
 
     public function softDeleteComment(int $commentId, int $userId, bool $isAdmin = false): bool

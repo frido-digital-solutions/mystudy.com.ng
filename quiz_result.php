@@ -303,6 +303,43 @@ ob_start();
       color: #1e293b;
   }
 
+  .quiz-picture {
+      margin-top: 0.75rem;
+      background: #fff;
+      border: 1px solid rgba(15, 23, 42, 0.12);
+      border-radius: 12px;
+      padding: 0.5rem;
+      text-align: center;
+  }
+
+  .quiz-picture img {
+      max-width: 100%;
+      max-height: 200px;
+      height: auto;
+      object-fit: contain;
+      border-radius: 8px;
+  }
+
+  .result-answer-text .quiz-picture {
+      margin: 0.5rem 0 0;
+      max-width: 320px;
+  }
+
+  .result-answer-text .quiz-picture img {
+      max-height: 130px;
+  }
+
+  @media (max-width: 575.98px) {
+      .quiz-picture {
+          padding: 0.35rem;
+          margin-top: 0.5rem;
+      }
+      .quiz-picture img,
+      .result-answer-text .quiz-picture img {
+          max-height: 115px;
+      }
+  }
+
   /* ========================================= */
   /* RESULT BUTTONS                            */
   /* ========================================= */
@@ -1228,17 +1265,24 @@ include __DIR__ . '/includes/header.php';
                       <span class="badge bg-light text-dark mb-2 d-inline-block shadow-sm" style="font-size:0.8rem;"><i class="fas fa-book me-1 text-success"></i> <?php echo htmlspecialchars($row['subject']); ?></span><br>
                   <?php endif; ?>
                   <?php echo nl2br(safe_quiz_html($row['question'])); ?>
+                  <?php echo quiz_picture_html($row['question_image'] ?? '', 'Picture for question ' . ($idx + 1)); ?>
               </div>
               <div class="result-answers">
                   <?php 
                     $isSubjectiveQ = ($row['question_type'] ?? 'objective') === 'subjective';
+                    // A picture can be the whole option, so an empty text box does not
+                    // mean the student chose nothing.
+                    $yourPicture = $isSubjectiveQ ? '' : quiz_picture_html($row['selected_image'] ?? '', 'Picture you chose for question ' . ($idx + 1));
+                    $rightPicture = $isSubjectiveQ ? '' : quiz_picture_html($row['correct_image'] ?? '', 'Correct answer picture for question ' . ($idx + 1));
                     // Determine what to show as user's answer
                     if ($isSubjectiveQ) {
                         $userAnswerDisplay = !empty($row['text_answer']) ? $row['text_answer'] : '—';
                         $correctAnswerDisplay = $row['expected_answer'] ?? '';
                     } else {
-                        $userAnswerDisplay = $row['selected_text'] ?? '—';
-                        $correctAnswerDisplay = $row['correct_text'] ?? '';
+                        $yourText = trim((string)($row['selected_text'] ?? ''));
+                        $rightText = trim((string)($row['correct_text'] ?? ''));
+                        $userAnswerDisplay = ($yourText === '' && $yourPicture === '') ? '—' : $yourText;
+                        $correctAnswerDisplay = ($rightText === '' && $rightPicture === '') ? '—' : $rightText;
                     }
                   ?>
                   <div class="result-answer-row <?php echo ((int)$row['is_correct']===1)?'answer-correct':'answer-wrong'; ?>">
@@ -1251,7 +1295,7 @@ include __DIR__ . '/includes/header.php';
                       </span>
                       <div>
                           <div class="result-answer-label">Your Answer <?php if ($isSubjectiveQ): ?><span class="badge bg-primary bg-opacity-10 text-primary ms-1" style="font-size: 0.65rem; border-radius: 6px; padding: 0.2rem 0.5rem;"><i class="fas fa-pen-fancy me-1"></i>Typed</span><?php endif; ?></div>
-                          <div class="result-answer-text"><?php echo safe_quiz_html($userAnswerDisplay); ?></div>
+                          <div class="result-answer-text"><?php echo safe_quiz_html($userAnswerDisplay); ?><?php echo $yourPicture; ?></div>
                       </div>
                   </div>
                   <?php if ((int)$row['is_correct']!==1): ?>
@@ -1259,7 +1303,7 @@ include __DIR__ . '/includes/header.php';
                       <span class="result-answer-icon"><i class="fas fa-check-circle text-success"></i></span>
                       <div>
                           <div class="result-answer-label">Correct Answer</div>
-                          <div class="result-answer-text"><?php echo safe_quiz_html($correctAnswerDisplay); ?></div>
+                          <div class="result-answer-text"><?php echo safe_quiz_html($correctAnswerDisplay); ?><?php echo $rightPicture; ?></div>
                       </div>
                   </div>
                   <?php endif; ?>

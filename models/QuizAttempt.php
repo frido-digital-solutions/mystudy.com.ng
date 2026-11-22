@@ -232,19 +232,28 @@ class QuizAttempt
 
     public function getAnswersDetailed(int $attemptId): array
     {
-        // Get answers joined with question/options to show corrections and subjects
-        $stmt = $this->conn->prepare('SELECT qa.*, qq.question, qq.explanation, qq.question_type, qq.correct_answer as expected_answer, q.subject, qo.option_text as selected_text FROM quiz_answers qa LEFT JOIN quiz_questions qq ON qq.id=qa.question_id LEFT JOIN quizzes q ON q.id=qq.quiz_id LEFT JOIN quiz_options qo ON qo.id=qa.selected_option_id WHERE qa.attempt_id=:a ORDER BY qa.id ASC');
+        // Get answers joined with question/options to show corrections and subjects.
+        // The pictures travel too: an option can be nothing but a diagram, and a
+        // review that cannot show it tells the student nothing about their mark.
+        $stmt = $this->conn->prepare('SELECT qa.*, qq.question, qq.image_path as question_image, qq.explanation, qq.question_type, qq.correct_answer as expected_answer, q.subject, qo.option_text as selected_text, qo.image_path as selected_image FROM quiz_answers qa LEFT JOIN quiz_questions qq ON qq.id=qa.question_id LEFT JOIN quizzes q ON q.id=qq.quiz_id LEFT JOIN quiz_options qo ON qo.id=qa.selected_option_id WHERE qa.attempt_id=:a ORDER BY qa.id ASC');
         $stmt->execute([':a'=>$attemptId]);
         $rows = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
         // Load correct option per question
         if ($rows) {
             $qIds = array_values(array_unique(array_map(fn($r)=> (int)$r['question_id'], $rows)));
             $in = implode(',', array_fill(0, count($qIds), '?'));
-            $cStmt = $this->conn->prepare("SELECT question_id, option_text FROM quiz_options WHERE question_id IN ($in) AND is_correct=1");
+            $cStmt = $this->conn->prepare("SELECT question_id, option_text, image_path FROM quiz_options WHERE question_id IN ($in) AND is_correct=1");
             $cStmt->execute($qIds);
             $correct = [];
-            foreach ($cStmt->fetchAll(PDO::FETCH_ASSOC) as $r) { $correct[$r['question_id']] = $r['option_text']; }
-            foreach ($rows as &$r) { $r['correct_text'] = $correct[$r['question_id']] ?? null; }
+            $correctImages = [];
+            foreach ($cStmt->fetchAll(PDO::FETCH_ASSOC) as $r) {
+                $correct[$r['question_id']] = $r['option_text'];
+                if (!empty($r['image_path'])) { $correctImages[(int)$r['question_id']] = $r['image_path']; }
+            }
+            foreach ($rows as &$r) {
+                $r['correct_text'] = $correct[$r['question_id']] ?? null;
+                $r['correct_image'] = $correctImages[(int)$r['question_id']] ?? null;
+            }
         }
         return $rows;
     }
@@ -284,12 +293,12 @@ class QuizAttempt
                 ORDER BY score DESC, duration_used ASC, completed_at ASC 
                 LIMIT :l";
             } else {
-                // Single phase: regular query
-                $sql = "SELECT qa.*, u.name, u.user_type, u.profile_picture, u.email FROM quiz_attempts qa JOIN users u ON u.id=qa.user_id JOIN quizzes q ON q.id=qa.quiz_id $w ORDER BY qa.score DESC, qa.duration_used ASC, qa.completed_at ASC LIMIT :l";
+                // Single phase: one row per student, at their best sitting.
+                $sql = $this->bestPerUserSql($w);
             }
         } else {
-            // No specific quiz: regular query
-            $sql = "SELECT qa.*, u.name, u.user_type, u.profile_picture, u.email FROM quiz_attempts qa JOIN users u ON u.id=qa.user_id JOIN quizzes q ON q.id=qa.quiz_id $w ORDER BY qa.score DESC, qa.duration_used ASC, qa.completed_at ASC LIMIT :l";
+            // No specific quiz: still one best sitting per student per quiz.
+            $sql = $this->bestPerUserSql($w);
         }
         
         $stmt = $this->conn->prepare($sql);
@@ -297,6 +306,40 @@ class QuizAttempt
         $stmt->bindValue(':l', $limit, PDO::PARAM_INT);
         $stmt->execute();
         return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+    }
+
+    /**
+     * The board query that lists each student once.
+     *
+     * Listing raw attempts made a person who sat the same quiz three times
+     * appear on that quiz's board three times, as if they were three students -
+     * which also let one student take three shares of a prize pool. The row a
+     * student keeps is their best sitting: highest score, then the fastest run
+     * at that score, then whoever got there first. The columns are the attempt's
+     * own, so every caller reads the board exactly as before.
+     */
+    private function bestPerUserSql(string $w): string
+    {
+        return "SELECT best.*, u.name, u.user_type, u.profile_picture, u.email
+                  FROM (
+                    SELECT (SELECT pick_qa.id
+                              FROM quiz_attempts pick_qa
+                             WHERE pick_qa.user_id = per.user_id
+                               AND pick_qa.quiz_id = per.quiz_id
+                             ORDER BY pick_qa.score DESC, pick_qa.duration_used ASC,
+                                      pick_qa.completed_at ASC, pick_qa.id ASC
+                             LIMIT 1) AS attempt_id
+                      FROM (
+                        SELECT DISTINCT qa.user_id, qa.quiz_id
+                          FROM quiz_attempts qa
+                          JOIN quizzes q ON q.id = qa.quiz_id
+                          $w
+                      ) per
+                  ) chosen
+                  JOIN quiz_attempts best ON best.id = chosen.attempt_id
+                  JOIN users u ON u.id = best.user_id
+                 ORDER BY best.score DESC, best.duration_used ASC, best.completed_at ASC, best.id ASC
+                 LIMIT :l";
     }
     
     // Get user's phase-by-phase breakdown for a challenge

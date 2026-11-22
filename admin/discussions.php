@@ -47,7 +47,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $discussionModel->softDeleteComment((int)$report['target_id'], 0, true);
                 }
                 $pdo->prepare("UPDATE discussion_reports SET status = 'resolved' WHERE id = ?")->execute([$reportId]);
-                $notif->create($reporterId, 'report_resolved', '🛡️ Report Resolved', "Thank you! The reported $targetType has been removed.");
+                // A report that turned out to be true is worth something: the
+                // reporter did unpaid moderation work, so the bonus is paid here
+                // and only here - a dismissed report earns nothing.
+                require_once __DIR__ . '/../models/Gamification.php';
+                $gamification = new Gamification($pdo);
+                $gamification->addXP($reporterId, 10);
+                $notif->create($reporterId, 'report_resolved', '🛡️ Report Resolved', "Thank you! The reported $targetType was reviewed, found to break the rules and has been removed. +10 XP added to your account for a valid report.");
                 if ($ownerId) {
                     $pdo->prepare("UPDATE users SET report_strikes = report_strikes + 1 WHERE id = ?")->execute([$ownerId]);
                     $uStmt = $pdo->prepare("SELECT report_strikes FROM users WHERE id = ?");
