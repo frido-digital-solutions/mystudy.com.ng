@@ -1,0 +1,27 @@
+# api/v1/* is called from a phone (Expo Go) and from a browser on another
+# machine, so two things have to be fixed that Apache gets wrong by default.
+
+# 1) XAMPP and most shared hosts do not hand PHP the Authorization header at all
+# unless it is re-injected. Without this every app request arrives unauthenticated.
+RewriteEngine On
+RewriteCond %{HTTP:Authorization} .
+RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
+
+# 2) The dev server answers on localhost and on the LAN address. Capture the
+# whole Origin into an env var so it can be echoed back, and gate on that var.
+# No cookies ride along: the app authenticates with a bearer token, so an
+# allowed Origin is still not an authenticated request.
+<IfModule mod_headers.c>
+    SetEnvIf Origin "^(https?://(localhost|127\.0\.0\.1|192\.168\.[0-9]+\.[0-9]+|10\.[0-9]+\.[0-9]+\.[0-9]+)(:[0-9]+)?|exp://.+)$" DEV_ALLOWED_ORIGIN=$0
+    Header always set Access-Control-Allow-Origin "%{DEV_ALLOWED_ORIGIN}e" env=DEV_ALLOWED_ORIGIN
+    Header always set Access-Control-Allow-Headers "Authorization, X-App-Token, Content-Type" env=DEV_ALLOWED_ORIGIN
+    Header always set Access-Control-Allow-Methods "POST, GET, OPTIONS" env=DEV_ALLOWED_ORIGIN
+    Header always merge Vary "Origin" env=DEV_ALLOWED_ORIGIN
+</IfModule>
+
+# 3) Browsers and React Native send OPTIONS before a credentialed POST.
+RewriteCond %{REQUEST_METHOD} OPTIONS
+RewriteRule .* - [R=204,L]
+
+# No directory listing.
+Options -Indexes
