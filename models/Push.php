@@ -147,25 +147,51 @@ class Push
 
         $messages = [];
         foreach ($tokens as $t) {
-            $messages[] = [
+            $isIos = $t['platform'] === 'ios';
+            $notice = [
                 'to' => $t['token'],
-                'title' => (string)$title,
-                'body' => $text,
-                'sound' => 'default',
-                'priority' => 'default',
+                // Everything travels in the data map and nothing at the top.
+                //
+                // That is the whole difference between a notice that carries its
+                // own buttons and one that does not. A message with a title at
+                // the top is drawn by the phone's own system the moment it
+                // arrives - and the system draws it without anything the app
+                // knows about, so the Reply box and Mark as read never appear
+                // unless the app happens to be open. A message that is only
+                // data is handed to the app, and the app draws it with
+                // everything it knows: the buttons, the channel, the thread.
                 'data' => array_merge([
                     'notification' => '1',
-                    'notification_id' => $notificationId,
+                    'notification_id' => (string)$notificationId,
                     'type' => (string)$type,
                     'link' => (string)($link ?? ''),
                     'screen' => 'Notifications',
+                    // What the shade shows, in the keys the phone reads when it
+                    // draws the notification itself.
+                    'title' => (string)$title,
+                    'message' => $text,
+                    // Its own channel, so a badge does not sound like a message
+                    // and an announcement does not sound like either of them.
+                    'channelId' => 'notifications',
+                    // The tag is the notification's own name on the phone. One
+                    // tag per notice means a notice that is read and a new one
+                    // that arrives do not sit on top of each other.
+                    'tag' => 'notification-' . $notificationId,
+                    'threadIdentifier' => 'notifications',
+                    'sound' => 'default',
+                    'vibrate' => 'false',
                 ], $target),
-                // Its own channel, so a badge does not sound like a message
-                // and an announcement does not sound like either of them.
-                'channelId' => 'notifications',
+                'priority' => 'default',
                 'collapseId' => 'notification-' . $notificationId,
                 'threadId' => 'notifications',
             ];
+            if ($isIos) {
+                // iOS needs the title and body at the top of the payload.
+                $notice['title'] = (string)$title;
+                $notice['body'] = $text;
+                $notice['sound'] = 'default';
+            }
+            $messages[] = $notice;
         }
 
         $this->send($messages, $tokens);
@@ -196,38 +222,52 @@ class Push
         $messages = [];
         $picture = api_push_asset_url($from['profile_picture'] ?? null);
         foreach ($tokens as $t) {
+            $isIos = $t['platform'] === 'ios';
+
             $content = [
                 'to' => $t['token'],
-                'title' => (string)$from['name'],
-                'body' => $text,
-                // iOS plays this; on Android the sound belongs to the channel the
-                // app registers, which is the only place a notification may have
-                // one since Android 8.
-                'sound' => 'default',
-                'priority' => 'high',
-                // The thread travels with the notification, so opening it lands
-                // in the conversation it came from instead of the chat list, and
-                // the header there can show the right face without a second call.
+                // Everything travels in the data map and nothing at the top.
+                //
+                // A message with a title at the top is drawn by the phone's own
+                // system the moment it arrives, and the system draws it without
+                // anything the app knows about - no Reply box, no Mark as read,
+                // and one notification for every message. A message that is only
+                // data is handed to the app instead, and the app draws it with
+                // everything it knows: the buttons, the channel, the thread, and
+                // the one notification that replaces the last one.
                 'data' => [
-                    'conversation_id' => $conversationId,
-                    'message_id' => $messageId,
-                    'sender_id' => $senderId,
+                    'conversation_id' => (string)$conversationId,
+                    'message_id' => (string)$messageId,
+                    'sender_id' => (string)$senderId,
                     'sender_name' => (string)$from['name'],
                     'picture' => $picture,
                     'screen' => 'conversation',
+                    // What the shade shows, in the keys the phone reads when it
+                    // draws the notification itself.
+                    'title' => (string)$from['name'],
+                    'message' => $text,
+                    'channelId' => 'messages',
+                    // The tag is the notification's own name on the phone. One
+                    // tag per conversation means the fourth message from the
+                    // same person replaces the third instead of standing beside
+                    // it, which is how a chat is supposed to behave.
+                    'tag' => 'conversation-' . $conversationId,
+                    'threadIdentifier' => 'conversation-' . $conversationId,
+                    'sound' => 'default',
+                    'vibrate' => 'true',
                 ],
-                // One notification per thread in the shade, and the thread groups
-                // under one conversation, which is how a chat should behave when
-                // somebody sends four messages in a row.
+                'priority' => 'high',
                 'collapseId' => 'conversation-' . $conversationId,
                 'threadId' => 'conversation-' . $conversationId,
-                'channelId' => 'messages',
             ];
-            if ($picture !== '') {
-                // A face on the notification is the difference between a message
-                // and a system alert. The phone pulls this URL itself, so the
-                // picture never passes through a third-party push service.
-                $content['richContent'] = ['image' => $picture];
+            if ($isIos) {
+                // iOS draws the notification itself from the top of the payload,
+                // and needs the title and body there to show anything at all.
+                // It has no data-only mode worth using here, so it keeps the
+                // shape it has always had.
+                $content['title'] = (string)$from['name'];
+                $content['body'] = $text;
+                $content['sound'] = 'default';
             }
             if ($t['rich']) {
                 // The Reply box and Mark as read are buttons the phone already
@@ -235,9 +275,8 @@ class Push
                 // running Expo Go never claims `rich`, so it is not sent an id it
                 // has no buttons for.
                 //
-                // The id has to travel twice. iOS reads it from the top level of
-                // the payload, but Android reads it from the *data* map - the
-                // buttons are drawn from there and nowhere else, which is why a
+                // Android reads the id from the data map, and the buttons are
+                // drawn from there and nowhere else - which is why a
                 // notification could arrive with a name, a face and a message
                 // and still have no Reply box under it.
                 $content['categoryId'] = 'message';
@@ -288,19 +327,24 @@ class Push
         foreach ($tokens as $t) {
             $messages[] = [
                 'to' => $t['token'],
-                'title' => $from . ' is typing…',
-                'body' => '',
-                // No sound is asked for: the silent channel the app registers is
-                // what keeps a typing line quiet, and only that does it on the
-                // platform that owns notification sound.
+                // Data only, like every other notice: the app draws it, so it
+                // can put it on the quiet channel and let it expire in 25
+                // seconds without the phone making a sound.
                 'priority' => 'normal',
                 'ttl' => 25,
                 'data' => [
-                    'conversation_id' => $conversationId,
-                    'sender_id' => $senderId,
+                    'conversation_id' => (string)$conversationId,
+                    'sender_id' => (string)$senderId,
                     'sender_name' => $from,
                     'notice' => 'typing',
                     'screen' => 'conversation',
+                    'title' => $from . ' is typing…',
+                    'message' => '',
+                    'channelId' => 'typing',
+                    'tag' => 'typing-' . $conversationId,
+                    'threadIdentifier' => 'conversation-' . $conversationId,
+                    'sound' => null,
+                    'vibrate' => 'false',
                 ],
                 'collapseId' => 'conversation-' . $conversationId,
                 'threadId' => 'conversation-' . $conversationId,
@@ -311,14 +355,18 @@ class Push
         $this->send($messages, $tokens);
     }
 
-    /** @return array<int, array{token:string, rich:bool}> */
+    /** @return array<int, array{token:string, rich:bool, platform:string}> */
     private function tokensFor(int $userId): array
     {
-        $stmt = $this->pdo->prepare('SELECT token, rich FROM device_push_tokens WHERE user_id = ?');
+        $stmt = $this->pdo->prepare('SELECT token, rich, platform FROM device_push_tokens WHERE user_id = ?');
         $stmt->execute([$userId]);
         $out = [];
         foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $r) {
-            $out[] = ['token' => (string)$r['token'], 'rich' => (int)($r['rich'] ?? 0) === 1];
+            $out[] = [
+                'token' => (string)$r['token'],
+                'rich' => (int)($r['rich'] ?? 0) === 1,
+                'platform' => strtolower((string)($r['platform'] ?? 'android')),
+            ];
         }
         return $out;
     }
