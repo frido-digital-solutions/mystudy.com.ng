@@ -37,6 +37,10 @@ $messages = $msgModel->getMessages($convId, $userId, 50);
 // Fetch partner read status
 $partnerReadId = $msgModel->getPartnerReadId($convId, $partnerId);
 
+// How far the other person's phone has this thread. A message up to here has
+// been delivered to their device; past it, it is only sent.
+$partnerFetchedId = $msgModel->getFetchPointer($partnerId, $convId);
+
 // Mark as read
 if (!empty($messages)) {
     $lastMsg = end($messages);
@@ -375,8 +379,10 @@ include __DIR__ . '/includes/header.php';
                 if ($isSent) {
                     if ($msg['id'] <= $partnerReadId) {
                         $ticksHtml = '<i class="fas fa-check-double text-info ms-1" style="font-size: 0.65rem;" title="Read"></i>';
-                    } else {
+                    } elseif ($msg['id'] <= $partnerFetchedId) {
                         $ticksHtml = '<i class="fas fa-check-double text-secondary ms-1" style="font-size: 0.65rem;" title="Delivered"></i>';
+                    } else {
+                        $ticksHtml = '<i class="fas fa-check text-secondary ms-1" style="font-size: 0.65rem;" title="Sent"></i>';
                     }
                 }
             ?>
@@ -473,6 +479,7 @@ var MY_ID = <?php echo $userId; ?>;
 var MY_NAME = <?php echo json_encode($myName); ?>;
 var CONV_ID = <?php echo $convId; ?>;
 var partnerReadId = <?php echo $partnerReadId; ?>;
+var partnerFetchedId = <?php echo $partnerFetchedId; ?>;
 var lastMsgId = <?php echo !empty($messages) ? (int)end($messages)['id'] : 0; ?>;
 var ctxMsgId = null;
 var pollInterval = null;
@@ -603,6 +610,14 @@ function sendMessage() {
     // Lock the draft while in flight so a failed send restores it verbatim.
     input.readOnly = true;
 
+    var replyToBody = '';
+    var replyToName = '';
+    if (replyToMsgId) {
+        var quotedEl = document.querySelector('[data-msg-id="' + replyToMsgId + '"] .msg-bubble');
+        if (quotedEl) replyToBody = quotedEl.textContent.trim();
+        replyToName = 'Quoted message';
+    }
+
     var fd = new FormData();
     fd.append('action', 'send');
     fd.append('recipient_id', PARTNER_ID);
@@ -624,6 +639,28 @@ function sendMessage() {
         input.focus();
     }
 
+    // The message goes up straight away with a clock on it, the way a phone
+    // conversation shows it. Waiting for the round trip is what made sending
+    // feel slow: the bubble appeared a second later and the button looked
+    // broken. The clock is replaced by the real receipt when the server
+    // answers, and turned red if it never does.
+    var pendingId = -Date.now();
+    var pending = {
+        id: pendingId,
+        body: body,
+        created_at: new Date().toISOString(),
+        is_edited: 0,
+        reply_to_id: replyToMsgId || 0,
+        reply_to_body: replyToBody || '',
+        reply_to_sender_name: replyToName || ''
+    };
+    appendMessage(pending, true);
+    var pendingWrap = document.getElementById('msg-' + pendingId);
+
+    function dropPending() {
+        if (pendingWrap && pendingWrap.parentNode) pendingWrap.parentNode.removeChild(pendingWrap);
+    }
+
     fetch(SITE_URL + '/api_messages.php', { method: 'POST', body: fd })
         .then(function(r) {
             if (!r.ok) throw new Error('HTTP ' + r.status);
@@ -636,6 +673,11 @@ function sendMessage() {
                     partnerReadId = d.partnerReadId;
                     updateTicks();
                 }
+                if (d.partnerFetchedId !== undefined && d.partnerFetchedId > partnerFetchedId) {
+                    partnerFetchedId = d.partnerFetchedId;
+                }
+                // The placeholder gives way to the real message.
+                dropPending();
                 appendMessage(d.message, true);
                 lastMsgId = d.message.id;
                 cancelReply();
@@ -644,13 +686,29 @@ function sendMessage() {
                 // Re-focus to keep mobile keyboard open
                 setTimeout(function() { input.focus(); }, 50);
             } else {
+                markPendingFailed(pendingWrap);
                 restoreDraft((d && d.error) || 'Message not sent. Please try again.');
             }
         })
         .catch(function() {
             if (!sendInFlight) return;
+            markPendingFailed(pendingWrap);
             restoreDraft('Message not sent. Check your connection and try again.');
         });
+}
+
+/** The clock turns red: the message did not go, and the words are back in the box. */
+function markPendingFailed(wrap) {
+    if (!wrap) return;
+    var meta = wrap.querySelector('.msg-meta');
+    if (!meta) return;
+    var existing = meta.querySelector('.fa-clock, .fa-check, .fa-check-double');
+    if (existing) existing.remove();
+    var icon = document.createElement('i');
+    icon.className = 'fas fa-circle-exclamation text-danger ms-1';
+    icon.title = 'Not sent';
+    icon.style.fontSize = '0.65rem';
+    meta.appendChild(icon);
 }
 
 function appendMessage(msg, isSent) {
@@ -667,8 +725,13 @@ function appendMessage(msg, isSent) {
     
     var ticks = '';
     if (isSent) {
-        if (msg.id <= partnerReadId) {
+        if (msg.id < 0) {
+            // A negative id is a message that is still on its way.
+            ticks = '<i class="fas fa-clock text-secondary ms-1" style="font-size: 0.65rem;" title="Sending"></i>';
+        } else if (msg.id <= partnerReadId) {
             ticks = '<i class="fas fa-check-double text-info ms-1" style="font-size: 0.65rem;" title="Read"></i>';
+        } else if (msg.id <= partnerFetchedId) {
+            ticks = '<i class="fas fa-check-double text-secondary ms-1" style="font-size: 0.65rem;" title="Delivered"></i>';
         } else {
             ticks = '<i class="fas fa-check text-secondary ms-1" style="font-size: 0.65rem;" title="Sent"></i>';
         }
@@ -734,6 +797,10 @@ function pollMessages() {
                     partnerReadId = d.partnerReadId;
                     updateTicks();
                 }
+                if (d.partnerFetchedId !== undefined && d.partnerFetchedId > partnerFetchedId) {
+                    partnerFetchedId = d.partnerFetchedId;
+                    updateTicks();
+                }
                 
                 if (d.partner_typing) {
                     showPartnerTyping();
@@ -784,16 +851,22 @@ function updateTicks() {
         var id = parseInt(wrap.getAttribute('data-msg-id'));
         var meta = wrap.querySelector('.msg-meta');
         if (meta) {
-            var existing = meta.querySelector('.fa-check, .fa-check-double');
+            var existing = meta.querySelector('.fa-check, .fa-check-double, .fa-clock');
             if (existing) existing.remove();
             
             var icon = document.createElement('i');
-            if (id <= partnerReadId) {
+            if (id < 0) {
+                icon.className = 'fas fa-clock text-secondary ms-1';
+                icon.title = 'Sending';
+            } else if (id <= partnerReadId) {
                 icon.className = 'fas fa-check-double text-info ms-1';
                 icon.title = 'Read';
-            } else {
+            } else if (id <= partnerFetchedId) {
                 icon.className = 'fas fa-check-double text-secondary ms-1';
                 icon.title = 'Delivered';
+            } else {
+                icon.className = 'fas fa-check text-secondary ms-1';
+                icon.title = 'Sent';
             }
             icon.style.fontSize = '0.65rem';
             meta.appendChild(icon);

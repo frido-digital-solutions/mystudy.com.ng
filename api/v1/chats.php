@@ -240,6 +240,12 @@ if ($convId > 0) {
     $pRead = $pReadStmt->fetch(PDO::FETCH_ASSOC) ?: ['last_read_message_id' => 0, 'read_at' => null];
     $partnerRead = (int)$pRead['last_read_message_id'];
 
+    // This device has the thread up to here. That is what "delivered" means on
+    // the other person's screen, so it is written down and read back by the
+    // sender's phone.
+    $msg->noteFetch($userId, $convId, $newest);
+    $partnerFetched = $msg->getFetchPointer($partnerId, $convId);
+
     // The same two questions conversation.php asks before it draws a bubble:
     // may this message still be changed, and is it a tombstone. One hour, own
     // messages only, and never a message that is already deleted.
@@ -295,6 +301,8 @@ if ($convId > 0) {
         'read_up_to' => $myRead,
         'partner_read_up_to' => $partnerRead,
         'partner_read_at' => $pRead['read_at'],
+        // How far the other person's phone has this thread: two grey ticks.
+        'partner_fetched_up_to' => $partnerFetched,
         'partner_typing' => $pState['share'] && $msg->isPartnerTyping($userId, $partnerId),
         // The phone's clock and the server's rarely agree to the second, and
         // "last seen 5m ago" is a subtraction, so the diff is done against this.

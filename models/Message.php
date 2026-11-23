@@ -520,6 +520,43 @@ class Message {
         return (int)$stmt->fetchColumn();
     }
 
+    /**
+     * How far this person's device has the thread.
+     *
+     * "Sent" means the server has it. "Delivered" means the other person's
+     * phone has it - and the only honest way to know that is to notice when
+     * their phone asks for the thread. So every time a device fetches a
+     * conversation, the highest message id it received is written down here,
+     * and the sender's own phone compares its messages against that number.
+     *
+     * It is a pointer, not a copy: one row per conversation, kept in the same
+     * key/value table the app already uses for its clocks.
+     */
+    public function noteFetch(int $userId, int $conversationId, int $upTo): void {
+        if ($userId <= 0 || $conversationId <= 0 || $upTo <= 0) return;
+        try {
+            $this->pdo->prepare("
+                INSERT INTO user_meta (user_id, meta_key, meta_value)
+                VALUES (?, ?, ?)
+                ON DUPLICATE KEY UPDATE meta_value = GREATEST(CAST(meta_value AS UNSIGNED), VALUES(meta_value)), updated_at = NOW()
+            ")->execute([$userId, 'chat_fetch_' . $conversationId, (string)$upTo]);
+        } catch (Exception $e) {
+            // A missing pointer costs a tick, not a message.
+        }
+    }
+
+    /** How far the other person's device has the thread. */
+    public function getFetchPointer(int $userId, int $conversationId): int {
+        if ($userId <= 0 || $conversationId <= 0) return 0;
+        try {
+            $stmt = $this->pdo->prepare("SELECT meta_value FROM user_meta WHERE user_id = ? AND meta_key = ? LIMIT 1");
+            $stmt->execute([$userId, 'chat_fetch_' . $conversationId]);
+            return (int)$stmt->fetchColumn();
+        } catch (Exception $e) {
+            return 0;
+        }
+    }
+
     // ─── Blocking ─────────────────────────────────────────────────
 
     /**

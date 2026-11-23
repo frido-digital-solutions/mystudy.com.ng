@@ -23,6 +23,7 @@ require_once __DIR__ . '/../../models/Quiz.php';
 require_once __DIR__ . '/../../models/QuizAttempt.php';
 require_once __DIR__ . '/../../models/Battle.php';
 require_once __DIR__ . '/../../models/Gamification.php';
+require_once __DIR__ . '/../../includes/quiz_sessions.php';
 
 $user = api_auth();
 $userId = (int)$user['id'];
@@ -113,6 +114,9 @@ if ($isPost && $action === 'start') {
         $remaining = $duration;
     }
 
+    // The duel is under way: no Mentor for this student until the turn is in.
+    quiz_session_open($pdo, $userId, 'battle', $battleId);
+
     api_out([
         'ok' => true,
         'battle' => battle_brief($battle, $userId, $isChallenger),
@@ -172,6 +176,9 @@ if ($isPost && $action === 'submit') {
         log_error('api/v1 battle submit failed', ['battle_id' => $battleId, 'user_id' => $userId, 'err' => $e->getMessage()]);
         api_err('submit_failed', 'Could not record your turn. Try again.', 500);
     }
+
+    // The turn is in: the student is out of the duel and Mentor is theirs again.
+    quiz_session_close($pdo, $userId, 'battle', $battleId);
 
     $attempt = $attemptModel->getAttempt($attemptId, $userId);
     $score = $attempt ? (int)$attempt['score'] : 0;

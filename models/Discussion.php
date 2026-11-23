@@ -420,11 +420,40 @@ class Discussion
             $title = "⚠️ Content Reported";
             $message = "Your {$label} was reported by a user for: '" . trim($reason) . "'. Nothing has been removed - an admin is going to review it and decide. You will be told the outcome either way.";
 
+            // The notice says nothing has been removed, so the person must be
+            // able to look at the thing that was reported. The link carries the
+            // exact comment (or question) so it opens on that and not on the
+            // top of a long discussion.
+            $link = $this->targetLink($targetType, $targetId);
+
             // Only require Notification if we need it here
             require_once __DIR__ . '/Notification.php';
             $notif = new Notification($this->conn);
-            $notif->create($authorId, 'content_reported', $title, $message);
+            $notif->create($authorId, 'content_reported', $title, $message, $link);
         }
+    }
+
+    /**
+     * A link that opens the exact piece of content that was reported.
+     *
+     * A reported comment is one step below a question, so the link has to name
+     * the question it belongs to and then the comment inside it. Without the
+     * question the phone has nowhere to go; without the comment it opens the
+     * right discussion but not the thing in question.
+     */
+    private function targetLink(string $targetType, int $targetId): ?string
+    {
+        if ($targetType === 'discussion') {
+            return defined('SITE_URL') ? SITE_URL . '/discussion_view.php?id=' . $targetId : '/discussion_view.php?id=' . $targetId;
+        }
+
+        $stmt = $this->conn->prepare('SELECT discussion_id FROM discussion_comments WHERE id = ?');
+        $stmt->execute([$targetId]);
+        $discussionId = (int)$stmt->fetchColumn();
+        if ($discussionId <= 0) return null;
+
+        $base = defined('SITE_URL') ? SITE_URL : '';
+        return $base . '/discussion_view.php?id=' . $discussionId . '#comment-' . $targetId;
     }
 
     /** A short, human name for the reported thing, so the owner knows which one. */

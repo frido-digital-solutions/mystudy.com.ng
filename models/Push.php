@@ -18,6 +18,8 @@
  *   · Nothing about the message body is logged.
  */
 
+require_once __DIR__ . '/../includes/notification_target.php';
+
 class Push
 {
     private $pdo;
@@ -137,6 +139,12 @@ class Push
         if (mb_strlen($text) > 240) $text = mb_substr($text, 0, 239) . '…';
         if ($text === '') $text = 'Open MyStudy Base to read more.';
 
+        // Where this notice points, in terms the phone understands without
+        // having to read the website's link: which thing it is about. A reply
+        // to a comment carries the comment, so the app can put a finger on
+        // that exact comment and say "this one".
+        $target = notification_target_fields($link);
+
         $messages = [];
         foreach ($tokens as $t) {
             $messages[] = [
@@ -145,13 +153,13 @@ class Push
                 'body' => $text,
                 'sound' => 'default',
                 'priority' => 'default',
-                'data' => [
+                'data' => array_merge([
                     'notification' => '1',
                     'notification_id' => $notificationId,
                     'type' => (string)$type,
                     'link' => (string)($link ?? ''),
                     'screen' => 'Notifications',
-                ],
+                ], $target),
                 // Its own channel, so a badge does not sound like a message
                 // and an announcement does not sound like either of them.
                 'channelId' => 'notifications',
@@ -226,7 +234,14 @@ class Push
                 // knows about, registered by the app under this one id. A device
                 // running Expo Go never claims `rich`, so it is not sent an id it
                 // has no buttons for.
+                //
+                // The id has to travel twice. iOS reads it from the top level of
+                // the payload, but Android reads it from the *data* map - the
+                // buttons are drawn from there and nowhere else, which is why a
+                // notification could arrive with a name, a face and a message
+                // and still have no Reply box under it.
                 $content['categoryId'] = 'message';
+                $content['data']['categoryId'] = 'message';
             }
             $messages[] = $content;
         }

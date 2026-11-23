@@ -100,7 +100,14 @@ switch ($action) {
         $messages = $msgModel->getMessages($conv['id'], $userId, $limit, $beforeId);
 
         $partnerReadId = $msgModel->getPartnerReadId($conv['id'], $partnerId);
-        echo json_encode(['success' => true, 'messages' => $messages, 'conversation_id' => $conv['id'], 'partnerReadId' => $partnerReadId]);
+
+        // This browser has the thread up to here, which is what the other
+        // person's screen calls "delivered".
+        $newest = $messages ? (int)end($messages)['id'] : 0;
+        $msgModel->noteFetch($userId, $conv['id'], $newest);
+        $partnerFetchedId = $msgModel->getFetchPointer($partnerId, $conv['id']);
+
+        echo json_encode(['success' => true, 'messages' => $messages, 'conversation_id' => $conv['id'], 'partnerReadId' => $partnerReadId, 'partnerFetchedId' => $partnerFetchedId]);
         break;
 
     // ─── Polling: Global Unread Count ─────────────────────────────
@@ -139,7 +146,13 @@ switch ($action) {
         }
 
         $partnerReadId = $msgModel->getPartnerReadId($conv['id'], $partnerId);
-        
+
+        // The same delivery pointer the app uses: this browser has the thread
+        // up to here.
+        $newestSeen = $newMsgs ? (int)end($newMsgs)['id'] : $afterId;
+        $msgModel->noteFetch($userId, $conv['id'], $newestSeen);
+        $partnerFetchedId = $msgModel->getFetchPointer($partnerId, $conv['id']);
+
         // Fetch partner's latest last_active, and withhold it — with the typing
         // light that would give the same fact away — when they switched their
         // active status off. The phone applies the same rule in api/v1/chats.php.
@@ -153,7 +166,7 @@ switch ($action) {
 
         $partnerTyping = $partnerShares && $msgModel->isPartnerTyping($userId, $partnerId);
 
-        echo json_encode(['success' => true, 'messages' => $newMsgs, 'deleted_updates' => $deletedUpdates, 'edited_updates' => $editedUpdates, 'partnerReadId' => $partnerReadId, 'partner_last_active' => $partnerLastActive, 'partner_typing' => $partnerTyping, 'server_time' => time()]);
+        echo json_encode(['success' => true, 'messages' => $newMsgs, 'deleted_updates' => $deletedUpdates, 'edited_updates' => $editedUpdates, 'partnerReadId' => $partnerReadId, 'partnerFetchedId' => $partnerFetchedId, 'partner_last_active' => $partnerLastActive, 'partner_typing' => $partnerTyping, 'server_time' => time()]);
         break;
 
     // ─── Typing indicator ───────────────────────────────────────

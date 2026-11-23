@@ -6,6 +6,7 @@
 
 require_once __DIR__ . '/_bootstrap.php';
 require_once __DIR__ . '/../../models/Notification.php';
+require_once __DIR__ . '/../../includes/notification_target.php';
 
 $user = api_auth();
 $userId = (int)$user['id'];
@@ -30,7 +31,7 @@ $limit = max(10, min(100, (int)($_GET['limit'] ?? 50)));
 api_out([
     'ok' => true,
     'items' => array_map(static function ($n) {
-        return [
+        return array_merge([
             'id' => (int)$n['id'],
             'type' => (string)($n['type'] ?? ''),
             'title' => (string)($n['title'] ?? ''),
@@ -38,7 +39,7 @@ api_out([
             'link' => $n['link'] ?? null,
             'read' => (int)($n['is_read'] ?? 0) === 1,
             'created_at' => $n['created_at'] ?? null,
-        ];
+        ], notification_target_fields($n['link'] ?? null));
     }, $notificationModel->getUserNotifications($userId, $limit)),
     'unread' => $notificationModel->getUnreadCount($userId),
 ]);

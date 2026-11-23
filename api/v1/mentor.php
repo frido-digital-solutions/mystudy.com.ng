@@ -28,6 +28,7 @@
  */
 
 require_once __DIR__ . '/_bootstrap.php';
+require_once __DIR__ . '/../../includes/mentor_web.php';
 
 $KNOWLEDGE = require __DIR__ . '/../../config/mentor_knowledge.php';
 
@@ -71,24 +72,24 @@ $facts = mentor_facts($pdo, $user);
 $norm = mentor_norm($question);
 $personal = mentor_is_personal($norm);
 
+// A student in a paper does not get an assistant. On the phone the button is
+// not there at all; this is the rule behind it, so it holds even if the phone
+// is patched or the question is asked from another device.
+require_once __DIR__ . '/../../includes/quiz_sessions.php';
+$inQuiz = quiz_session_active($pdo, $userId);
+if ($inQuiz) {
+    api_err(
+        'quiz_in_progress',
+        'Mentor is switched off while you are taking a quiz. It comes back when your paper is handed in.',
+        423
+    );
+}
+
 // Read once here because every reply has to carry it: the chat bar shows how
-// many questions are left today, and that number is only honest if it comes
-// back with the answer rather than in a second call the phone must make.
+// many of the day's answers are left, and that number is only honest if it
+// comes back with the answer rather than in a second call the phone must make.
 $quota = mentor_quota($pdo, $userId);
 $aiAllowed = $quota['ai_available'];
-
-// Fifteen questions a day, and the counter starts here rather than at the
-// model, because the student's promise is about questions, not about which
-// part of the server answered them. The spend is taken before the answer is
-// composed so a slow or failed reply cannot be asked twice for free.
-if ((int)$quota['left'] <= 0) {
-    api_err('quota_used', 'You have used all ' . MENTOR_USER_DAY . ' questions for today. Mentor starts again at 12:00 am tomorrow.', 429, [
-        'quota' => $quota,
-    ]);
-}
-mentor_spend($pdo, $userId, 0);
-$quota = mentor_quota($pdo, $userId);
-$quota['ai_available'] = $aiAllowed;
 
 $matched = mentor_match($norm, $KNOWLEDGE['entries'], 3);
 $knowledge = mentor_knowledge_block($matched);
@@ -105,7 +106,8 @@ $asksHow = (bool)preg_match(
     $norm
 );
 
-// 1 - the account's own figures. Composed here, never by the model.
+// 1 - the account's own figures. Composed here, never by the model, and free:
+// the numbers are read out of the database, so nothing was spent to give them.
 if ($personal) {
     $direct = mentor_personal($norm, $facts);
     if ($direct !== null) {
@@ -125,81 +127,10 @@ if ($personal) {
     }
 }
 
-// 2 and 3 - knowledge, then the model on top of it.
-$aiAnswer = null;
-
-if ($aiAllowed && mentor_configured()) {
-    $aiAnswer = mentor_generate($KNOWLEDGE['persona'], $knowledge, mentor_fact_lines($facts), $history, $question);
-    if ($aiAnswer !== null) {
-        // The question itself was already counted above; only the neurons the
-        // model actually used are added here.
-        mentor_spend_neurons($pdo, $userId, $aiAnswer['neurons']);
-
-        // The entry the model named is the one the answer is really about, and
-        // it decides the button. So the button can no longer point somewhere
-        // else from what was just said: an answer about uploading notes and a
-        // button that opens the page of materials already downloaded cannot
-        // both be right, and now they cannot both happen.
-        $named = $aiAnswer['entry'] ?? null;
-        $chosen = null;
-        if ($named !== null && $named !== 'none') {
-            foreach ($matched as $m) {
-                if (strtolower((string)($m['entry']['id'] ?? '')) === $named) {
-                    $chosen = $m['entry'];
-                    break;
-                }
-            }
-        }
-        if ($chosen !== null) {
-            $fallback = [
-                'answer' => (string)$chosen['text'],
-                'link' => mentor_link($chosen['go'] ?? null),
-                'entry' => $chosen,
-            ];
-        } elseif ($named === 'none') {
-            // The model says the guide does not cover this question. That is
-            // taken at its word: the answer stands and carries no button,
-            // because there is nothing in the guide to point at. A student who
-            // asked about mitosis must not be handed the app-versus-website
-            // page because both sentences happen to contain the word
-            // "difference".
-            $fallback = null;
-        }
-
-        // The model sometimes hedges on a question the knowledge file does
-        // answer. Its wording is nicer and its facts are not - so when it
-        // admits it is unsure and a real entry is sitting right there, the
-        // entry is used instead. This is what makes "Mentor could not answer"
-        // a rare reply rather than the ordinary one.
-        if ($fallback !== null && preg_match(
-            '/\b(not sure|no information|do not have|don\'?t have|not written|i cannot|i can\'?t answer|not able)\b/i',
-            $aiAnswer['text']
-        )) {
-            $aiAnswer = null;
-        }
-
-        // The other failure is over-compression: handed a full entry, the model
-        // sometimes answers "Tap My Quizzes." - true, but it drops the button
-        // and the rule the student asked for. Under this many characters, with a
-        // real entry available, the entry is published in its place.
-        if ($fallback !== null && $aiAnswer !== null
-            && mb_strlen(trim((string)$aiAnswer['text'])) < 90
-            && mb_strlen((string)$fallback['answer']) > 180) {
-            $aiAnswer = null;
-        }
-    }
-}
-
-if ($aiAnswer !== null) {
-    api_out([
-        'ok' => true,
-        'source' => 'ai',
-        'answer' => $aiAnswer['text'],
-        'link' => $fallback['link'] ?? null,
-        'facts' => mentor_fact_lines($facts),
-    'quota' => $quota,]);
-}
-
+// 2 - the guide covers it. The written answer is the answer, so it goes out as
+// it was written, and it is free: no model, no search, no day spent. This is
+// the rule the student was promised - what the app already knows does not
+// count against the day's answers.
 if ($fallback !== null) {
     api_out([
         'ok' => true,
@@ -207,51 +138,70 @@ if ($fallback !== null) {
         'answer' => $fallback['answer'],
         'link' => $fallback['link'],
         'facts' => mentor_fact_lines($facts),
-    'quota' => $quota,]);
+        'quota' => $quota,
+    ]);
 }
 
-// Nothing in the knowledge file covered it. Two very different cases hide here.
-// If an entry did match, the question is about the app and the written answer
-// already went out above, so this is genuinely something nobody has told me -
-// hand it to support. If nothing matched at all, it is most likely a school
-// subject, and sending a student who asked about biology to a support inbox
-// would be the wrong answer, so it only failed to reach the model. Say so and
-// invite the retry.
-if (!$matched) {
-    // Past the day's allowance the model is never called, so the honest reply
-    // is that it is spent - telling a student to ask again would send them
-    // round the same wall.
-    if (!$quota['ai_available']) {
-        api_out([
-            'ok' => true,
-            'source' => 'none',
-            'answer' => 'My study answers are all used up for today, so just now I only know what is written in '
-                . 'my guide - quizzes, points, materials, battles, payments and settings, and your own record. '
-                . 'Ask me one of those, or try the subject again tomorrow.',
-            'link' => null,
-            'facts' => mentor_fact_lines($facts),
-        'quota' => $quota,]);
-    }
+// 3 - not in the guide. This is the question the model exists for, so this is
+// the only path that counts against the day's answers - and it counts only if
+// the model really answered.
+$answer = mentor_ask_model(
+    $KNOWLEDGE['persona'],
+    $knowledge,
+    mentor_fact_lines($facts),
+    $history,
+    $question,
+    $norm,
+    $matched
+);
+
+if ($answer !== null) {
+    // The model answered, so this question is charged for - once, for the
+    // question, and for the neurons it used.
+    mentor_spend_ai($pdo, $userId, (float)$answer['neurons']);
+    $quota = mentor_quota($pdo, $userId);
 
     api_out([
         'ok' => true,
-        'source' => 'none',
-        'answer' => 'That one slipped past me on the way through, not because I do not know it. I answer school '
-            . 'subjects as well as anything in this app, so ask it once more and I will explain it properly.',
-        'link' => null,
+        'source' => 'ai',
+        'answer' => $answer['text'],
+        'link' => $answer['link'],
         'facts' => mentor_fact_lines($facts),
-    'quota' => $quota,]);
+        'quota' => $quota,
+        'searched' => !empty($answer['searched']),
+    ]);
 }
 
+// 4 - the model is not available: its allowance for the day is spent, or the
+// service is down. The web is still open, and what it says is better than
+// nothing, so the results are read out as they stand - with the address under
+// each one, so the student can see where it came from.
+$search = mentor_web_search($question, 3);
+if ($search) {
+    api_out([
+        'ok' => true,
+        'source' => 'web',
+        'answer' => mentor_web_answer($search),
+        'link' => null,
+        'facts' => mentor_fact_lines($facts),
+        'quota' => $quota,
+        'searched' => true,
+    ]);
+}
+
+// Nothing at all: not in the guide, not on the web, and no model left for the
+// day. Say that, and stop. No support page, no "More, Help" - a student who
+// asked a question deserves an answer or a straight "I do not know this one",
+// not a hand-off to a mailbox.
 api_out([
     'ok' => true,
     'source' => 'none',
-    'answer' => 'I do not have that one written down yet, and I would rather say so than guess. '
-        . 'Tell a person what you were trying to do from More, Help, Contact support and they will answer it. '
-        . 'I can still help with quizzes, materials, battles, points, your own record, payments and settings.',
-    'link' => ['type' => 'screen', 'target' => 'Support', 'label' => 'Contact support'],
+    'answer' => 'I do not have that one, and my answers for today are used up. '
+        . 'Try me again tomorrow, or ask me something about your quizzes, points, materials, battles or settings any time - those are free.',
+    'link' => null,
     'facts' => mentor_fact_lines($facts),
-'quota' => $quota,]);
+    'quota' => $quota,
+]);
 
 // ─────────────────────────────────────────────────────────────── the account ────
 
@@ -809,7 +759,16 @@ function mentor_usage_ready(PDO $pdo): bool
     return $ready;
 }
 
-function mentor_spend(PDO $pdo, int $userId, float $neurons): void
+/**
+ * Charge one question to the day's allowance.
+ *
+ * This is called only when the model really answered. A question the guide
+ * covered, a question about the student's own record, a question answered from
+ * the web while the model was unavailable - none of those reach this function,
+ * so none of them costs the student anything. That is the whole promise: the
+ * day's allowance is for answers the app could not give by itself.
+ */
+function mentor_spend_ai(PDO $pdo, int $userId, float $neurons): void
 {
     try {
         $pdo->prepare('INSERT INTO mentor_usage (user_id, day, calls, neurons)
@@ -848,124 +807,164 @@ function mentor_spend_neurons(PDO $pdo, int $userId, float $neurons): void
  * figures - the model is allowed to phrase, never to source. max_tokens stays
  * small because a study helper that writes three paragraphs is not helping.
  */
-function mentor_generate(string $persona, string $knowledge, string $facts, array $history, string $question): ?array
+/**
+ * Ask the model, with the web beside it.
+ *
+ * Two questions arrive at the model at once:
+ *
+ *   · the student's question, and
+ *   · the answer to "has anybody already looked this up?"
+ *
+ * The web is asked first for the questions whose answer changes with time -
+ * when a registration opens, what a fee is, what was announced today. A model
+ * that has never heard of JAMB 2027 will answer JAMB 2027 confidently and
+ * wrongly, and a student cannot tell the difference. So for those questions
+ * the search happens before the model speaks, and the model writes its answer
+ * from what the search said.
+ *
+ * For everything else - a school subject, a piece of the app the guide did not
+ * cover - the model is offered the search as a tool and may use it, and the
+ * student is charged for the answer either way.
+ *
+ * @return array{text:string, link:?array, searched:bool, neurons:float}|null
+ */
+function mentor_ask_model(string $persona, string $knowledge, string $facts, array $history, string $question, string $norm, array $matched): ?array
 {
-    // The split matters more than the tone. Left without it, the model reads
-    // "KNOWLEDGE is the only source" too broadly and sends a biology question to
-    // the support page, which is the one failure a student notices.
+    if (!mentor_configured()) return null;
+
+    $tools = [[
+        'type' => 'function',
+        'function' => [
+            'name' => 'web_search',
+            'description' => 'Search the web for current information. Use it when the answer depends on facts that change: dates, registration windows, prices, announcements, results.',
+            'parameters' => [
+                'type' => 'object',
+                'properties' => [
+                    'query' => ['type' => 'string', 'description' => 'What to look for'],
+                ],
+                'required' => ['query'],
+            ],
+        ],
+    ]];
+
+    // A question about the world is looked up before it is answered.
+    $results = [];
+    if (mentor_is_current_question($norm)) {
+        $results = mentor_web_search($question, 4);
+    }
+    $searched = !empty($results);
+
     $system = $persona
         . "\n\nTwo kinds of question. About this app: say only what KNOWLEDGE states, and when KNOWLEDGE covers it, answer it straight out - never tell a student you are unsure of something that is written there. Keep the exact button names KNOWLEDGE gives; a one-line reply that drops them is no help. A price that is not written there is set by the school on that item, so say the price shows on the item itself."
         . "\n\nAbout a school subject - maths, biology, chemistry, economics, anything: that is not in KNOWLEDGE because it is not about the app, so answer it yourself from what you know, simply, with one example a Nigerian student can picture. Never send a study question to Contact support."
-        . "\n\nHow to answer. Say the thing that was actually asked, in the first sentence - if the question has two parts, answer both parts. Then give the step, the number or the reason that makes it usable. Write two to five short sentences: a reply of one line has almost always left the student still asking. Never reply with only a pointer to a page ('go to Settings') without saying what to do once there. Do not invent a 'tap ...' step that the entry does not state: if the entry explains a rule rather than a route, say the rule, because 'tap' in front of a sentence that is not a route makes the whole reply read as broken. If you genuinely do not know, say so in one sentence and stop."
+        . "\n\nHow to answer. Say the thing that was actually asked, in the first sentence - if the question has two parts, answer both parts. Then give the step, the number or the reason that makes it usable. Write two to five short sentences: a reply of one line has almost always left the student still asking. Never reply with only a pointer to a page ('go to Settings') without saying what to do once there. Do not invent a 'tap ...' step that the entry does not state: if the entry explains a rule rather than a route, say the rule, because 'tap' in front of a sentence that is not a route makes the whole reply read as broken."
+        . "\n\nIf WEB RESULTS are given, they are the truth for this question: build your answer on them, and give the date, the fee or the name exactly as they state it. If they say the thing has not been announced yet, say that it has not been announced yet - do not fill the gap with a guess. Name the sources in one short line at the end when you used them."
         . "\n\nKNOWLEDGE (the only thing you may state about the app):\n" . $knowledge
         . "\n\nSTUDENT NUMBERS (the only figures you may quote):\n" . $facts;
 
     // The entry the answer is really about is what decides the button the
-    // student presses, so the model is asked to name it. Without this the
-    // button came from a separate word-matching pass and the two could
-    // disagree: an answer about uploading notes with a button that opened the
-    // page of materials already downloaded.
+    // student presses, so the model is asked to name it.
     $system .= "\n\nWhich entry. Begin your reply with a line that reads exactly ENTRY: <id>, "
         . "where <id> is the id in square brackets of the ONE entry above that answers the "
         . "question - the one the student actually meant. If none of them answers it, write "
-        . "ENTRY: none and then answer from what you know. Name only that one entry, and do "
-        . "not write the ENTRY line again afterwards.";
+        . "ENTRY: none and then answer from what you know or from WEB RESULTS. Name only that "
+        . "one entry, and do not write the ENTRY line again afterwards.";
 
     $messages = [['role' => 'system', 'content' => $system]];
     foreach ($history as $turn) {
         $messages[] = ['role' => $turn['role'], 'content' => $turn['content']];
     }
-    $messages[] = ['role' => 'user', 'content' => mb_substr($question, 0, 500)];
 
-    // The model name carries slashes that must survive into the path, so it is
-    // put in the URL as written. Both halves are constants, never user input.
-    $url = 'https://api.cloudflare.com/client/v4/accounts/' . CLOUDFLARE_ACCOUNT_ID . '/ai/run/' . MENTOR_MODEL;
-    $payload = json_encode([
-        'messages' => $messages,
-        'max_tokens' => 420,
-        'temperature' => 0.2,
-    ]);
+    $ask = mb_substr($question, 0, 500);
+    if ($searched) {
+        $ask .= "\n\nWEB RESULTS (from the web, use these):\n" . mentor_search_block($results);
+    }
+    $messages[] = ['role' => 'user', 'content' => $ask];
 
-    // A model that has not been called for a while starts slowly, and the TLS
-    // handshake from this machine fails now and then, so the call gets a real
-    // timeout and one retry. Waiting two more seconds for a proper answer beats
-    // falling back too early; the knowledge file is the last resort, not the
-    // first answer.
-    $lastErr = '';
-    // The app stops waiting at 60 seconds, so the whole call budget is capped
-    // well inside that. Each try then gets its ladder time or whatever is left.
-    $by = microtime(true) + 44;
-    for ($try = 0; $try < 2; $try++) {
-        $left = (int)ceil($by - microtime(true));
-        if ($left < 5) {
-            $lastErr = 'gave up inside the app deadline';
-            break;
+    // When the search has already been done there is no reason to offer the
+    // tool again; when it has not, the model may ask for it.
+    $out = mentor_model_call($messages, $searched ? [] : $tools);
+    if ($out === null) return null;
+
+    // The model asked for a search of its own accord: do it and ask again.
+    if (!$searched && !empty($out['tool_query'])) {
+        $results = mentor_web_search((string)$out['tool_query'], 4);
+        if ($results) {
+            $searched = true;
+            $messages[count($messages) - 1]['content'] = mb_substr($question, 0, 500)
+                . "\n\nWEB RESULTS (from the web, use these):\n" . mentor_search_block($results);
+            $out = mentor_model_call($messages, []);
+            if ($out === null) return null;
         }
-        $ch = curl_init($url);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_POST, true);
-        curl_setopt($ch, CURLOPT_HTTPHEADER, [
-            'Authorization: Bearer ' . CLOUDFLARE_AI_TOKEN,
-            'Content-Type: application/json',
-            'Expect:',
-        ]);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, $payload);
-        // The two tries together must finish inside the app's own 60 second
-        // wait, or the phone gives up while the server still has an answer to
-        // give it. Hence 24 then 28, never past what the budget leaves.
-        curl_setopt($ch, CURLOPT_TIMEOUT, min($try === 0 ? 24 : 28, $left));
-        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 8);
-        // Same convention as the rest of the server's API calls: XAMPP ships no
-        // CA store, so peer checks are off rather than every call failing here.
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
-        // Local OpenSSL stumbles on TLS 1.3 against the edge; 1.2 is what the
-        // email and payment calls from this box already use without trouble.
-        curl_setopt($ch, CURLOPT_SSLVERSION, CURL_SSLVERSION_TLSv1_2);
-
-        $body = curl_exec($ch);
-        $errno = curl_errno($ch);
-        $http = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        curl_close($ch);
-
-        if ($errno !== 0 || $http < 200 || $http >= 300) {
-            $lastErr = trim('http=' . $http . ' errno=' . $errno . ' ' . substr((string)$body, 0, 200));
-            continue;
-        }
-
-        $json = json_decode((string)$body, true);
-        if (!is_array($json) || !($json['success'] ?? false)) {
-            error_log('mentor ai refused: ' . substr((string)$body, 0, 400));
-            return null;
-        }
-
-        $text = $json['result']['response']
-            ?? ($json['result']['choices'][0]['message']['content'] ?? null);
-        // An empty completion happens now and then, and it is worth the second
-        // try rather than a wrong trip to the support page.
-        if (!is_string($text) || trim($text) === '') {
-            $lastErr = 'empty completion ' . substr((string)$body, 0, 200);
-            continue;
-        }
-
-        // The entry the model named comes off the front of its reply: the
-        // student reads the answer, not the bookkeeping that decided the button.
-        // The id may come back in square brackets, so both are accepted.
-        $entryId = null;
-        if (preg_match('/^\s*ENTRY:\s*\[?([a-z0-9_-]+)\]?/mi', $text, $m)) {
-            $entryId = strtolower(trim($m[1]));
-            $text = preg_replace('/^\s*ENTRY:\s*\[?[a-z0-9_-]+\]?\s*/i', '', $text);
-        }
-
-        return [
-            'text' => mentor_clean($text),
-            'entry' => $entryId,
-            'neurons' => (float)($json['result']['usage']['neurons'] ?? 0),
-        ];
     }
 
-    error_log('mentor ai, both tries failed: ' . $lastErr);
-    return null;
+    $text = trim((string)($out['text'] ?? ''));
+    if ($text === '') return null;
+
+    // The entry the model named comes off the front of its reply: the student
+    // reads the answer, not the bookkeeping that decided the button.
+    $entryId = null;
+    if (preg_match('/^\s*ENTRY:\s*\[?([a-z0-9_-]+)\]?/mi', $text, $m)) {
+        $entryId = strtolower(trim($m[1]));
+        $text = preg_replace('/^\s*ENTRY:\s*\[?[a-z0-9_-]+\]?\s*/i', '', $text);
+    }
+
+    $link = null;
+    if ($entryId !== null && $entryId !== 'none') {
+        foreach ($matched as $m) {
+            if (strtolower((string)($m['entry']['id'] ?? '')) === $entryId) {
+                $link = mentor_link($m['entry']['go'] ?? null);
+                break;
+            }
+        }
+    }
+
+    return [
+        'text' => mentor_clean($text),
+        'link' => $link,
+        'searched' => $searched,
+        'neurons' => (float)($out['neurons'] ?? 0),
+    ];
+}
+
+/**
+ * Does this question want an answer that changes with the calendar?
+ *
+ * Dates, registration windows, prices, announcements - the things a model
+ * cannot know because it stopped reading the news at some point. A question
+ * about mitosis is not one of them, and searching for it would only slow the
+ * answer down and fill it with noise.
+ */
+function mentor_is_current_question(string $norm): bool
+{
+    return (bool)preg_match(
+        '/\b(date|dates|when|registration|register|opening|closing|deadline|schedule'
+        . '|price|prices|cost|costs|fee|fees|amount|latest|news|current|currently'
+        . '|announce[ds]?|announcement|form|forms|jamb|waec|neco|post[- ]?utme'
+        . '|20[2-9][0-9])\b/u',
+        $norm
+    );
+}
+
+/**
+ * The web's results, written out as an answer.
+ *
+ * Used when the model cannot be called - the day's allowance is spent, or the
+ * service is down. The student still gets the facts, with the address under
+ * each one, which is more useful than being told to go and look it up.
+ */
+function mentor_web_answer(array $results): string
+{
+    $lines = [];
+    $i = 0;
+    foreach ($results as $r) {
+        $i++;
+        $lines[] = $i . '. ' . $r['title']
+            . ($r['snippet'] !== '' ? ' - ' . mb_substr($r['snippet'], 0, 220) : '')
+            . ($r['url'] !== '' ? ' (' . $r['url'] . ')' : '');
+    }
+
+    return "I looked this up on the web. Here is what it says:\n\n" . implode("\n", $lines);
 }
 
 /**
