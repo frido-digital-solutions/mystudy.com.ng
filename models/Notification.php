@@ -25,7 +25,16 @@ class Notification
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
     }
     
-    public function create(int $userId, string $type, string $title, string $message, ?string $link = null): int
+    /**
+     * Write one notice into a person's notification list, and tell the phone.
+     *
+     * The list and the phone's shade are the same notice seen from two
+     * places, so the same call writes the row, sends the browser's web push
+     * and sends the app's push. $appPush is false only where the caller has
+     * already sent the phone its copy - a broadcast, which is one message for
+     * everybody rather than one per person.
+     */
+    public function create(int $userId, string $type, string $title, string $message, ?string $link = null, bool $appPush = true): int
     {
         $sql = "INSERT INTO notifications (user_id, type, title, message, link) VALUES (?, ?, ?, ?, ?)";
         $stmt = $this->conn->prepare($sql);
@@ -39,6 +48,17 @@ class Notification
             $push->sendToUser($userId, $title, $message, $link);
         } catch (\Throwable $e) {
             error_log('WebPush dispatch failed: ' . $e->getMessage());
+        }
+
+        // And the app: the phone this person is holding right now.
+        if ($appPush) {
+            try {
+                require_once __DIR__ . '/Push.php';
+                $phone = new Push($this->conn);
+                $phone->notifyNotification($userId, $id, $type, $title, $message, $link);
+            } catch (\Throwable $e) {
+                error_log('App push dispatch failed: ' . $e->getMessage());
+            }
         }
 
         return $id;

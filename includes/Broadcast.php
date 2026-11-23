@@ -58,7 +58,10 @@ if (!function_exists('msb_broadcast_all')) {
             $notifModel = new Notification($pdo);
             foreach ($ids as $uid) {
                 try {
-                    $notifModel->create((int)$uid, 'admin_broadcast', $title, $body, null);
+                    // The broadcast itself is already on its way to every
+                    // phone as one push; this row is the same notice in the
+                    // person's list, and must not send a second one.
+                    $notifModel->create((int)$uid, 'admin_broadcast', $title, $body, null, false);
                     $result['inapp']++;
                 } catch (Throwable $e) {
                     // One account failing to be written is not a reason to stop

@@ -139,6 +139,47 @@ try {
 }
 
 /**
+ * The phones.
+ *
+ * A push notification only exists if the phone told the server where to send
+ * it, so the number of rows here is the number of phones that can hear
+ * anything at all. It is the first thing to look at when "no notification
+ * arrived" is the complaint.
+ */
+echo "\n-- phones --\n";
+try {
+    global $pdo;
+    $devices = (int)$pdo->query('SELECT COUNT(*) FROM device_push_tokens')->fetchColumn();
+    $users = (int)$pdo->query('SELECT COUNT(DISTINCT user_id) FROM device_push_tokens')->fetchColumn();
+    msb_health_line('  phones registered', (string)$devices);
+    msb_health_line('  accounts with a phone', (string)$users);
+    foreach ($pdo->query('SELECT user_id, platform, rich, last_seen_at FROM device_push_tokens ORDER BY last_seen_at DESC LIMIT 5')->fetchAll(PDO::FETCH_ASSOC) as $d) {
+        msb_health_line('    device', 'user ' . $d['user_id'] . ' | ' . $d['platform'] . ' | rich=' . $d['rich'] . ' | last seen ' . $d['last_seen_at']);
+    }
+} catch (Throwable $e) {
+    msb_health_line('  phones', 'could not be read: ' . $e->getMessage());
+}
+
+/**
+ * What the phones have been saying.
+ *
+ * When a phone cannot register, the reason is on the phone and nowhere else.
+ * The phone sends it back, and this is where it is read.
+ */
+echo "\n-- what the phones reported --\n";
+try {
+    $rows = $pdo->query('SELECT user_id, step, detail, created_at FROM push_diagnostics ORDER BY id DESC LIMIT 8')->fetchAll(PDO::FETCH_ASSOC);
+    if (!$rows) {
+        msb_health_line('  nothing reported', 'no phone has reported a problem');
+    }
+    foreach ($rows as $r) {
+        msb_health_line('  ' . $r['created_at'], 'user ' . ($r['user_id'] ?? '?') . ' | ' . $r['step'] . ' | ' . $r['detail']);
+    }
+} catch (Throwable $e) {
+    msb_health_line('  reports', 'could not be read: ' . $e->getMessage());
+}
+
+/**
  * Which database actually holds the site's data?
  *
  * The database name in secrets.local.php is sometimes wrong - a copy of the
@@ -186,5 +227,20 @@ msb_health_line('logs/ writable', is_writable($logDir) ? 'yes' : 'NO');
 $probe = $logDir . '/.healthcheck.tmp';
 msb_health_line('logs/ can create a file', @file_put_contents($probe, 'x') !== false ? 'yes' : 'NO');
 if (file_exists($probe)) @unlink($probe);
+
+/**
+ * The last few lines of the error log. A 401 the phone never recovered from,
+ * or a push that was refused, is written here and nowhere else.
+ */
+echo "\n-- recent errors --\n";
+$logFile = __DIR__ . '/../logs/error.log';
+if (is_readable($logFile)) {
+    $lines = @file($logFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) ?: [];
+    $tail = array_slice($lines, -12);
+    if (!$tail) msb_health_line('  error log', 'empty');
+    foreach ($tail as $line) msb_health_line('  ', $line);
+} else {
+    msb_health_line('  error log', 'not readable');
+}
 
 echo "\n-- done --\n";

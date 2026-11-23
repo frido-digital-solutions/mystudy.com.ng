@@ -31,7 +31,7 @@
  *   node tools/make-schema-php.js schema.sql includes/schema-tables.php
  */
 
-define('MSB_SCHEMA_VERSION', 'c5d8b6e3bc9b');
+define('MSB_SCHEMA_VERSION', '46eebc13bd1f');
 
 /**
  * @return array<int, string> the CREATE TABLE statements, in order
@@ -559,6 +559,20 @@ CREATE TABLE IF NOT EXISTS `posts` (
   PRIMARY KEY (`id`),
   UNIQUE KEY `slug` (`slug`)
 ) ENGINE=InnoDB AUTO_INCREMENT=31 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+SQL,
+
+        // push_diagnostics
+        <<<'SQL'
+CREATE TABLE IF NOT EXISTS `push_diagnostics` (
+`id` int(11) NOT NULL AUTO_INCREMENT,
+  `user_id` int(11) DEFAULT NULL,
+  `step` varchar(60) DEFAULT NULL,
+  `detail` varchar(500) DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`id`),
+  KEY `idx_push_diag_user` (`user_id`),
+  KEY `idx_push_diag_created` (`created_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 SQL,
 
         // push_subscriptions
@@ -1209,6 +1223,13 @@ function msb_schema_columns(): array
             "level" => "`level` varchar(20) NOT NULL DEFAULT 'Secondary'",
             "university_id" => "`university_id` int(11) DEFAULT NULL",
             "is_university_general" => "`is_university_general` tinyint(1) NOT NULL DEFAULT 0",
+        ],
+        "push_diagnostics" => [
+            "id" => "`id` int(11) NOT NULL AUTO_INCREMENT",
+            "user_id" => "`user_id` int(11) DEFAULT NULL",
+            "step" => "`step` varchar(60) DEFAULT NULL",
+            "detail" => "`detail` varchar(500) DEFAULT NULL",
+            "created_at" => "`created_at` timestamp NOT NULL DEFAULT current_timestamp()",
         ],
         "push_subscriptions" => [
             "id" => "`id` int(11) NOT NULL AUTO_INCREMENT",

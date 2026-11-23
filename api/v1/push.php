@@ -43,8 +43,28 @@ if ($action === 'unregister') {
     api_out(['ok' => true, 'registered' => false]);
 }
 
+if ($action === 'report') {
+    // The phone tells the server why it could not register. A phone that is
+    // not registered is invisible from this side - it simply is not in the
+    // list of devices - and the reason it is not there is on the phone. So
+    // the phone sends the reason back, and it is kept where it can be read.
+    // Nothing about a message is ever sent here: only the name of the step
+    // that failed and what it said.
+    $step = (string)api_field($in, 'step', 'unknown');
+    $detail = (string)api_field($in, 'detail', '');
+    try {
+        $stmt = $pdo->prepare(
+            'INSERT INTO push_diagnostics (user_id, step, detail) VALUES (?, ?, ?)'
+        );
+        $stmt->execute([$userId, mb_substr($step, 0, 60), mb_substr($detail, 0, 500)]);
+    } catch (Throwable $e) {
+        // A report that cannot be stored is not worth breaking the app over.
+    }
+    api_out(['ok' => true, 'reported' => true]);
+}
+
 if ($action !== 'register') {
-    api_err('unknown_action', 'Only register and unregister are known here.', 422);
+    api_err('unknown_action', 'Only register, unregister and report are known here.', 422);
 }
 
 $platform = api_field($in, 'platform', 'android') === 'ios' ? 'ios' : 'android';

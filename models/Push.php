@@ -108,6 +108,62 @@ class Push
     }
 
     /**
+     * One notice from the notification list, sent to the phones as well.
+     *
+     * The notification list is not a second-class surface: anything the
+     * website writes there - a badge, a challenge result, an answer to a post,
+     * a message from the support team - is something the person is waiting to
+     * hear about, and the phone is where they are when they are not looking at
+     * the website. So the notice is sent to every device the account has, with
+     * enough of itself in the payload (which notice it is, what it is about,
+     * where it opens) that the phone can do exactly what a tap on the row in
+     * the list would have done.
+     *
+     * @param int $userId
+     * @param int $notificationId the row in the notifications table
+     * @param string $type
+     * @param string $title
+     * @param string $message
+     * @param string|null $link the website link the notice carries
+     */
+    public function notifyNotification(int $userId, int $notificationId, string $type, string $title, string $message, ?string $link = null): void
+    {
+        if ($userId <= 0) return;
+
+        $tokens = $this->tokensFor($userId);
+        if (!$tokens) return; // Nobody to tell; the row is in the list all the same.
+
+        $text = trim(preg_replace('/\s+/u', ' ', strip_tags((string)$message)));
+        if (mb_strlen($text) > 240) $text = mb_substr($text, 0, 239) . '…';
+        if ($text === '') $text = 'Open MyStudy Base to read more.';
+
+        $messages = [];
+        foreach ($tokens as $t) {
+            $messages[] = [
+                'to' => $t['token'],
+                'title' => (string)$title,
+                'body' => $text,
+                'sound' => 'default',
+                'priority' => 'default',
+                'data' => [
+                    'notification' => '1',
+                    'notification_id' => $notificationId,
+                    'type' => (string)$type,
+                    'link' => (string)($link ?? ''),
+                    'screen' => 'Notifications',
+                ],
+                // Its own channel, so a badge does not sound like a message
+                // and an announcement does not sound like either of them.
+                'channelId' => 'notifications',
+                'collapseId' => 'notification-' . $notificationId,
+                'threadId' => 'notifications',
+            ];
+        }
+
+        $this->send($messages, $tokens);
+    }
+
+    /**
      * The one call the rest of the app makes for a new message.
      */
     public function notifyNewMessage(int $conversationId, int $senderId, string $body, int $messageId): void
