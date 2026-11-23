@@ -31,7 +31,7 @@
  *   node tools/make-schema-php.js schema.sql includes/schema-tables.php
  */
 
-define('MSB_SCHEMA_VERSION', '46eebc13bd1f');
+define('MSB_SCHEMA_VERSION', '05b8cdd170c1');
 
 /**
  * @return array<int, string> the CREATE TABLE statements, in order
@@ -113,7 +113,7 @@ CREATE TABLE IF NOT EXISTS `api_tokens` (
   UNIQUE KEY `token_hash` (`token_hash`),
   KEY `user_id` (`user_id`),
   CONSTRAINT `api_tokens_user_fk` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=150 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=153 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 SQL,
 
         // quizzes
@@ -263,7 +263,7 @@ CREATE TABLE IF NOT EXISTS `conversations` (
   UNIQUE KEY `unique_pair` (`user_one_id`,`user_two_id`),
   KEY `idx_user_one` (`user_one_id`),
   KEY `idx_user_two` (`user_two_id`)
-) ENGINE=InnoDB AUTO_INCREMENT=64 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=65 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 SQL,
 
         // device_push_tokens
@@ -279,7 +279,7 @@ CREATE TABLE IF NOT EXISTS `device_push_tokens` (
   PRIMARY KEY (`id`),
   UNIQUE KEY `unique_token` (`token`),
   KEY `idx_push_user` (`user_id`)
-) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=8 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 SQL,
 
         // discussions
@@ -510,7 +510,7 @@ CREATE TABLE IF NOT EXISTS `notifications` (
   PRIMARY KEY (`id`),
   KEY `user_id` (`user_id`),
   CONSTRAINT `notifications_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=1046 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=1047 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 SQL,
 
         // offline_attempts
@@ -705,6 +705,20 @@ CREATE TABLE IF NOT EXISTS `quiz_payments` (
   CONSTRAINT `quiz_payments_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
   CONSTRAINT `quiz_payments_ibfk_2` FOREIGN KEY (`quiz_id`) REFERENCES `quizzes` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB AUTO_INCREMENT=21 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+SQL,
+
+        // quiz_sessions
+        <<<'SQL'
+CREATE TABLE IF NOT EXISTS `quiz_sessions` (
+`id` int(11) NOT NULL AUTO_INCREMENT,
+  `user_id` int(11) NOT NULL,
+  `kind` varchar(20) NOT NULL DEFAULT 'quiz',
+  `ref_id` int(11) NOT NULL DEFAULT 0,
+  `started_at` datetime NOT NULL DEFAULT current_timestamp(),
+  `ended_at` datetime DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `idx_quiz_session_user` (`user_id`,`ended_at`)
+) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 SQL,
 
         // rate_limits
@@ -1295,6 +1309,14 @@ function msb_schema_columns(): array
             "receipt_path" => "`receipt_path` varchar(255) DEFAULT NULL",
             "status" => "`status` enum('pending','successful','failed') NOT NULL DEFAULT 'pending'",
             "created_at" => "`created_at` datetime DEFAULT current_timestamp()",
+        ],
+        "quiz_sessions" => [
+            "id" => "`id` int(11) NOT NULL AUTO_INCREMENT",
+            "user_id" => "`user_id` int(11) NOT NULL",
+            "kind" => "`kind` varchar(20) NOT NULL DEFAULT 'quiz'",
+            "ref_id" => "`ref_id` int(11) NOT NULL DEFAULT 0",
+            "started_at" => "`started_at` datetime NOT NULL DEFAULT current_timestamp()",
+            "ended_at" => "`ended_at` datetime DEFAULT NULL",
         ],
         "rate_limits" => [
             "rate_key" => "`rate_key` varchar(191) NOT NULL",
