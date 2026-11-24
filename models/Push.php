@@ -181,7 +181,12 @@ class Push
                     'sound' => 'default',
                     'vibrate' => 'false',
                 ], $target),
-                'priority' => 'default',
+                // A notice is only data, so the phone draws it itself - and a
+                // data message that the phone has to wake up for has to be
+                // marked high, or the phone is allowed to hold it until it has
+                // nothing better to do. A notice about a reply to a post is
+                // exactly the kind of thing that must not wait.
+                'priority' => 'high',
                 'collapseId' => 'notification-' . $notificationId,
                 'threadId' => 'notifications',
             ];
@@ -355,7 +360,60 @@ class Push
         $this->send($messages, $tokens);
     }
 
-    /** @return array<int, array{token:string, rich:bool, platform:string}> */
+    /**
+     * A test push, to this account's own phones.
+     *
+     * "Notifications are not working" is the hardest thing to answer without a
+     * way to ask the phone itself. So the phone can ask: this sends one
+     * ordinary notice to every device the account has, through the same code
+     * path as every other notice, and answers with what the push service said
+     * about it. The message says nothing that is not already on the phone's
+     * own screen, so nothing about anybody's private business is carried by
+     * it.
+     *
+     * @return array{devices:int, sent:int, failed:int, dead:int}
+     */
+    public function notifyTest(int $userId): array
+    {
+        $tokens = $this->tokensFor($userId);
+        if (!$tokens) return ['devices' => 0, 'sent' => 0, 'failed' => 0, 'dead' => 0];
+
+        $text = 'If you can read this, push is working on this phone.';
+        $messages = [];
+        foreach ($tokens as $t) {
+            $content = [
+                'to' => $t['token'],
+                'data' => [
+                    'notification' => '1',
+                    'type' => 'test',
+                    'screen' => 'Notifications',
+                    'title' => 'MyStudy Base',
+                    'message' => $text,
+                    'channelId' => 'notifications',
+                    'tag' => 'notification-test',
+                    'threadIdentifier' => 'notifications',
+                    'sound' => 'default',
+                    'vibrate' => 'false',
+                ],
+                'priority' => 'high',
+                'collapseId' => 'notification-test',
+                'threadId' => 'notifications',
+            ];
+            if ($t['platform'] === 'ios') {
+                $content['title'] = 'MyStudy Base';
+                $content['body'] = $text;
+                $content['sound'] = 'default';
+            }
+            $messages[] = $content;
+        }
+
+        $stats = $this->send($messages, $tokens);
+        return ['devices' => count($tokens)] + $stats;
+    }
+
+    /**
+     * @return array<int, array{token:string, rich:bool, platform:string}>
+     */
     private function tokensFor(int $userId): array
     {
         $stmt = $this->pdo->prepare('SELECT token, rich, platform FROM device_push_tokens WHERE user_id = ?');
@@ -507,6 +565,13 @@ class Push
         curl_close($ch);
 
         if ($res === false || $status >= 400) {
+            // A push that failed must not be a secret. The health check reads
+            // this log, so the failure can be seen instead of guessed at.
+            error_log(sprintf(
+                'push: the push service refused the batch (http %d): %s',
+                $status,
+                substr((string)$res, 0, 200)
+            ));
             $stats['failed'] = count($messages);
             return $stats;
         }
@@ -518,6 +583,19 @@ class Push
             if (!is_array($ticket)) continue;
             $err = (string)($ticket['details']['error'] ?? '');
             $msg = (string)($ticket['message'] ?? '');
+            $ticketId = (string)($ticket['id'] ?? '');
+            $status2 = (string)($ticket['status'] ?? '');
+            // What the push service said about this phone. The message body is
+            // never written down - only what the service said about the
+            // delivery itself.
+            error_log(sprintf(
+                'push: ticket %s status=%s error=%s token=%s message=%s',
+                $ticketId !== '' ? $ticketId : '-',
+                $status2 !== '' ? $status2 : '-',
+                $err !== '' ? $err : '-',
+                substr((string)($tokens[$i]['token'] ?? ''), -12),
+                substr($msg, 0, 140)
+            ));
             $gone = $err === 'DeviceNotRegistered' || stripos($msg, 'DeviceNotRegistered') !== false;
             if ($gone) {
                 $stats['dead']++;

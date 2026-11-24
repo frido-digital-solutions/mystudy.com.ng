@@ -4,6 +4,8 @@
  *
  *   {action:'register',   token, platform, rich}  -> start notifying this device
  *   {action:'unregister', token}                   -> stop notifying this device
+ *   {action:'report',     step, detail}            -> this phone could not register
+ *   {action:'test'}                                -> send this account one test notice
  *
  * A token is only ever written, never read back out of here. It is a standing
  * instruction to deliver messages to that one phone, so handing it to any other
@@ -27,13 +29,22 @@ $in = api_input();
 $action = api_field($in, 'action', 'register');
 $token = api_field($in, 'token');
 
+$push = new Push($pdo);
+
+if ($action === 'test') {
+    // The phone asks the server to send it one ordinary notice, so that
+    // "notifications are not working" becomes a question with an answer.
+    // No device address is involved: the server already knows which phones
+    // belong to this account.
+    $stats = $push->notifyTest($userId);
+    api_out(['ok' => true, 'test' => $stats]);
+}
+
 // Expo hands out tokens in two shapes, both bracketed and around 60 characters.
 // Anything longer is somebody probing the endpoint, not a phone.
 if ($token === '' || strlen($token) > 250) {
     api_err('bad_token', 'That device address is not usable.', 422);
 }
-
-$push = new Push($pdo);
 
 if ($action === 'unregister') {
     // Scoped to this account: a guessed token must not be able to silence
@@ -63,8 +74,15 @@ if ($action === 'report') {
     api_out(['ok' => true, 'reported' => true]);
 }
 
+if ($action === 'test') {
+    // The phone asks the server to send it one ordinary notice, so that
+    // "notifications are not working" becomes a question with an answer.
+    $stats = $push->notifyTest($userId);
+    api_out(['ok' => true, 'test' => $stats]);
+}
+
 if ($action !== 'register') {
-    api_err('unknown_action', 'Only register, unregister and report are known here.', 422);
+    api_err('unknown_action', 'Only register, unregister, report and test are known here.', 422);
 }
 
 $platform = api_field($in, 'platform', 'android') === 'ios' ? 'ios' : 'android';
