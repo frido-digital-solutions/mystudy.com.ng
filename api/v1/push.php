@@ -34,9 +34,10 @@ $push = new Push($pdo);
 if ($action === 'test') {
     // The phone asks the server to send it one ordinary notice, so that
     // "notifications are not working" becomes a question with an answer.
-    // No device address is involved: the server already knows which phones
-    // belong to this account.
-    $stats = $push->notifyTest($userId);
+    // The phone says which phone it is, so the notice goes to that one phone
+    // and not to every device the account has ever registered.
+    $only = api_field($in, 'token');
+    $stats = $push->notifyTest($userId, $only !== '' ? $only : null);
     api_out(['ok' => true, 'test' => $stats]);
 }
 

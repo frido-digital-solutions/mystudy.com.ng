@@ -77,6 +77,24 @@ class Push
         // of somebody's message spent calling Expo for a device that is gone.
         $this->pdo->prepare('DELETE FROM device_push_tokens WHERE user_id = ? AND last_seen_at < DATE_SUB(NOW(), INTERVAL 60 DAY)')
             ->execute([$userId]);
+
+        // One account, one live phone.
+        //
+        // Every install of the app gets its own push address, and an address
+        // from an install that is gone still sits in this table until something
+        // removes it. When it does, one message arrives three times - once for
+        // each address the account collected - and the phone fills up with
+        // copies of the same notification. That is not a phone bug; it is three
+        // addresses for one person.
+        //
+        // So when a phone announces itself, the addresses of that account that
+        // have not been heard from for two hours are dropped: they belong to
+        // installs that are not running. The address that is speaking now is
+        // kept, and so is any other address heard from in the last two hours,
+        // which is a second phone genuinely in use.
+        $this->pdo->prepare('DELETE FROM device_push_tokens
+                             WHERE user_id = ? AND token <> ? AND last_seen_at < DATE_SUB(NOW(), INTERVAL 2 HOUR)')
+            ->execute([$userId, $token]);
         return true;
     }
 
@@ -150,16 +168,13 @@ class Push
             $isIos = $t['platform'] === 'ios';
             $notice = [
                 'to' => $t['token'],
-                // Everything travels in the data map and nothing at the top.
-                //
-                // That is the whole difference between a notice that carries its
-                // own buttons and one that does not. A message with a title at
-                // the top is drawn by the phone's own system the moment it
-                // arrives - and the system draws it without anything the app
-                // knows about, so the Reply box and Mark as read never appear
-                // unless the app happens to be open. A message that is only
-                // data is handed to the app, and the app draws it with
-                // everything it knows: the buttons, the channel, the thread.
+                // The title and the text at the top, for the same reason as a
+                // message: the phone draws those itself, so the notice arrives
+                // whether or not the app is running. The data map underneath
+                // still carries which notice it is and where it opens.
+                'title' => (string)$title,
+                'body' => $text,
+                'sound' => 'default',
                 'data' => array_merge([
                     'notification' => '1',
                     'notification_id' => (string)$notificationId,
@@ -189,13 +204,9 @@ class Push
                 'priority' => 'high',
                 'collapseId' => 'notification-' . $notificationId,
                 'threadId' => 'notifications',
+                'channelId' => 'notifications',
+                'tag' => 'notification-' . $notificationId,
             ];
-            if ($isIos) {
-                // iOS needs the title and body at the top of the payload.
-                $notice['title'] = (string)$title;
-                $notice['body'] = $text;
-                $notice['sound'] = 'default';
-            }
             $messages[] = $notice;
         }
 
@@ -231,15 +242,27 @@ class Push
 
             $content = [
                 'to' => $t['token'],
-                // Everything travels in the data map and nothing at the top.
+                // The title and the text travel at the top of the payload, and
+                // that is what makes the difference between a notification that
+                // arrives and one that does not.
                 //
-                // A message with a title at the top is drawn by the phone's own
-                // system the moment it arrives, and the system draws it without
-                // anything the app knows about - no Reply box, no Mark as read,
-                // and one notification for every message. A message that is only
-                // data is handed to the app instead, and the app draws it with
-                // everything it knows: the buttons, the channel, the thread, and
-                // the one notification that replaces the last one.
+                // A message that carries only data is handed to the app, and
+                // the app is the only thing that can give it a Reply box, a
+                // channel, and one notification per conversation instead of
+                // four. But a message handed to an app that is not running
+                // never arrives at all: the phone cannot draw it, and the
+                // message is simply dropped.
+                //
+                // So the title and the text go at the top as well. The phone
+                // draws those itself, at once, whether or not the app is
+                // running - and the data map underneath still carries
+                // everything the app needs when it is awake: which thread it
+                // is, where it opens, and which set of buttons to put under
+                // it.
+                'title' => (string)$from['name'],
+                'body' => $text,
+                'sound' => 'default',
+                'priority' => 'high',
                 'data' => [
                     'conversation_id' => (string)$conversationId,
                     'message_id' => (string)$messageId,
@@ -261,18 +284,23 @@ class Push
                     'sound' => 'default',
                     'vibrate' => 'true',
                 ],
-                'priority' => 'high',
                 'collapseId' => 'conversation-' . $conversationId,
                 'threadId' => 'conversation-' . $conversationId,
+                'channelId' => 'messages',
+                // The tag at the top of the payload is the one the phone obeys
+                // when it draws the notification itself, with the app closed.
+                // The tag inside the data map is the one the app obeys when it
+                // draws it. Both are needed, and both say the same thing: this
+                // notification belongs to this conversation, so the next
+                // message from the same person replaces it instead of leaving
+                // four of them side by side in the shade.
+                'tag' => 'conversation-' . $conversationId,
             ];
-            if ($isIos) {
-                // iOS draws the notification itself from the top of the payload,
-                // and needs the title and body there to show anything at all.
-                // It has no data-only mode worth using here, so it keeps the
-                // shape it has always had.
-                $content['title'] = (string)$from['name'];
-                $content['body'] = $text;
-                $content['sound'] = 'default';
+            if ($picture !== '') {
+                // A face on the notification is the difference between a message
+                // and a system alert. The phone pulls this URL itself, so the
+                // picture never passes through a third-party push service.
+                $content['richContent'] = ['image' => $picture];
             }
             if ($t['rich']) {
                 // The Reply box and Mark as read are buttons the phone already
@@ -280,8 +308,9 @@ class Push
                 // running Expo Go never claims `rich`, so it is not sent an id it
                 // has no buttons for.
                 //
-                // Android reads the id from the data map, and the buttons are
-                // drawn from there and nowhere else - which is why a
+                // The id has to travel twice. iOS reads it from the top level of
+                // the payload, but Android reads it from the *data* map - the
+                // buttons are drawn from there and nowhere else, which is why a
                 // notification could arrive with a name, a face and a message
                 // and still have no Reply box under it.
                 $content['categoryId'] = 'message';
@@ -371,11 +400,22 @@ class Push
      * own screen, so nothing about anybody's private business is carried by
      * it.
      *
+     * @param string|null $onlyToken the one phone that asked, when the caller
+     *                               knows which phone it is
      * @return array{devices:int, sent:int, failed:int, dead:int}
      */
-    public function notifyTest(int $userId): array
+    public function notifyTest(int $userId, ?string $onlyToken = null): array
     {
         $tokens = $this->tokensFor($userId);
+        if ($onlyToken !== null && $onlyToken !== '') {
+            // The phone that asked is the phone that should be told. An account
+            // with three phones on it - an old build, a new build, a tablet -
+            // would otherwise get three notifications for one tap, which looks
+            // exactly like a broken app.
+            $tokens = array_values(array_filter($tokens, static function (array $t) use ($onlyToken) {
+                return $t['token'] === $onlyToken;
+            }));
+        }
         if (!$tokens) return ['devices' => 0, 'sent' => 0, 'failed' => 0, 'dead' => 0];
 
         $text = 'If you can read this, push is working on this phone.';
@@ -383,6 +423,9 @@ class Push
         foreach ($tokens as $t) {
             $content = [
                 'to' => $t['token'],
+                'title' => 'MyStudy Base',
+                'body' => $text,
+                'sound' => 'default',
                 'data' => [
                     'notification' => '1',
                     'type' => 'test',
@@ -398,12 +441,9 @@ class Push
                 'priority' => 'high',
                 'collapseId' => 'notification-test',
                 'threadId' => 'notifications',
+                'channelId' => 'notifications',
+                'tag' => 'notification-test',
             ];
-            if ($t['platform'] === 'ios') {
-                $content['title'] = 'MyStudy Base';
-                $content['body'] = $text;
-                $content['sound'] = 'default';
-            }
             $messages[] = $content;
         }
 
@@ -543,6 +583,23 @@ class Push
         }
 
         $ch = curl_init('https://exp.host/--/api/v2/push/send');
+        // The shape of what is being sent, written down before it goes. A push
+        // that does not arrive is invisible from the outside, so the only way
+        // to know what the phone actually received is to have written it down.
+        // The message itself is not written - only the parts that decide
+        // whether it can be drawn at all.
+        $first = $messages[0] ?? [];
+        error_log(sprintf(
+            'push: sending %d message(s) to %d phone(s); shape: title=%s body=%s tag=%s channel=%s category=%s image=%s',
+            count($messages),
+            count($tokens),
+            isset($first['title']) ? 'yes' : 'no',
+            isset($first['body']) ? 'yes' : 'no',
+            isset($first['tag']) ? (string)$first['tag'] : '-',
+            isset($first['channelId']) ? (string)$first['channelId'] : '-',
+            isset($first['categoryId']) ? (string)$first['categoryId'] : '-',
+            isset($first['richContent']['image']) ? 'yes' : 'no'
+        ));
         curl_setopt_array($ch, [
             CURLOPT_POST => true,
             CURLOPT_POSTFIELDS => json_encode(array_values($messages), JSON_UNESCAPED_UNICODE),
