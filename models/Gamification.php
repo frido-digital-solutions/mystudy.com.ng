@@ -37,21 +37,31 @@ class Gamification {
     ];
 
     // Badge definitions: name => [icon, description, color]
+    /**
+     * The badge catalogue.
+     *
+     * The key is what is stored in the database - it is what an earned badge
+     * is written under - so it never changes. The label is only what the
+     * student reads, so it can be made plainer without touching a single
+     * earned badge: the rows in user_badges keep their names, and a student
+     * who earned "Initiate Scholar" yesterday still has that badge today,
+     * now with a name that says what it is.
+     */
     const BADGES = [
-        'first_quiz'       => ['🎯', 'Initiate Scholar', '#10b981'],
-        'quiz_streak_3'    => ['🔥', 'Rising Cadet', '#f59e0b'],
-        'quiz_streak_7'    => ['⚡', 'Dedicated Lieutenant', '#ef4444'],
-        'quiz_streak_14'   => ['💎', 'Captain of Studies', '#8b5cf6'],
-        'quiz_streak_30'   => ['👑', 'General Academic', '#fbbf24'],
-        'perfect_score'    => ['💯', 'Flawless Commander', '#3b82f6'],
-        'ten_quizzes'      => ['📚', 'Veteran Student', '#6366f1'],
-        'fifty_quizzes'    => ['🏆', 'Master Scholar', '#ec4899'],
-        'hundred_quizzes'  => ['🌟', 'Grandmaster', '#14b8a6'],
-        'challenge_top3'   => ['🥇', 'Elite Vanguard', '#fbbf24'],
-        'challenge_winner' => ['🏅', 'Supreme Champion', '#f59e0b'],
-        'level_5'          => ['⭐', 'Senior Prefect', '#6366f1'],
-        'level_10'         => ['🔱', 'Valedictorian', '#8b5cf6'],
-        'early_bird'       => ['🐣', 'Founding Pioneer', '#10b981'],
+        'first_quiz'       => ['🎯', 'First Quiz', '#10b981'],
+        'quiz_streak_3'    => ['🔥', '3 in a Row', '#f59e0b'],
+        'quiz_streak_7'    => ['⚡', 'Week Warrior', '#ef4444'],
+        'quiz_streak_14'   => ['💎', 'Two Week Streak', '#8b5cf6'],
+        'quiz_streak_30'   => ['👑', '30 Day Streak', '#fbbf24'],
+        'perfect_score'    => ['💯', 'Perfect Score', '#3b82f6'],
+        'ten_quizzes'      => ['📚', '10 Quizzes Done', '#6366f1'],
+        'fifty_quizzes'    => ['🏆', '50 Quizzes Done', '#ec4899'],
+        'hundred_quizzes'  => ['🌟', '100 Quizzes Done', '#14b8a6'],
+        'challenge_top3'   => ['🥇', 'Challenge Top 3', '#fbbf24'],
+        'challenge_winner' => ['🏅', 'Challenge Winner', '#f59e0b'],
+        'level_5'          => ['⭐', 'Level 5 Scholar', '#6366f1'],
+        'level_10'         => ['🔱', 'Level 10 Scholar', '#8b5cf6'],
+        'early_bird'       => ['🐣', 'Early Bird', '#10b981'],
     ];
 
     public function __construct($pdo) {

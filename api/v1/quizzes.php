@@ -27,6 +27,12 @@ $level = api_field($_GET, 'level');
 $level = in_array($level, ['Secondary', 'University'], true) ? $level : null;
 $subject = trim(api_field($_GET, 'subject'));
 
+// Which examination board the student is preparing for. A quiz carries the
+// boards it belongs to ("WAEC,NECO"), so this is a list of papers and not a
+// guess: asking for JAMB returns the sets that are JAMB sets.
+$examType = strtoupper(trim(api_field($_GET, 'exam_type')));
+$examType = in_array($examType, ['JAMB', 'WAEC', 'NECO'], true) ? $examType : null;
+
 $where = 'WHERE (mode IS NULL OR mode != "challenge")';
 $args = [];
 if ($level) {
@@ -36,6 +42,10 @@ if ($level) {
 if ($subject !== '') {
     $where .= ' AND subject = :sub';
     $args[':sub'] = $subject;
+}
+if ($examType) {
+    $where .= ' AND FIND_IN_SET(:et, REPLACE(COALESCE(exam_types, ""), " ", "")) > 0';
+    $args[':et'] = $examType;
 }
 
 $sql = "SELECT id, title, subject, level, type, mode, duration_seconds, total_phases, current_phase,
@@ -59,11 +69,25 @@ $countStmt->execute();
 $total = (int)$countStmt->fetchColumn();
 
 // Alphabetical, always - the dropdown is a lookup list, not a history of
-// whatever order the admin added things in.
-$subStmt = $pdo->prepare("SELECT DISTINCT subject FROM quizzes
-                           WHERE subject IS NOT NULL AND subject != ''
-                             AND (mode IS NULL OR mode != 'challenge')
-                           ORDER BY subject ASC");
+// whatever order the admin added things in. When the student has asked for one
+// examination board, only the subjects that actually have papers for that
+// board are listed - there is no point offering a subject whose papers are
+// all from another board.
+$subWhere = "WHERE subject IS NOT NULL AND subject != ''
+                AND (mode IS NULL OR mode != 'challenge')";
+$subArgs = [];
+if ($level) {
+    $subWhere .= ' AND level = :slvl';
+    $subArgs[':slvl'] = $level;
+}
+if ($examType) {
+    $subWhere .= ' AND FIND_IN_SET(:set, REPLACE(COALESCE(exam_types, ""), " ", "")) > 0';
+    $subArgs[':set'] = $examType;
+}
+$subStmt = $pdo->prepare("SELECT DISTINCT subject FROM quizzes $subWhere ORDER BY subject ASC");
+foreach ($subArgs as $k => $v) {
+    $subStmt->bindValue($k, $v);
+}
 $subStmt->execute();
 $subjects = array_column($subStmt->fetchAll(PDO::FETCH_ASSOC), 'subject');
 
@@ -171,6 +195,24 @@ $challenges = api_home_challenge_map(
 );
 $challenges = api_home_challenge_live($pdo, $userId, $challenges);
 
+// The examination boards that actually have papers, so the phone can offer
+// the student a real choice instead of three empty shelves.
+$examBoards = [];
+try {
+    $boardStmt = $pdo->query("SELECT DISTINCT exam_types FROM quizzes
+                               WHERE exam_types IS NOT NULL AND exam_types != ''
+                                 AND (mode IS NULL OR mode != 'challenge')");
+    foreach ($boardStmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+        foreach (explode(',', (string)$row['exam_types']) as $board) {
+            $board = strtoupper(trim($board));
+            if ($board !== '') $examBoards[$board] = true;
+        }
+    }
+} catch (Throwable $e) {
+    error_log('api quizzes boards: ' . $e->getMessage());
+}
+$examBoards = array_values(array_intersect(['JAMB', 'WAEC', 'NECO'], array_keys($examBoards)));
+
 api_out([
     'ok' => true,
     'now' => time(),
@@ -178,6 +220,8 @@ api_out([
     'total' => $total,
     'page' => $page,
     'subjects' => $subjects,
+    'exam_types' => $examBoards,
+    'exam_type' => $examType,
     'user_level' => $userLevel,
     'level_default' => $itemUserType === 'university' ? 'University' : ($itemUserType === 'secondary' ? 'Secondary' : ''),
     'challenges' => $challenges,

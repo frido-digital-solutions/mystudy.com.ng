@@ -127,13 +127,28 @@ function api_home_summary(PDO $pdo, int $userId): array {
         $earned[$b['name']] = true;
     }
     $catalogue = [];
+    // Where the student has got to. The badges are in the order they are won,
+    // so the first one that is not earned yet is the one in front of them -
+    // the next thing to aim for. The phone needs to know that, because
+    // "the badges you have" and "the badge you are working towards" are two
+    // different things and look different on purpose.
+    $nextKey = null;
     foreach (Gamification::BADGES as $slug => $meta) {
+        if (!isset($earned[$slug]) && $nextKey === null) $nextKey = $slug;
+    }
+    $rank = 0;
+    foreach (Gamification::BADGES as $slug => $meta) {
+        $rank++;
         $catalogue[] = [
             'key' => $slug,
             'icon' => $meta[0],
             'label' => $meta[1],
             'color' => $meta[2],
             'earned' => isset($earned[$slug]),
+            // 'earned' - in the bag. 'next' - the one in front of them.
+            // 'locked' - still to come.
+            'state' => isset($earned[$slug]) ? 'earned' : ($slug === $nextKey ? 'next' : 'locked'),
+            'rank' => $rank,
         ];
     }
 
@@ -144,6 +159,9 @@ function api_home_summary(PDO $pdo, int $userId): array {
     $quizzesDone = 0;
     $bestScore = 0;
     $materialsCount = 0;
+    $certificates = 0;
+    $materialsOpened = 0;
+    $materialsRead = 0;
     try {
         $s = $pdo->prepare('SELECT COUNT(DISTINCT quiz_id) FROM quiz_attempts WHERE user_id = ?');
         $s->execute([$userId]);
@@ -154,6 +172,24 @@ function api_home_summary(PDO $pdo, int $userId): array {
         $bestScore = (int)($s->fetchColumn() ?? 0);
 
         $materialsCount = (int)$pdo->query("SELECT COUNT(*) FROM materials WHERE status = 'approved'")->fetchColumn();
+
+        // A certificate is a finished paper: every attempt is one certificate
+        // the student can open and print, so this is the number of papers
+        // behind them, not the number of different quizzes.
+        $s = $pdo->prepare('SELECT COUNT(*) FROM quiz_attempts WHERE user_id = ?');
+        $s->execute([$userId]);
+        $certificates = (int)$s->fetchColumn();
+
+        // The materials this student has opened, and the ones they have read
+        // to the end. Read means at least half of it, which is the same line
+        // the website draws.
+        $s = $pdo->prepare('SELECT COUNT(DISTINCT material_id) FROM material_progress WHERE user_id = ?');
+        $s->execute([$userId]);
+        $materialsOpened = (int)$s->fetchColumn();
+
+        $s = $pdo->prepare('SELECT COUNT(DISTINCT material_id) FROM material_progress WHERE user_id = ? AND percent >= 50');
+        $s->execute([$userId]);
+        $materialsRead = (int)$s->fetchColumn();
     } catch (Throwable $e) {
         error_log('api home summary: ' . $e->getMessage());
     }
@@ -178,6 +214,9 @@ function api_home_summary(PDO $pdo, int $userId): array {
         'quizzes_completed' => $quizzesDone,
         'best_score' => $bestScore,
         'materials_count' => $materialsCount,
+        'materials_opened' => $materialsOpened,
+        'materials_read' => $materialsRead,
+        'certificates' => $certificates,
         'weekly' => $weekly,
         'motivation' => $gamification->getMotivationalMessage($userId),
     ];
