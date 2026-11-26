@@ -453,13 +453,24 @@ class Quiz
         }
     }
 
-    public function list(int $limit=12, int $offset=0, ?string $level=null): array
+    /**
+     * The practice papers.
+     *
+     * $exam narrows the list to one examination - WAEC, NECO or JAMB - using
+     * the boards each paper belongs to. It is the same field the app filters
+     * on, so the website and the phone always show the same papers.
+     */
+    public function list(int $limit=12, int $offset=0, ?string $level=null, ?string $exam=null): array
     {
         $where = 'WHERE (mode IS NULL OR mode != "challenge")';
         $params = [];
         if ($level) { 
             $where .= ' AND level = :lvl'; 
             $params[':lvl'] = $level; 
+        }
+        if ($exam) {
+            $where .= ' AND FIND_IN_SET(:et, REPLACE(COALESCE(exam_types, ""), " ", "")) > 0';
+            $params[':et'] = $exam;
         }
         $sql = "SELECT * FROM quizzes $where ORDER BY created_at DESC LIMIT :l OFFSET :o";
         $stmt = $this->conn->prepare($sql);
@@ -470,13 +481,17 @@ class Quiz
         return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
     }
 
-    public function countAll(?string $level=null): int
+    public function countAll(?string $level=null, ?string $exam=null): int
     {
         $where = 'WHERE (mode IS NULL OR mode != "challenge")';
         $params = [];
         if ($level) { 
             $where .= ' AND level = :lvl'; 
             $params[':lvl'] = $level; 
+        }
+        if ($exam) {
+            $where .= ' AND FIND_IN_SET(:et, REPLACE(COALESCE(exam_types, ""), " ", "")) > 0';
+            $params[':et'] = $exam;
         }
         $sql = "SELECT COUNT(*) FROM quizzes $where";
         $stmt = $this->conn->prepare($sql);

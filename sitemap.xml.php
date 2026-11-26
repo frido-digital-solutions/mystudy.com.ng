@@ -2,6 +2,7 @@
 require_once __DIR__ . '/config/config.php';
 require_once __DIR__ . '/models/Post.php';
 require_once __DIR__ . '/models/Quiz.php';
+require_once __DIR__ . '/includes/seo.php';
 
 header('Content-Type: application/xml; charset=utf-8');
 
@@ -39,6 +40,22 @@ if (method_exists($postModel, 'list')) {
         $loc = $base . '/post.php?slug=' . rawurlencode($p['slug']);
         $last = !empty($p['created_at']) ? date('c', strtotime($p['created_at'])) : $now;
         add_url($urls, $loc, 'weekly', 0.8, $last);
+    }
+}
+
+// The three examination pages and every subject of every examination. These
+// are the pages students search for by name - "waec past questions", "neco
+// cbt", "jamb english language" - so they are listed first and given the
+// highest priority.
+foreach (seo_exam_pages() as $examPage) {
+    add_url($urls, $base . '/' . $examPage['file'], 'daily', 0.9);
+    foreach (seo_exam_subjects($pdo, $examPage['key']) as $subjectRow) {
+        add_url(
+            $urls,
+            $base . '/exam-subject.php?exam=' . rawurlencode($examPage['key']) . '&subject=' . rawurlencode($subjectRow['subject']),
+            'weekly',
+            0.8
+        );
     }
 }
 

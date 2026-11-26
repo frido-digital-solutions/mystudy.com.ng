@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/config/config.php';
-$page_title = 'Quizzes';
+require_once __DIR__ . '/includes/seo.php';
+$page_title = 'Free CBT Practice Quizzes';
 require_once __DIR__ . '/models/Quiz.php';
 require_once __DIR__ . '/models/Gamification.php';
 
@@ -13,8 +14,24 @@ $level = isset($_GET['level']) ? trim($_GET['level']) : null;
 $page = max(1, (int)($_GET['page'] ?? 1));
 $limit = 15;
 $offset = ($page - 1) * $limit;
-$quizzes = $quizModel->list($limit, $offset, $level ?: null);
-$totalCount = method_exists($quizModel, 'countAll') ? $quizModel->countAll($level ?: null) : count($quizzes);
+
+// Which examination the student is preparing for. This is the search students
+// type most often - "waec cbt", "jamb practice test" - so the list answers it
+// directly.
+$exam = isset($_GET['exam']) ? strtoupper(trim((string)$_GET['exam'])) : '';
+$exam = in_array($exam, ['WAEC', 'NECO', 'JAMB'], true) ? $exam : null;
+if ($exam) {
+    $page_title = sprintf('Free %s CBT Practice Tests and Past Questions', $exam);
+    $page_description = sprintf(
+        'Take free %s CBT practice tests and free %s past questions with answers. Every subject, timed like the real exam, marked the moment you finish.',
+        $exam,
+        $exam
+    );
+} else {
+    $page_description = 'Free CBT practice quizzes for WAEC, NECO, JAMB and university students: past questions with answers, timed tests, and your score the moment you finish.';
+}
+$quizzes = $quizModel->list($limit, $offset, $level ?: null, $exam);
+$totalCount = method_exists($quizModel, 'countAll') ? $quizModel->countAll($level ?: null, $exam) : count($quizzes);
 $totalPages = ceil($totalCount / $limit) ?: 1;
 $challenges = $quizModel->listChallenges($level ?: null, 8);
 
@@ -32,10 +49,31 @@ include __DIR__ . '/includes/header.php';
             <i class="fas fa-bolt"></i>
             CBT Practice
         </div>
-        <h1 style="font-size: 1.3rem; font-weight: 800; color: #1e293b; margin: 0;">Practice Quizzes</h1>
+        <h1 style="font-size: 1.3rem; font-weight: 800; color: #1e293b; margin: 0;">
+            <?php echo $exam ? sprintf('Free %s CBT Practice Tests', $exam) : 'Practice Quizzes'; ?>
+        </h1>
         <span style="color: #94a3b8; font-size: 0.85rem; display: none;" class="d-md-inline">— WAEC, NECO, JAMB & University Exams</span>
     </div>
 </div>
+
+<!-- The three examinations, one tap away. These pages carry the free past
+     questions with answers, and they link back here - so a student who lands
+     on a paper can find every other paper of the same examination. -->
+<section class="py-3">
+    <div class="container">
+        <div class="d-flex flex-wrap gap-2">
+            <?php foreach (seo_exam_pages() as $examCard): ?>
+                <a class="btn btn-sm <?php echo ($exam && $exam === $examCard['key']) ? 'btn-success' : 'btn-outline-success'; ?> px-3"
+                   href="<?php echo SITE_URL; ?>/quizzes.php?exam=<?php echo urlencode($examCard['key']); ?>">
+                    <?php echo htmlspecialchars($examCard['name']); ?> past questions
+                </a>
+                <a class="btn btn-sm btn-outline-secondary px-3" href="<?php echo SITE_URL; ?>/<?php echo $examCard['file']; ?>">
+                    <?php echo htmlspecialchars($examCard['name']); ?> answers
+                </a>
+            <?php endforeach; ?>
+        </div>
+    </div>
+</section>
 
 <?php if (!empty($challenges)): ?>
 <!-- ===========================================

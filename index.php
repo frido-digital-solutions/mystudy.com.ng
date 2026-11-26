@@ -1,6 +1,12 @@
 <?php
 require_once 'config/config.php';
-$page_title = 'Home - ' . SITE_NAME;
+require_once __DIR__ . '/includes/seo.php';
+
+// The words a student types. Almost every one of them is an examination, and
+// this is the page they land on, so it says so in the title and in the
+// description - the same words, said plainly.
+$page_title = 'Free WAEC, NECO & JAMB Past Questions and Answers - CBT Practice';
+$page_description = 'MyStudy Base gives Nigerian students free WAEC, NECO and JAMB past questions with answers, free CBT practice tests for every subject, past question downloads and study materials - free to take, free to keep, on phone and on web.';
 
 // Performance: Check if we have cached data
 $cache_file = __DIR__ . '/cache/homepage_data.json';
@@ -136,6 +142,49 @@ if (!empty($heroSlides)) {
 }
 
 include 'includes/header.php';
+
+// What this page is, in the words a search engine reads.
+seo_jsonld([
+    '@context' => 'https://schema.org',
+    '@type'    => 'WebSite',
+    'name'     => SITE_NAME,
+    'alternateName' => 'MyStudy Base, My Study Base, Study Base',
+    'url'      => SITE_URL,
+    'description' => $page_description,
+    'inLanguage' => 'en',
+    'potentialAction' => [
+        '@type'       => 'SearchAction',
+        'target'      => [
+            '@type'       => 'EntryPoint',
+            'urlTemplate' => SITE_URL . '/quizzes.php?search={search_term_string}',
+        ],
+        'query-input' => 'required name=search_term_string',
+    ],
+]);
+seo_jsonld([
+    '@context' => 'https://schema.org',
+    '@type'    => 'Organization',
+    'name'     => SITE_NAME,
+    'url'      => SITE_URL,
+    'logo'     => SITE_URL . '/assets/img/favicon.png',
+    'description' => $page_description,
+]);
+$examListItems = [];
+$examPosition = 1;
+foreach (seo_exam_pages() as $examCard) {
+    $examListItems[] = [
+        '@type'    => 'ListItem',
+        'position' => $examPosition++,
+        'name'     => $examCard['tagline'],
+        'url'      => SITE_URL . '/' . $examCard['file'],
+    ];
+}
+seo_jsonld([
+    '@context' => 'https://schema.org',
+    '@type'    => 'ItemList',
+    'name'     => 'Practice papers by examination',
+    'itemListElement' => $examListItems,
+]);
 ?>
 
 <!-- Styles loaded from design-system.css -->
@@ -164,11 +213,11 @@ include 'includes/header.php';
                 </div>
                 
                 <h1 class="hero-tagline">
-                    Unlock Your Potential with
-                    <span class="highlight"><?php echo SITE_NAME; ?></span>
+                    Free WAEC, NECO &amp; JAMB
+                    <span class="highlight">Past Questions &amp; CBT Practice</span>
                 </h1>
                 <p class="hero-description">
-                    Your all-in-one learning platform for Nigerian students. Access premium study materials, practice CBT exams, watch expert video tutorials, and track your progress—whether you're preparing for WAEC, JAMB, or university exams.
+                    Past questions with answers, free CBT practice tests and study materials for Nigerian students - <?php echo SITE_NAME; ?>. Take a WAEC, NECO or JAMB paper the way the real exam works, see your score the moment you finish, and keep the corrections for next time. Works on your phone too, even without internet.
                 </p>
                 
                 <div class="hero-cta-group">
@@ -239,6 +288,37 @@ include 'includes/header.php';
                     </div>
                 </div>
             </div>
+        </div>
+    </div>
+</section>
+
+<!-- ===========================================
+     CHOOSE YOUR EXAMINATION - the three doors
+     =========================================== -->
+<section class="py-4 py-lg-5" style="background: rgba(16,185,129,0.04);">
+    <div class="container">
+        <div class="text-center mb-4">
+            <h2 style="font-size: clamp(1.4rem, 3vw, 2rem); font-weight: 800;">Start with your examination</h2>
+            <p class="text-muted mt-2" style="max-width: 62ch; margin-left: auto; margin-right: auto;">
+                Free past questions with answers and free CBT practice tests for every subject, the way the real exam is written.
+            </p>
+        </div>
+        <div class="row g-3">
+            <?php foreach (seo_exam_pages() as $examCard): ?>
+                <div class="col-12 col-md-4">
+                    <a class="d-block h-100 text-decoration-none" href="<?php echo SITE_URL; ?>/<?php echo $examCard['file']; ?>">
+                        <div style="border: 1px solid rgba(16,185,129,0.28); border-radius: 18px; padding: 1.4rem 1.3rem; height: 100%; background: #fff;">
+                            <div style="font-size: 1.15rem; font-weight: 800; color: #047857;"><?php echo htmlspecialchars($examCard['tagline']); ?></div>
+                            <div style="font-size: 0.86rem; color: var(--bs-secondary-color); margin-top: 6px;">
+                                <?php echo htmlspecialchars($examCard['long']); ?> practice papers, answers and CBT tests.
+                            </div>
+                            <div style="font-size: 0.82rem; font-weight: 700; color: #047857; margin-top: 10px;">
+                                Start practising <i class="fas fa-arrow-right"></i>
+                            </div>
+                        </div>
+                    </a>
+                </div>
+            <?php endforeach; ?>
         </div>
     </div>
 </section>
