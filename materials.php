@@ -1,6 +1,6 @@
 <?php
 require_once __DIR__ . '/config/config.php';
-$page_title = 'Study Materials';
+$page_title = 'WAEC, NECO & JAMB Study Materials - Free Notes and Past Question Downloads';
 
 // Load model
 require_once __DIR__ . '/models/Material.php';
