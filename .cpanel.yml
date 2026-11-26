@@ -74,7 +74,7 @@ deployment:
     - DEPLOYPATH=$(sh deploy/target.sh) && /bin/cp -f material_checkout.php material_download.php material_verify.php paystack_webhook.php reader.php $DEPLOYPATH || true
 
     # The rooms behind the doorways.
-    - DEPLOYPATH=$(sh deploy/target.sh) && /bin/cp -Rf admin ajax api assets cache cli config controllers database includes logs models university uploads views $DEPLOYPATH || true
+    - DEPLOYPATH=$(sh deploy/target.sh) && /bin/cp -Rf admin ajax api assets cache cli config content controllers database includes logs models university uploads views $DEPLOYPATH || true
 
     # The doorways once more, as a safety net: if anything below changed them,
     # they are put back exactly as the repository has them.
