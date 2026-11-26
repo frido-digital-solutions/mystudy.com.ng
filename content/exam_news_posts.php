@@ -553,4 +553,104 @@ HTML,
 HTML,
     ],
 
+    [
+        'slug'  => 'neco-2027-ssce-registration-guidelines-in-plain-language',
+        'title' => 'NECO 2027 SSCE Registration Guidelines: The Plain-Language Version for SS3 Students',
+        'excerpt' => 'NECO&#8217;s registration circular is eight pages of official rules. Here is the same thing in ordinary English: who can register, what your school must do, every fee, and the four mistakes that cost students money.',
+        'level' => 'Secondary',
+        'date'  => '2026-11-02 09:00:00',
+        'date_label' => '2 November 2026',
+        'banner' => ['file' => 'neco-2027-guidelines.png', 'exam' => 'neco', 'kicker' => 'NECO 2027'],
+        'sources' => [
+            ['NECO: 2027 SSCE Internal', 'https://neco.gov.ng/exams/ssce-internal'],
+            ['National Examinations Council, official website', 'https://neco.gov.ng'],
+            ['NECO school registration portal', 'https://ssceinternal.neco.gov.ng'],
+            ['NECO Continuous Assessment Scores portal', 'https://cas.neco.gov.ng'],
+        ],
+        'content' => <<<'HTML'
+<p>NECO&#8217;s registration circular for the 2027 SSCE Internal is eight pages of official rules, written for principals and state ministries. If you are an SS3 student, this is the same document in ordinary language: who can register, what has to happen before you can sit the paper, what it costs, and the four mistakes that cost students money.</p>
+
+<h3>First, can you even register?</h3>
+<ul>
+<li>Only students in their <strong>final year, SSS 3</strong>.</li>
+<li>Only candidates who are <strong>in a school</strong> &#8212; in Nigeria or overseas.</li>
+<li><strong>Private candidates cannot register</strong> for this paper. If you are not in a school, you need the NECO External instead.</li>
+<li>Moving into SSS 3 from another school is <strong>not allowed</strong>. NECO has prohibited it, so your school cannot take you in at this stage.</li>
+</ul>
+
+<h3>The dates</h3>
+<ul>
+<li>Registration opens: <strong>Monday 2 November 2026</strong>.</li>
+<li>Normal registration closes: <strong>11:59 pm, Friday 26 February 2027</strong>.</li>
+<li>Late registration: <strong>Saturday 27 February to Friday 5 March 2027</strong>. The portal shuts at 11:59 pm on 5 March, and there is <strong>no extension</strong>.</li>
+<li>The printed payment receipt and the signed validation list go to the NECO state office by <strong>12 March 2027</strong>. (The circular gives 12 March in one section and 5 March in another &#8212; confirm with your state office.)</li>
+<li>The examination itself: <strong>Thursday 1 April to Tuesday 11 May 2027</strong>.</li>
+</ul>
+
+<h3>What you personally need</h3>
+<ul>
+<li>A valid <strong>NIN</strong>. It is now compulsory for every candidate.</li>
+<li>A <strong>recent, sharp passport photograph</strong>, front facing, taken in your school uniform.</li>
+<li>Your subjects, and your fingerprints captured at the school.</li>
+</ul>
+
+<h3>What your school has to do &#8212; and why you should ask about it now</h3>
+<ol>
+<li>Claim the school portal at <strong>ssceinternal.neco.gov.ng</strong> using the school&#8217;s official email and phone number.</li>
+<li>Install the 2027 offline application and enter every candidate&#8217;s bio-data, including the NIN.</li>
+<li>Capture fingerprints for all ten fingers with a FUTRONIC (FS80H) scanner.</li>
+<li>Print each candidate&#8217;s photocard, check the details, and collect signatures on the validation list.</li>
+<li>Nominate supervisors &#8212; this is now mandatory and registration cannot be completed without it.</li>
+<li>Pay into the NECO Treasury Single Account through Revop/Remita.</li>
+<li>Upload the entries online to get registration numbers.</li>
+</ol>
+
+<h3>The line that catches people: you are not registered until you have a registration number</h3>
+<p>Entering your details offline is not registration. A candidate is only deemed registered when the offline entries are <strong>uploaded online and a registration number is issued</strong>, which can only happen after payment and after the supervisors have been nominated. Partial uploads are not accepted either, so your school has to confirm that every candidate was uploaded, not some of them.</p>
+
+<h3>What it costs</h3>
+<ul>
+<li>Registration: <strong>&#8358;30,000</strong> per candidate</li>
+<li>Four-figure mathematical table: <strong>&#8358;1,300</strong> per candidate</li>
+<li>Waterproof certificate jacket or folder: <strong>&#8358;2,500</strong> per candidate</li>
+<li>Syllabus: <strong>&#8358;2,000</strong> per copy &#8212; schools are advised to get at least four</li>
+<li>E-photo album: <strong>&#8358;2,700</strong> per pair per school, and one album holds 171 candidates</li>
+<li>Late registration: an extra <strong>&#8358;5,000</strong> per candidate</li>
+<li>Unviable school fee: <strong>&#8358;70,000</strong> per school, if the school registers fewer than 20 candidates</li>
+</ul>
+<p>Stamp duty, service and Revop/Remita charges apply on top, and every payment is non-refundable. So the least a single candidate can cost is <strong>&#8358;33,800</strong> &#8212; the &#8358;30,000 registration fee, the &#8358;1,300 table and the &#8358;2,500 certificate jacket.</p>
+
+<h3>The four mistakes that cost real money</h3>
+<ol>
+<li><strong>A blurred photograph.</strong> A school will not be activated for payment if any of its candidates has a blurred photo, and no certificate will be issued for a candidate with a poor quality photo. One soft picture can hold up everybody.</li>
+<li><strong>Changing your details after the upload.</strong> That is called non-validation, and the penalty is <strong>&#8358;10,000 per candidate</strong>, whatever the change was. Only <strong>one</strong> change is allowed before registration closes &#8212; a photograph or a name, not both. Other corrections (gender, date of birth, subjects, state of origin, local government area, or a spelling in a name) can still be made before the examination ends.</li>
+<li><strong>Somebody else capturing your fingerprints.</strong> If the fingerprints taken do not match the data uploaded, you will be treated as an impostor and you will not be allowed into the examination hall. Nobody can stand in for you.</li>
+<li><strong>Registering twice.</strong> It will not be entertained. Your NIN and your fingerprints are unique, and double registration creates exactly the problem the biometric rule exists to catch.</li>
+</ol>
+<p>One more to remember: paying with a Revop/Remita e-invoice that was generated before registration closed will not be entertained, and it will not be refunded.</p>
+
+<h3>The supervisor rule, in one line</h3>
+<p>Public schools nominate two supervisors and two assistant supervisors; private schools nominate two supervisors. Every nominee needs a first degree in Education (or a first degree/HND with PGDE), a TRCN certificate, a NIN slip, and must not be over 60. Private school nominees must be at least 30, have three years of teaching experience, and hold at least the rank of Vice Principal.</p>
+
+<h3>Continuous Assessment Scores are now uploaded every term</h3>
+<p>For SSS 1 and SSS 2 only, Continuous Assessment Scores go up term by term &#8212; January, April and August &#8212; on <strong>cas.neco.gov.ng</strong>. Schools that miss those timelines get sanctioned, and a sanctioned school is a school whose candidates cannot be registered on time.</p>
+
+<h3>How the paper will be written</h3>
+<p>The 2027 examination runs in <strong>dual mode</strong>: hybrid computer-based testing and pen-and-paper, side by side. Your school must be told before the examination which format each set of candidates sits, and a school with computer facilities has to meet the standard for a CBE centre as listed on the NECO portal.</p>
+
+<h3>What to do this week</h3>
+<ul>
+<li>Ask whether your school has claimed its portal and installed the 2027 offline app.</li>
+<li>Have your NIN ready and get a sharp passport photograph taken in your school uniform.</li>
+<li>Look at that photograph properly. A blurred one stops your school from being activated for payment.</li>
+<li>Ask when fingerprint capture is happening, and make sure you are there for it.</li>
+<li>If you are not in a school, this paper is not for you &#8212; look for the NECO External.</li>
+</ul>
+
+<p style="text-align:center; margin: 2rem 0;"><a class="btn btn-success btn-lg" style="border-radius: 50px; font-weight: 700; padding: 0.9rem 2rem;" href="https://mystudy.com.ng/materials.php?q=2027%20NECO%20%28SSCE%20INTERNAL%29%20REGISTRATION%20GUIDELINES"><i class="fas fa-file-pdf me-2"></i>Download the official PDF guide</a></p>
+
+<p>The button takes you to our materials library and searches for <strong>2027 NECO (SSCE INTERNAL) REGISTRATION GUIDELINES</strong> &#8212; the full circular from NECO, so you can read the wording yourself rather than take somebody&#8217;s summary of it.</p>
+HTML,
+    ],
+
 ];
