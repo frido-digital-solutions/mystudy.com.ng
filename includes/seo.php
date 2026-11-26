@@ -23,8 +23,9 @@ function seo_exam_pages(): array {
             'file'   => 'waec.php',
             'long'   => 'West African Examinations Council',
             'tagline'=> 'Free WAEC past questions and answers',
+            'logo'   => 'waec.png',
             'title'  => 'Free WAEC Past Questions and Answers 2026 | WAEC CBT Practice Tests',
-            'desc'   => 'Download free WAEC past questions with answers and take free WAEC CBT practice tests for every subject. WAEC exam past questions, solved papers, study materials and answer keys for secondary school students in Nigeria.',
+            'desc'   => 'Free WAEC past questions with answers for every subject, plus free WAEC CBT practice tests you can take timed on your phone. Built for Nigerian students.',
             'keywords' => 'waec past questions and answers, free waec past questions, waec cbt, waec exams, waec practice test, waec past question download, waec answer key, waec past questions 2026, waec questions and answers',
             'blurb'  => 'Practice the papers that came out before, with the answers beside them, and see your score the moment you finish.',
             'subjects_label' => 'WAEC subjects',
@@ -53,8 +54,9 @@ function seo_exam_pages(): array {
             'file'   => 'neco.php',
             'long'   => 'National Examinations Council',
             'tagline'=> 'Free NECO past questions and answers',
+            'logo'   => 'neco.png',
             'title'  => 'Free NECO Past Questions and Answers 2026 | NECO CBT Practice Tests',
-            'desc'   => 'Download free NECO past questions with answers and take free NECO CBT practice tests for every subject. NECO exam past questions, solved papers, study materials and answer keys for secondary school students in Nigeria.',
+            'desc'   => 'Free NECO past questions with answers for every subject, plus free NECO CBT practice tests you can take timed on your phone. Built for Nigerian students.',
             'keywords' => 'neco past questions and answers, free neco past questions, neco cbt, neco exams, neco practice test, neco past question download, neco answer key, neco past questions 2026, neco questions and answers',
             'blurb'  => 'The papers, the answers and the marks you get straight after - so you know exactly where you stand before the real exam.',
             'subjects_label' => 'NECO subjects',
@@ -83,8 +85,9 @@ function seo_exam_pages(): array {
             'file'   => 'jamb.php',
             'long'   => 'Joint Admissions and Matriculation Board',
             'tagline'=> 'Free JAMB past questions and answers',
+            'logo'   => 'jamb.png',
             'title'  => 'Free JAMB Past Questions and Answers 2026 | JAMB CBT Practice Tests',
-            'desc'   => 'Download free JAMB past questions with answers and take free JAMB CBT practice tests for every subject. JAMB exam past questions, solved papers, study materials and answer keys for candidates in Nigeria.',
+            'desc'   => 'Free JAMB past questions with answers for every subject, plus free JAMB CBT practice tests you can take timed on your phone. Built for candidates in Nigeria.',
             'keywords' => 'jamb past questions and answers, free jamb past questions, jamb cbt test, jamb practice test, jamb past question download, jamb answer key, jamb past questions 2026, jamb questions and answers, jamb english language past questions',
             'blurb'  => 'Four hours of JAMB is four hundred questions. Practise them here, timed, and find the subjects that need another week.',
             'subjects_label' => 'JAMB subjects',
@@ -113,6 +116,20 @@ function seo_exam_pages(): array {
 /** The exam pages, for the footer, the home page and the sitemap. */
 function seo_exam_list(): array {
     return seo_exam_pages();
+}
+
+/**
+ * The official logo of an examination, for the cards and the page heads.
+ *
+ * @return string the image URL, or an empty string when the exam has no logo
+ */
+function seo_exam_logo(string $exam): string {
+    foreach (seo_exam_pages() as $page) {
+        if ($page['key'] === $exam && !empty($page['logo'])) {
+            return (defined('SITE_URL') ? SITE_URL : '') . '/assets/img/exams/' . $page['logo'];
+        }
+    }
+    return '';
 }
 
 /**

@@ -19,6 +19,13 @@ foreach ($materialModel->listUniversities() as $u) {
 $q = isset($_GET['q']) ? trim((string)$_GET['q']) : '';
 $level = isset($_GET['level']) ? (($_GET['level'] === 'University') ? 'University' : (($_GET['level'] === 'Secondary') ? 'Secondary' : null)) : null;
 $secondaryBoard = isset($_GET['secondary_board']) ? (string)$_GET['secondary_board'] : '';
+$secondaryBoard = in_array($secondaryBoard, ['WAEC','NECO','JAMB','GCE'], true) ? $secondaryBoard : '';
+// A board only means something for secondary materials, so asking for WAEC
+// materials on its own is enough to narrow the list - the student does not have
+// to pick the level first.
+if ($secondaryBoard !== '' && $level === null) {
+    $level = 'Secondary';
+}
 $isUniGen = isset($_GET['is_university_general']) ? (int)!!$_GET['is_university_general'] : null; // null = no filter
 $universityId = isset($_GET['university_id']) ? (int)$_GET['university_id'] : 0;
 $page = max(1, (int)($_GET['page'] ?? 1));
@@ -55,6 +62,34 @@ if ($view === 'purchased' && $currentUserId > 0) {
         $universityId ?: null,
         'approved'
     );
+
+    // Some boards have no materials tagged with them yet. Rather than show the
+    // student an empty page, say so plainly and show everything at that level.
+    $boardNotice = '';
+    if ($secondaryBoard !== '' && $totalCount === 0 && $page === 1) {
+        $boardNotice = sprintf(
+            'No %s materials have been tagged yet, so these are all the secondary materials we have.',
+            htmlspecialchars($secondaryBoard)
+        );
+        $materials = $materialModel->searchMaterials(
+            $q !== '' ? $q : null,
+            $level,
+            null,
+            $isUniGen,
+            $universityId ?: null,
+            $limit,
+            $offset,
+            'approved'
+        );
+        $totalCount = $materialModel->countSearchMaterials(
+            $q !== '' ? $q : null,
+            $level,
+            null,
+            $isUniGen,
+            $universityId ?: null,
+            'approved'
+        );
+    }
 }
 $totalPages = ceil($totalCount / $limit) ?: 1;
 
@@ -172,6 +207,11 @@ include __DIR__ . '/includes/header.php';
         <div class="result-bar">
             <div class="result-count">Found <strong><?php echo number_format($totalCount); ?></strong> matches</div>
         </div>
+        <?php if (!empty($boardNotice)): ?>
+            <div class="alert alert-info border-0" style="border-radius: 12px; font-size: 0.9rem;">
+                <i class="fas fa-info-circle me-1"></i> <?php echo $boardNotice; ?>
+            </div>
+        <?php endif; ?>
         <div class="row g-4">
             <?php foreach ($materials as $m): 
                 $ext = strtolower(pathinfo($m['file_path'], PATHINFO_EXTENSION));

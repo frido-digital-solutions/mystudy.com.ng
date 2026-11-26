@@ -23,17 +23,19 @@ function seo_render_exam_page(array $exam, ?string $subject = null): void {
         ? sprintf('Free %s %s past questions and answers', $examKey, $subject)
         : sprintf('Free %s past questions and answers', $examKey);
 
+    // Two short sentences. A student reads the first line and acts; anything
+    // longer is filler that pushes the buttons off the screen.
     $intro = $subject
         ? sprintf(
-            'Every free %s %s past question with its answers, solved the way the marking scheme does it. Take the paper as a timed CBT test, see your score the moment you finish, and keep the corrections for next time.',
+            'Every %s %s past question with its answers. Take it as a timed CBT test and see your score the moment you finish.',
             $examKey,
             $subject
         )
         : sprintf(
-            'Every free %s past question, with the answers beside it and the marking scheme that goes with them. Take a paper as a timed CBT test, see your score the moment you finish, and find the subjects that still need another week. %s',
-            $examKey,
-            $exam['blurb']
+            'Every %s past question with its answers, and a timed CBT test you can take right now. Free, for every subject.',
+            $examKey
         );
+    $logo = seo_exam_logo($examKey);
     ?>
     <main class="container py-4 py-lg-5">
         <nav aria-label="Breadcrumb" class="mb-3" style="font-size: 0.85rem;">
@@ -45,7 +47,12 @@ function seo_render_exam_page(array $exam, ?string $subject = null): void {
         </nav>
 
         <header class="mb-4">
-            <h1 style="font-size: clamp(1.7rem, 4vw, 2.6rem); font-weight: 800; line-height: 1.15;"><?php echo htmlspecialchars($h1); ?></h1>
+            <div class="d-flex align-items-center gap-3 flex-wrap">
+                <?php if ($logo): ?>
+                    <img src="<?php echo htmlspecialchars($logo); ?>" alt="<?php echo htmlspecialchars($examKey); ?> logo" width="56" height="56" style="height: 56px; width: auto; object-fit: contain;">
+                <?php endif; ?>
+                <h1 style="font-size: clamp(1.7rem, 4vw, 2.6rem); font-weight: 800; line-height: 1.15; margin: 0;"><?php echo htmlspecialchars($h1); ?></h1>
+            </div>
             <p class="mt-3" style="max-width: 62ch; font-size: 1.02rem; line-height: 1.65; color: var(--bs-secondary-color);"><?php echo htmlspecialchars($intro); ?></p>
 
             <div class="d-flex flex-wrap gap-2 mt-3">
@@ -60,7 +67,7 @@ function seo_render_exam_page(array $exam, ?string $subject = null): void {
                     <a class="btn btn-success" href="<?php echo SITE_URL; ?>/quizzes.php?exam=<?php echo urlencode($examKey); ?>">
                         <i class="fas fa-play"></i> Take a free <?php echo htmlspecialchars($examKey); ?> CBT test
                     </a>
-                    <a class="btn btn-outline-success" href="<?php echo SITE_URL; ?>/materials.php?board=<?php echo urlencode($examKey); ?>">
+                    <a class="btn btn-outline-success" href="<?php echo SITE_URL; ?>/materials.php?level=Secondary&amp;secondary_board=<?php echo urlencode($examKey); ?>">
                         <i class="fas fa-book-open"></i> <?php echo htmlspecialchars($examKey); ?> study materials
                     </a>
                 <?php endif; ?>
@@ -131,12 +138,18 @@ function seo_render_exam_page(array $exam, ?string $subject = null): void {
             <h2 style="font-size: 1.3rem; font-weight: 800;">Other examinations</h2>
             <div class="row g-3 mt-1">
                 <?php foreach ($others as $other): ?>
+                    <?php $otherLogo = seo_exam_logo($other['key']); ?>
                     <div class="col-12 col-md-6">
                         <a class="d-block text-decoration-none" href="<?php echo SITE_URL; ?>/<?php echo $other['file']; ?>">
-                            <div style="border: 1px solid var(--bs-border-color); border-radius: 14px; padding: 1rem 1.1rem;">
-                                <div style="font-weight: 700;"><?php echo htmlspecialchars($other['tagline']); ?></div>
-                                <div style="font-size: 0.82rem; color: var(--bs-secondary-color); margin-top: 4px;">
-                                    <?php echo htmlspecialchars($other['long']); ?> practice papers and answers.
+                            <div style="border: 1px solid var(--bs-border-color); border-radius: 14px; padding: 1rem 1.1rem; display: flex; align-items: center; gap: 0.9rem;">
+                                <?php if ($otherLogo): ?>
+                                    <img src="<?php echo htmlspecialchars($otherLogo); ?>" alt="<?php echo htmlspecialchars($other['key']); ?> logo" width="44" height="44" style="height: 44px; width: auto; object-fit: contain; flex-shrink: 0;">
+                                <?php endif; ?>
+                                <div>
+                                    <div style="font-weight: 700;"><?php echo htmlspecialchars($other['tagline']); ?></div>
+                                    <div style="font-size: 0.82rem; color: var(--bs-secondary-color); margin-top: 4px;">
+                                        <?php echo htmlspecialchars($other['long']); ?> practice papers and answers.
+                                    </div>
                                 </div>
                             </div>
                         </a>

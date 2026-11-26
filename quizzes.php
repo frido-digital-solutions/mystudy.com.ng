@@ -56,25 +56,6 @@ include __DIR__ . '/includes/header.php';
     </div>
 </div>
 
-<!-- The three examinations, one tap away. These pages carry the free past
-     questions with answers, and they link back here - so a student who lands
-     on a paper can find every other paper of the same examination. -->
-<section class="py-3">
-    <div class="container">
-        <div class="d-flex flex-wrap gap-2">
-            <?php foreach (seo_exam_pages() as $examCard): ?>
-                <a class="btn btn-sm <?php echo ($exam && $exam === $examCard['key']) ? 'btn-success' : 'btn-outline-success'; ?> px-3"
-                   href="<?php echo SITE_URL; ?>/quizzes.php?exam=<?php echo urlencode($examCard['key']); ?>">
-                    <?php echo htmlspecialchars($examCard['name']); ?> past questions
-                </a>
-                <a class="btn btn-sm btn-outline-secondary px-3" href="<?php echo SITE_URL; ?>/<?php echo $examCard['file']; ?>">
-                    <?php echo htmlspecialchars($examCard['name']); ?> answers
-                </a>
-            <?php endforeach; ?>
-        </div>
-    </div>
-</section>
-
 <?php if (!empty($challenges)): ?>
 <!-- ===========================================
      CHALLENGE ARENA (MOVED TO TOP)
@@ -417,11 +398,18 @@ include __DIR__ . '/includes/header.php';
         <div class="section-header">
             <h2 class="section-title">Available Practice Quizzes</h2>
             <form class="filter-form" method="get" action="">
-                <select name="level" class="filter-select">
+                <select name="level" class="filter-select" onchange="this.form.submit()" aria-label="Filter by level">
                     <option value="">All Levels</option>
                     <option value="Secondary" <?php echo $level === 'Secondary' ? 'selected' : ''; ?>>Secondary School</option>
                     <option value="University" <?php echo $level === 'University' ? 'selected' : ''; ?>>University</option>
                 </select>
+                <select name="exam" class="filter-select" onchange="this.form.submit()" aria-label="Filter by examination">
+                    <option value="">All Exams</option>
+                    <option value="WAEC" <?php echo $exam === 'WAEC' ? 'selected' : ''; ?>>WAEC Past Questions</option>
+                    <option value="NECO" <?php echo $exam === 'NECO' ? 'selected' : ''; ?>>NECO Past Questions</option>
+                    <option value="JAMB" <?php echo $exam === 'JAMB' ? 'selected' : ''; ?>>JAMB Past Questions</option>
+                </select>
+                <noscript><button type="submit" class="filter-btn">Apply</button></noscript>
             </form>
         </div>
         

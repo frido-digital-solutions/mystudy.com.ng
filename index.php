@@ -217,7 +217,7 @@ seo_jsonld([
                     <span class="highlight">Past Questions &amp; CBT Practice</span>
                 </h1>
                 <p class="hero-description">
-                    Past questions with answers, free CBT practice tests and study materials for Nigerian secondary and university students - <?php echo SITE_NAME; ?>. Take a WAEC, NECO or JAMB paper the way the real exam works, see your score the moment you finish, and keep the corrections for next time. In university, find course materials, lecture notes, past exam questions and a CGPA calculator. Works on your phone too, even without internet.
+                    Free WAEC, NECO and JAMB past questions with answers, CBT practice tests and study materials for secondary and university students. Take a paper, get your score the moment you finish, and work on your phone even without internet.
                 </p>
                 
                 <div class="hero-cta-group">
@@ -308,8 +308,13 @@ seo_jsonld([
                 <div class="col-12 col-md-4">
                     <a class="d-block h-100 text-decoration-none" href="<?php echo SITE_URL; ?>/<?php echo $examCard['file']; ?>">
                         <div style="border: 1px solid rgba(16,185,129,0.28); border-radius: 18px; padding: 1.4rem 1.3rem; height: 100%; background: #fff;">
-                            <div style="font-size: 1.15rem; font-weight: 800; color: #047857;"><?php echo htmlspecialchars($examCard['tagline']); ?></div>
-                            <div style="font-size: 0.86rem; color: var(--bs-secondary-color); margin-top: 6px;">
+                            <div class="d-flex align-items-center gap-3">
+                                <img src="<?php echo htmlspecialchars(seo_exam_logo($examCard['key'])); ?>"
+                                     alt="<?php echo htmlspecialchars($examCard['key']); ?> logo" width="52" height="52" loading="lazy"
+                                     style="height: 52px; width: auto; max-width: 52px; object-fit: contain; flex-shrink: 0;">
+                                <div style="font-size: 1.15rem; font-weight: 800; color: #047857;"><?php echo htmlspecialchars($examCard['tagline']); ?></div>
+                            </div>
+                            <div style="font-size: 0.86rem; color: var(--bs-secondary-color); margin-top: 10px;">
                                 <?php echo htmlspecialchars($examCard['long']); ?> practice papers, answers and CBT tests.
                             </div>
                             <div style="font-size: 0.82rem; font-weight: 700; color: #047857; margin-top: 10px;">
