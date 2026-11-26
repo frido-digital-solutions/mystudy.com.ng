@@ -44,6 +44,15 @@ foreach ($posts as $post) {
     $level  = $post['level'] === 'University' ? 'University' : 'Secondary';
     $isGeneral = !empty($post['university_general']) ? 1 : 0;
 
+    // The post carries the day the news broke - the day of the announcement
+    // it is written about - so the blog reads like news rather than like a
+    // pile of posts that all landed on the same afternoon. The footer of
+    // every post says plainly when it was written.
+    $publishedAt = $post['date'] ?? date('Y-m-d H:i:s');
+    $dateLabel   = $post['date_label'] ?? date('j F Y');
+    // The day the text itself was written and checked.
+    $reviewedAt  = '2026-11-26 09:00:00';
+
     $banner = $post['banner'];
     $image  = 'assets/img/news/' . $banner['file'];
     $imageUrl = '/assets/img/news/' . $banner['file'];
@@ -67,8 +76,12 @@ foreach ($posts as $post) {
     }
 
     $content .= "\n<p style=\"font-size:0.85rem;color:#64748b;margin-top:2rem;\">"
-        . "<em>Updated on 26 November 2026. This article was written for MyStudy Base from the announcements and reports listed above; "
-        . "always confirm fees and dates on the examination body's own website before you act.</em></p>";
+        . "<em>This article covers the news of " . htmlspecialchars($dateLabel, ENT_QUOTES)
+        . ". Last reviewed 26 November 2026. Always confirm fees, dates and rules on the examination body's own website before you act.</em></p>";
+
+    // A small note at the top of the post, so the page knows when the text
+    // itself was last reviewed.
+    $content = '<!-- msb-updated: ' . $reviewedAt . ' -->' . "\n" . $content;
 
     $existing = $pdo->prepare('SELECT id FROM posts WHERE slug = ? LIMIT 1');
     $existing->execute([$slug]);
@@ -84,12 +97,13 @@ foreach ($posts as $post) {
             $postId = (int)$existingId;
         } else {
             $update = $pdo->prepare('UPDATE posts SET excerpt = :e, content = :c, level = :l,
-                                       is_university_general = :g WHERE id = :id');
+                                       is_university_general = :g, created_at = :d WHERE id = :id');
             $update->execute([
                 ':e'  => $excerpt,
                 ':c'  => $content,
                 ':l'  => $level,
                 ':g'  => $isGeneral,
+                ':d'  => $publishedAt,
                 ':id' => (int)$existingId,
             ]);
             echo "refreshed : {$slug}\n";
@@ -98,7 +112,7 @@ foreach ($posts as $post) {
         }
     } else {
         $insert = $pdo->prepare('INSERT INTO posts (title, slug, excerpt, content, author_id, level, university_id, is_university_general, created_at)
-                                 VALUES (:t, :s, :e, :c, :a, :l, :u, :g, NOW())');
+                                 VALUES (:t, :s, :e, :c, :a, :l, :u, :g, :d)');
         $insert->execute([
             ':t' => $title,
             ':s' => $slug,
@@ -108,6 +122,7 @@ foreach ($posts as $post) {
             ':l' => $level,
             ':u' => null,
             ':g' => $isGeneral,
+            ':d' => $publishedAt,
         ]);
         $postId = (int)$pdo->lastInsertId();
         echo "published : {$slug} (id {$postId})\n";

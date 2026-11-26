@@ -57,14 +57,22 @@ foreach ($posts as $post) {
     }
 
     $content .= "\n<p style=\"font-size:0.85rem;color:#64748b;margin-top:2rem;\">"
-        . "<em>Updated on 26 November 2026. This article was written for MyStudy Base from the announcements and reports listed above; "
-        . "always confirm fees and dates on the examination body's own website before you act.</em></p>";
+        . "<em>This article covers the news of " . htmlspecialchars($post['date_label'] ?? date('j F Y'), ENT_QUOTES)
+        . ". Last reviewed 26 November 2026. Always confirm fees, dates and rules on the examination body's own website before you act.</em></p>";
+
+    $publishedAt = $post['date'] ?? date('Y-m-d H:i:s');
+    $reviewedAt  = '2026-11-26 09:00:00';
+    $content = '<!-- msb-updated: ' . $reviewedAt . ' -->' . "\n" . $content;
 
     $lines[] = '-- ' . $title;
     $lines[] = "INSERT INTO posts (title, slug, excerpt, content, author_id, level, university_id, is_university_general, created_at)";
     $lines[] = "SELECT " . sql_value($title) . ", " . sql_value($slug) . ", " . sql_value($excerpt) . ", " . sql_value($content)
-        . ", 13, " . sql_value($level) . ", NULL, {$isGeneral}, NOW()";
+        . ", 13, " . sql_value($level) . ", NULL, {$isGeneral}, " . sql_value($publishedAt);
     $lines[] = 'FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM posts WHERE slug = ' . sql_value($slug) . ');';
+    $lines[] = '';
+    // If an earlier copy of this file was already imported, the date is put
+    // right here rather than left at the day the import happened.
+    $lines[] = 'UPDATE posts SET created_at = ' . sql_value($publishedAt) . ' WHERE slug = ' . sql_value($slug) . ';';
     $lines[] = '';
     $lines[] = "INSERT INTO post_images (post_id, file_path, caption, sort_order)";
     $lines[] = "SELECT id, " . sql_value($image) . ", " . sql_value($title) . ", 0";

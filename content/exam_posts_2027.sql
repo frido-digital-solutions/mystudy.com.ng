@@ -9,7 +9,8 @@ SET FOREIGN_KEY_CHECKS = 0;
 
 -- WAEC 2027 Registration Is Open, and the Exam Will Be Hybrid: What That Means for You
 INSERT INTO posts (title, slug, excerpt, content, author_id, level, university_id, is_university_general, created_at)
-SELECT 'WAEC 2027 Registration Is Open, and the Exam Will Be Hybrid: What That Means for You', 'waec-2027-registration-open-hybrid-examinations', 'WAEC opened 2027 WASSCE registration for school candidates on 17 November 2026 and confirmed for the first time that the 2027 examination will run in hybrid mode. Here is what changed, what did not, and what your school has to do.', '<p><img src="/assets/img/news/waec-2027-hybrid.png" alt="WAEC 2027 Registration Is Open, and the Exam Will Be Hybrid: What That Means for You" width="1200" height="630" style="width:100%;height:auto;border-radius:14px;margin-bottom:1.2rem;"></p>
+SELECT 'WAEC 2027 Registration Is Open, and the Exam Will Be Hybrid: What That Means for You', 'waec-2027-registration-open-hybrid-examinations', 'WAEC opened 2027 WASSCE registration for school candidates on 17 November 2026 and confirmed for the first time that the 2027 examination will run in hybrid mode. Here is what changed, what did not, and what your school has to do.', '<!-- msb-updated: 2026-11-26 09:00:00 -->
+<p><img src="/assets/img/news/waec-2027-hybrid.png" alt="WAEC 2027 Registration Is Open, and the Exam Will Be Hybrid: What That Means for You" width="1200" height="630" style="width:100%;height:auto;border-radius:14px;margin-bottom:1.2rem;"></p>
 <p>On Tuesday, 17 November 2026, the West African Examinations Council announced on its official account that registration for the 2027 West African Senior School Certificate Examination (WASSCE) for school candidates had opened. The same statement carried a line that matters more than any date: <strong>the 2027 examination will be conducted in hybrid mode.</strong></p>
 
 <h3>What "hybrid" actually means</h3>
@@ -43,8 +44,10 @@ SELECT 'WAEC 2027 Registration Is Open, and the Exam Will Be Hybrid: What That M
 <li><a href="https://blueprint.ng/waec-opens-registration-for-2027-wassce/" rel="nofollow noopener" target="_blank">Blueprint: WAEC opens registration for 2027 WASSCE</a></li>
 <li><a href="https://dailypost.ng/2026/11/18/2027-wassce-registration-opens-as-waec-unveils-hybrid-exam-format/" rel="nofollow noopener" target="_blank">Daily Post: 2027 WASSCE - SS3 students to write objectives on computer</a></li>
 </ul>
-<p style="font-size:0.85rem;color:#64748b;margin-top:2rem;"><em>Updated on 26 November 2026. This article was written for MyStudy Base from the announcements and reports listed above; always confirm fees and dates on the examination body''s own website before you act.</em></p>', 13, 'Secondary', NULL, 0, NOW()
+<p style="font-size:0.85rem;color:#64748b;margin-top:2rem;"><em>This article covers the news of 17 November 2026. Last reviewed 26 November 2026. Always confirm fees, dates and rules on the examination body''s own website before you act.</em></p>', 13, 'Secondary', NULL, 0, '2026-11-17 09:00:00'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM posts WHERE slug = 'waec-2027-registration-open-hybrid-examinations');
+
+UPDATE posts SET created_at = '2026-11-17 09:00:00' WHERE slug = 'waec-2027-registration-open-hybrid-examinations';
 
 INSERT INTO post_images (post_id, file_path, caption, sort_order)
 SELECT id, 'assets/img/news/waec-2027-hybrid.png', 'WAEC 2027 Registration Is Open, and the Exam Will Be Hybrid: What That Means for You', 0
@@ -52,7 +55,8 @@ FROM posts WHERE slug = 'waec-2027-registration-open-hybrid-examinations' AND NO
 
 -- WAEC 2027 Registration Dates: The Three Windows Every SS3 Candidate Should Know
 INSERT INTO posts (title, slug, excerpt, content, author_id, level, university_id, is_university_general, created_at)
-SELECT 'WAEC 2027 Registration Dates: The Three Windows Every SS3 Candidate Should Know', 'waec-2027-registration-dates-cass-and-the-january-deadline', 'CASS uploads, offline entry and online registration run on three separate clocks, and the first one closes on 17 December 2026. Here are the dates, in order, and what each stage actually involves.', '<p><img src="/assets/img/news/waec-2027-dates.png" alt="WAEC 2027 Registration Dates: The Three Windows Every SS3 Candidate Should Know" width="1200" height="630" style="width:100%;height:auto;border-radius:14px;margin-bottom:1.2rem;"></p>
+SELECT 'WAEC 2027 Registration Dates: The Three Windows Every SS3 Candidate Should Know', 'waec-2027-registration-dates-cass-and-the-january-deadline', 'CASS uploads, offline entry and online registration run on three separate clocks, and the first one closes on 17 December 2026. Here are the dates, in order, and what each stage actually involves.', '<!-- msb-updated: 2026-11-26 09:00:00 -->
+<p><img src="/assets/img/news/waec-2027-dates.png" alt="WAEC 2027 Registration Dates: The Three Windows Every SS3 Candidate Should Know" width="1200" height="630" style="width:100%;height:auto;border-radius:14px;margin-bottom:1.2rem;"></p>
 <p>Registration for the 2027 WASSCE is not one date. It is three overlapping windows, and they do not all close at the same time. WAEC''s circular to school principals, dated 16 October 2026, splits the exercise into three stages - and the first stage closes more than a month before the last one opens.</p>
 
 <h3>The three stages</h3>
@@ -89,8 +93,10 @@ SELECT 'WAEC 2027 Registration Dates: The Three Windows Every SS3 Candidate Shou
 <li><a href="https://schoolcrib.com/waec-2027-registration/" rel="nofollow noopener" target="_blank">Schoolcrib: WAEC 2027 registration dates, fee and how to register</a></li>
 <li><a href="https://www.megastarmagazine.com/education/waec-begins-registration-for-2027-wassce/" rel="nofollow noopener" target="_blank">Megastar Magazine: WAEC begins registration for 2027 WASSCE</a></li>
 </ul>
-<p style="font-size:0.85rem;color:#64748b;margin-top:2rem;"><em>Updated on 26 November 2026. This article was written for MyStudy Base from the announcements and reports listed above; always confirm fees and dates on the examination body''s own website before you act.</em></p>', 13, 'Secondary', NULL, 0, NOW()
+<p style="font-size:0.85rem;color:#64748b;margin-top:2rem;"><em>This article covers the news of 18 November 2026. Last reviewed 26 November 2026. Always confirm fees, dates and rules on the examination body''s own website before you act.</em></p>', 13, 'Secondary', NULL, 0, '2026-11-18 09:00:00'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM posts WHERE slug = 'waec-2027-registration-dates-cass-and-the-january-deadline');
+
+UPDATE posts SET created_at = '2026-11-18 09:00:00' WHERE slug = 'waec-2027-registration-dates-cass-and-the-january-deadline';
 
 INSERT INTO post_images (post_id, file_path, caption, sort_order)
 SELECT id, 'assets/img/news/waec-2027-dates.png', 'WAEC 2027 Registration Dates: The Three Windows Every SS3 Candidate Should Know', 0
@@ -98,7 +104,8 @@ FROM posts WHERE slug = 'waec-2027-registration-dates-cass-and-the-january-deadl
 
 -- WAEC GCE: What Private Candidates Should Know Now That Computer-Based Testing Is Here
 INSERT INTO posts (title, slug, excerpt, content, author_id, level, university_id, is_university_general, created_at)
-SELECT 'WAEC GCE: What Private Candidates Should Know Now That Computer-Based Testing Is Here', 'waec-gce-private-candidates-two-dietes-a-year', 'WAEC gives private candidates two chances a year, and the paper is no longer a paper-only affair. Here is how the GCE route works, what it costs in time, and why most candidates still need a proper study plan.', '<p><img src="/assets/img/news/waec-gce-private.png" alt="WAEC GCE: What Private Candidates Should Know Now That Computer-Based Testing Is Here" width="1200" height="630" style="width:100%;height:auto;border-radius:14px;margin-bottom:1.2rem;"></p>
+SELECT 'WAEC GCE: What Private Candidates Should Know Now That Computer-Based Testing Is Here', 'waec-gce-private-candidates-two-dietes-a-year', 'WAEC gives private candidates two chances a year, and the paper is no longer a paper-only affair. Here is how the GCE route works, what it costs in time, and why most candidates still need a proper study plan.', '<!-- msb-updated: 2026-11-26 09:00:00 -->
+<p><img src="/assets/img/news/waec-gce-private.png" alt="WAEC GCE: What Private Candidates Should Know Now That Computer-Based Testing Is Here" width="1200" height="630" style="width:100%;height:auto;border-radius:14px;margin-bottom:1.2rem;"></p>
 <p>If you left school before the WASSCE, or you are resitting one or two subjects, the route open to you is the WASSCE for Private Candidates, which everybody calls WAEC GCE. It leads to the same certificate as the school examination. What is different is who enters you: you enter yourself.</p>
 
 <h3>Two diets a year, not one</h3>
@@ -129,8 +136,10 @@ SELECT 'WAEC GCE: What Private Candidates Should Know Now That Computer-Based Te
 <li><a href="https://schoolcrib.com/waec-gce-registration/" rel="nofollow noopener" target="_blank">Schoolcrib: WAEC GCE registration 2026/2027</a></li>
 <li><a href="https://guardian.ng/breakingnews/waec-opens-2027-wassce-registration-introduces-cbt/" rel="nofollow noopener" target="_blank">Guardian Nigeria: WAEC opens 2027 WASSCE registration, introduces CBT</a></li>
 </ul>
-<p style="font-size:0.85rem;color:#64748b;margin-top:2rem;"><em>Updated on 26 November 2026. This article was written for MyStudy Base from the announcements and reports listed above; always confirm fees and dates on the examination body''s own website before you act.</em></p>', 13, 'Secondary', NULL, 0, NOW()
+<p style="font-size:0.85rem;color:#64748b;margin-top:2rem;"><em>This article covers the news of 19 November 2026. Last reviewed 26 November 2026. Always confirm fees, dates and rules on the examination body''s own website before you act.</em></p>', 13, 'Secondary', NULL, 0, '2026-11-19 09:00:00'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM posts WHERE slug = 'waec-gce-private-candidates-two-dietes-a-year');
+
+UPDATE posts SET created_at = '2026-11-19 09:00:00' WHERE slug = 'waec-gce-private-candidates-two-dietes-a-year';
 
 INSERT INTO post_images (post_id, file_path, caption, sort_order)
 SELECT id, 'assets/img/news/waec-gce-private.png', 'WAEC GCE: What Private Candidates Should Know Now That Computer-Based Testing Is Here', 0
@@ -138,7 +147,8 @@ FROM posts WHERE slug = 'waec-gce-private-candidates-two-dietes-a-year' AND NOT 
 
 -- WAEC 2026 Results by the Numbers: Nearly Two Million Sat, 61.54% Met the University Benchmark
 INSERT INTO posts (title, slug, excerpt, content, author_id, level, university_id, is_university_general, created_at)
-SELECT 'WAEC 2026 Results by the Numbers: Nearly Two Million Sat, 61.54% Met the University Benchmark', 'waec-2026-results-by-the-numbers', 'WAEC released the 2026 CB-WASSCE results in August with a slightly lower pass rate than 2025 and 167,486 results withheld. Here are the numbers that matter for a 2027 candidate, explained.', '<p><img src="/assets/img/news/waec-2026-results.png" alt="WAEC 2026 Results by the Numbers: Nearly Two Million Sat, 61.54% Met the University Benchmark" width="1200" height="630" style="width:100%;height:auto;border-radius:14px;margin-bottom:1.2rem;"></p>
+SELECT 'WAEC 2026 Results by the Numbers: Nearly Two Million Sat, 61.54% Met the University Benchmark', 'waec-2026-results-by-the-numbers', 'WAEC released the 2026 CB-WASSCE results in August with a slightly lower pass rate than 2025 and 167,486 results withheld. Here are the numbers that matter for a 2027 candidate, explained.', '<!-- msb-updated: 2026-11-26 09:00:00 -->
+<p><img src="/assets/img/news/waec-2026-results.png" alt="WAEC 2026 Results by the Numbers: Nearly Two Million Sat, 61.54% Met the University Benchmark" width="1200" height="630" style="width:100%;height:auto;border-radius:14px;margin-bottom:1.2rem;"></p>
 <p>The 2026 WASSCE was the first full computer-based WASSCE for school candidates in Nigeria, and its results are the best dataset yet for understanding where students actually lose marks. WAEC released them in August 2026, and the headline numbers are worth reading carefully rather than skimming.</p>
 
 <h3>The headline figures</h3>
@@ -171,8 +181,10 @@ SELECT 'WAEC 2026 Results by the Numbers: Nearly Two Million Sat, 61.54% Met the
 <li><a href="https://edugist.org/2026-waec-results-by-the-numbers-12-statistics-that-tell-the-real-story-of-secondary-education-in-nigeria/" rel="nofollow noopener" target="_blank">Edugist: 12 statistics that tell the real story of secondary education in Nigeria</a></li>
 <li><a href="https://www.nairaland.com/8722827/waec-releases-2026-results-how" rel="nofollow noopener" target="_blank">Nairaland: WAEC releases 2026 results</a></li>
 </ul>
-<p style="font-size:0.85rem;color:#64748b;margin-top:2rem;"><em>Updated on 26 November 2026. This article was written for MyStudy Base from the announcements and reports listed above; always confirm fees and dates on the examination body''s own website before you act.</em></p>', 13, 'Secondary', NULL, 0, NOW()
+<p style="font-size:0.85rem;color:#64748b;margin-top:2rem;"><em>This article covers the news of 6 August 2026. Last reviewed 26 November 2026. Always confirm fees, dates and rules on the examination body''s own website before you act.</em></p>', 13, 'Secondary', NULL, 0, '2026-08-06 09:00:00'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM posts WHERE slug = 'waec-2026-results-by-the-numbers');
+
+UPDATE posts SET created_at = '2026-08-06 09:00:00' WHERE slug = 'waec-2026-results-by-the-numbers';
 
 INSERT INTO post_images (post_id, file_path, caption, sort_order)
 SELECT id, 'assets/img/news/waec-2026-results.png', 'WAEC 2026 Results by the Numbers: Nearly Two Million Sat, 61.54% Met the University Benchmark', 0
@@ -180,7 +192,8 @@ FROM posts WHERE slug = 'waec-2026-results-by-the-numbers' AND NOT EXISTS (SELEC
 
 -- NECO 2027 SSCE: Registration Is Open and the Whole Examination Has Moved Ten Weeks Earlier
 INSERT INTO posts (title, slug, excerpt, content, author_id, level, university_id, is_university_general, created_at)
-SELECT 'NECO 2027 SSCE: Registration Is Open and the Whole Examination Has Moved Ten Weeks Earlier', 'neco-2027-ssce-registration-open-exam-moved-to-april', 'NECO opened 2027 SSCE Internal registration on 2 November 2026 and moved the examination to 1 April - 11 May 2027, weeks before WAEC writes. Here are the dates, the fee and what changed.', '<p><img src="/assets/img/news/neco-2027-ssce.png" alt="NECO 2027 SSCE: Registration Is Open and the Whole Examination Has Moved Ten Weeks Earlier" width="1200" height="630" style="width:100%;height:auto;border-radius:14px;margin-bottom:1.2rem;"></p>
+SELECT 'NECO 2027 SSCE: Registration Is Open and the Whole Examination Has Moved Ten Weeks Earlier', 'neco-2027-ssce-registration-open-exam-moved-to-april', 'NECO opened 2027 SSCE Internal registration on 2 November 2026 and moved the examination to 1 April - 11 May 2027, weeks before WAEC writes. Here are the dates, the fee and what changed.', '<!-- msb-updated: 2026-11-26 09:00:00 -->
+<p><img src="/assets/img/news/neco-2027-ssce.png" alt="NECO 2027 SSCE: Registration Is Open and the Whole Examination Has Moved Ten Weeks Earlier" width="1200" height="630" style="width:100%;height:auto;border-radius:14px;margin-bottom:1.2rem;"></p>
 <p>NECO opened registration for the 2027 Senior School Certificate Examination (Internal) on Monday, 2 November 2026, and dropped a piece of news with it that changes how a student should plan the year: the examination itself has moved forward to <strong>Thursday 1 April - Tuesday 11 May 2027</strong>. That is roughly ten weeks earlier than NECO''s traditional June/July slot, and it puts the NECO paper <em>before</em> the May/June WAEC WASSCE for the first time in this harmonised calendar.</p>
 
 <h3>The dates that matter</h3>
@@ -216,8 +229,10 @@ SELECT 'NECO 2027 SSCE: Registration Is Open and the Whole Examination Has Moved
 <li><a href="https://naijasabi.com.ng/neco-2027-ssce-internal-registration-guidelines-fees-fg-harmonised-exam-timetable/" rel="nofollow noopener" target="_blank">Naijasabi: NECO 2027 SSCE Internal registration guidelines and the FG harmonised timetable</a></li>
 <li><a href="https://recruitfocus.com.ng/when-is-neco-2027-examination-starting/" rel="nofollow noopener" target="_blank">Recruit Focus: When is the NECO 2027 examination starting?</a></li>
 </ul>
-<p style="font-size:0.85rem;color:#64748b;margin-top:2rem;"><em>Updated on 26 November 2026. This article was written for MyStudy Base from the announcements and reports listed above; always confirm fees and dates on the examination body''s own website before you act.</em></p>', 13, 'Secondary', NULL, 0, NOW()
+<p style="font-size:0.85rem;color:#64748b;margin-top:2rem;"><em>This article covers the news of 6 November 2026. Last reviewed 26 November 2026. Always confirm fees, dates and rules on the examination body''s own website before you act.</em></p>', 13, 'Secondary', NULL, 0, '2026-11-06 09:00:00'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM posts WHERE slug = 'neco-2027-ssce-registration-open-exam-moved-to-april');
+
+UPDATE posts SET created_at = '2026-11-06 09:00:00' WHERE slug = 'neco-2027-ssce-registration-open-exam-moved-to-april';
 
 INSERT INTO post_images (post_id, file_path, caption, sort_order)
 SELECT id, 'assets/img/news/neco-2027-ssce.png', 'NECO 2027 SSCE: Registration Is Open and the Whole Examination Has Moved Ten Weeks Earlier', 0
@@ -225,7 +240,8 @@ FROM posts WHERE slug = 'neco-2027-ssce-registration-open-exam-moved-to-april' A
 
 -- NECO 2027 BECE: Private Candidates Barred, Every Candidate Gets a Learners Number
 INSERT INTO posts (title, slug, excerpt, content, author_id, level, university_id, is_university_general, created_at)
-SELECT 'NECO 2027 BECE: Private Candidates Barred, Every Candidate Gets a Learners Number', 'neco-2027-bece-private-candidates-banned-and-the-nlin', 'NECO released its 2027 Basic Education Certificate Examination guidelines on 20 November 2026, and they contain sharp new rules for JSS 3 students and the schools entering them.', '<p><img src="/assets/img/news/neco-2027-bece.png" alt="NECO 2027 BECE: Private Candidates Barred, Every Candidate Gets a Learners Number" width="1200" height="630" style="width:100%;height:auto;border-radius:14px;margin-bottom:1.2rem;"></p>
+SELECT 'NECO 2027 BECE: Private Candidates Barred, Every Candidate Gets a Learners Number', 'neco-2027-bece-private-candidates-banned-and-the-nlin', 'NECO released its 2027 Basic Education Certificate Examination guidelines on 20 November 2026, and they contain sharp new rules for JSS 3 students and the schools entering them.', '<!-- msb-updated: 2026-11-26 09:00:00 -->
+<p><img src="/assets/img/news/neco-2027-bece.png" alt="NECO 2027 BECE: Private Candidates Barred, Every Candidate Gets a Learners Number" width="1200" height="630" style="width:100%;height:auto;border-radius:14px;margin-bottom:1.2rem;"></p>
 <p>While the big attention was on the senior school certificate, NECO quietly issued its 2027 Basic Education Certificate Examination guidelines on Friday, 20 November 2026, and the rules in them are stricter than anything JSS 3 students are used to.</p>
 
 <h3>School-based candidates only</h3>
@@ -251,8 +267,10 @@ SELECT 'NECO 2027 BECE: Private Candidates Barred, Every Candidate Gets a Learne
 <li><a href="https://theeagleonline.com.ng/breaking-2027-bece-neco-releases-registration-guidelines-bars-private-candidates/" rel="nofollow noopener" target="_blank">The Eagle Online: 2027 BECE - NECO releases registration guidelines, bars private candidates</a></li>
 <li><a href="https://www.nigerianeye.com/2026/11/neco-declares-university-of-america.html" rel="nofollow noopener" target="_blank">Nigerian Eye: NECO declares University of America centres illegal (same week, NUC)</a></li>
 </ul>
-<p style="font-size:0.85rem;color:#64748b;margin-top:2rem;"><em>Updated on 26 November 2026. This article was written for MyStudy Base from the announcements and reports listed above; always confirm fees and dates on the examination body''s own website before you act.</em></p>', 13, 'Secondary', NULL, 0, NOW()
+<p style="font-size:0.85rem;color:#64748b;margin-top:2rem;"><em>This article covers the news of 20 November 2026. Last reviewed 26 November 2026. Always confirm fees, dates and rules on the examination body''s own website before you act.</em></p>', 13, 'Secondary', NULL, 0, '2026-11-20 09:00:00'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM posts WHERE slug = 'neco-2027-bece-private-candidates-banned-and-the-nlin');
+
+UPDATE posts SET created_at = '2026-11-20 09:00:00' WHERE slug = 'neco-2027-bece-private-candidates-banned-and-the-nlin';
 
 INSERT INTO post_images (post_id, file_path, caption, sort_order)
 SELECT id, 'assets/img/news/neco-2027-bece.png', 'NECO 2027 BECE: Private Candidates Barred, Every Candidate Gets a Learners Number', 0
@@ -260,7 +278,8 @@ FROM posts WHERE slug = 'neco-2027-bece-private-candidates-banned-and-the-nlin' 
 
 -- JAMB Gives 2027 UTME Candidates a Six-Point Checklist and a Pre-Registration App
 INSERT INTO posts (title, slug, excerpt, content, author_id, level, university_id, is_university_general, created_at)
-SELECT 'JAMB Gives 2027 UTME Candidates a Six-Point Checklist and a Pre-Registration App', 'jamb-2027-utme-six-point-checklist-and-pre-registration-app', 'JAMB has told candidates to fix their NIMC records, phone, email and subject combinations before registration - and the Registrar has announced a mobile app that lets you do most of it from home.', '<p><img src="/assets/img/news/jamb-2027-checklist.png" alt="JAMB Gives 2027 UTME Candidates a Six-Point Checklist and a Pre-Registration App" width="1200" height="630" style="width:100%;height:auto;border-radius:14px;margin-bottom:1.2rem;"></p>
+SELECT 'JAMB Gives 2027 UTME Candidates a Six-Point Checklist and a Pre-Registration App', 'jamb-2027-utme-six-point-checklist-and-pre-registration-app', 'JAMB has told candidates to fix their NIMC records, phone, email and subject combinations before registration - and the Registrar has announced a mobile app that lets you do most of it from home.', '<!-- msb-updated: 2026-11-26 09:00:00 -->
+<p><img src="/assets/img/news/jamb-2027-checklist.png" alt="JAMB Gives 2027 UTME Candidates a Six-Point Checklist and a Pre-Registration App" width="1200" height="630" style="width:100%;height:auto;border-radius:14px;margin-bottom:1.2rem;"></p>
 <p>JAMB has not announced a registration date for the 2027 UTME. What it has done is tell candidates exactly what to fix before the date arrives, and shown its hand on how registration itself is about to change.</p>
 
 <h3>The six-point checklist</h3>
@@ -297,8 +316,10 @@ SELECT 'JAMB Gives 2027 UTME Candidates a Six-Point Checklist and a Pre-Registra
 <li><a href="https://guardian.ng/news/jamb-to-introduce-pre-registration-app-tighten-biometric-checks-for-2027-utme/" rel="nofollow noopener" target="_blank">Guardian Nigeria: JAMB to introduce pre-registration app, tighten biometric checks for 2027 UTME</a></li>
 <li><a href="https://gazettengr.com/jamb-issues-guidelines-for-prospective-2027-utme-candidates/" rel="nofollow noopener" target="_blank">Gazette NGR: JAMB issues guidelines for prospective 2027 UTME candidates</a></li>
 </ul>
-<p style="font-size:0.85rem;color:#64748b;margin-top:2rem;"><em>Updated on 26 November 2026. This article was written for MyStudy Base from the announcements and reports listed above; always confirm fees and dates on the examination body''s own website before you act.</em></p>', 13, 'Secondary', NULL, 0, NOW()
+<p style="font-size:0.85rem;color:#64748b;margin-top:2rem;"><em>This article covers the news of 18 November 2026. Last reviewed 26 November 2026. Always confirm fees, dates and rules on the examination body''s own website before you act.</em></p>', 13, 'Secondary', NULL, 0, '2026-11-18 09:00:00'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM posts WHERE slug = 'jamb-2027-utme-six-point-checklist-and-pre-registration-app');
+
+UPDATE posts SET created_at = '2026-11-18 09:00:00' WHERE slug = 'jamb-2027-utme-six-point-checklist-and-pre-registration-app';
 
 INSERT INTO post_images (post_id, file_path, caption, sort_order)
 SELECT id, 'assets/img/news/jamb-2027-checklist.png', 'JAMB Gives 2027 UTME Candidates a Six-Point Checklist and a Pre-Registration App', 0
@@ -306,7 +327,8 @@ FROM posts WHERE slug = 'jamb-2027-utme-six-point-checklist-and-pre-registration
 
 -- JAMB 2027 UTME: What Is Confirmed, What Is Only Rumour, and How to Prepare
 INSERT INTO posts (title, slug, excerpt, content, author_id, level, university_id, is_university_general, created_at)
-SELECT 'JAMB 2027 UTME: What Is Confirmed, What Is Only Rumour, and How to Prepare', 'jamb-2027-registration-dates-fees-what-is-confirmed', 'Registration dates, fees and even the exam date for the 2027 UTME are still unannounced. Here is a clear separation of what JAMB has actually said from what people online are guessing.', '<p><img src="/assets/img/news/jamb-2027-dates-fees.png" alt="JAMB 2027 UTME: What Is Confirmed, What Is Only Rumour, and How to Prepare" width="1200" height="630" style="width:100%;height:auto;border-radius:14px;margin-bottom:1.2rem;"></p>
+SELECT 'JAMB 2027 UTME: What Is Confirmed, What Is Only Rumour, and How to Prepare', 'jamb-2027-registration-dates-fees-what-is-confirmed', 'Registration dates, fees and even the exam date for the 2027 UTME are still unannounced. Here is a clear separation of what JAMB has actually said from what people online are guessing.', '<!-- msb-updated: 2026-11-26 09:00:00 -->
+<p><img src="/assets/img/news/jamb-2027-dates-fees.png" alt="JAMB 2027 UTME: What Is Confirmed, What Is Only Rumour, and How to Prepare" width="1200" height="630" style="width:100%;height:auto;border-radius:14px;margin-bottom:1.2rem;"></p>
 <p>Search for "JAMB 2027 registration" and you will find pages quoting an opening date of 5 December, another quoting 12 December, a third quoting 19 January 2027, and several that say the date is not out. Only one of those is the truth right now, and it is the last one.</p>
 
 <h3>What JAMB has actually confirmed</h3>
@@ -346,8 +368,10 @@ SELECT 'JAMB 2027 UTME: What Is Confirmed, What Is Only Rumour, and How to Prepa
 <li><a href="https://www.jump.africa/news/jamb-registration" rel="nofollow noopener" target="_blank">Jump Africa: JAMB registration 2027 - profile code, e-PIN fees and what is known</a></li>
 <li><a href="https://guardian.ng/news/jamb-to-introduce-pre-registration-app-tighten-biometric-checks-for-2027-utme/" rel="nofollow noopener" target="_blank">Guardian Nigeria: JAMB pre-registration app and biometric checks for 2027 UTME</a></li>
 </ul>
-<p style="font-size:0.85rem;color:#64748b;margin-top:2rem;"><em>Updated on 26 November 2026. This article was written for MyStudy Base from the announcements and reports listed above; always confirm fees and dates on the examination body''s own website before you act.</em></p>', 13, 'Secondary', NULL, 0, NOW()
+<p style="font-size:0.85rem;color:#64748b;margin-top:2rem;"><em>This article covers the news of 21 November 2026. Last reviewed 26 November 2026. Always confirm fees, dates and rules on the examination body''s own website before you act.</em></p>', 13, 'Secondary', NULL, 0, '2026-11-21 09:00:00'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM posts WHERE slug = 'jamb-2027-registration-dates-fees-what-is-confirmed');
+
+UPDATE posts SET created_at = '2026-11-21 09:00:00' WHERE slug = 'jamb-2027-registration-dates-fees-what-is-confirmed';
 
 INSERT INTO post_images (post_id, file_path, caption, sort_order)
 SELECT id, 'assets/img/news/jamb-2027-dates-fees.png', 'JAMB 2027 UTME: What Is Confirmed, What Is Only Rumour, and How to Prepare', 0
@@ -355,7 +379,8 @@ FROM posts WHERE slug = 'jamb-2027-registration-dates-fees-what-is-confirmed' AN
 
 -- 701,805 University Admission Spaces Sat Empty: What JAMB's Numbers Mean for You
 INSERT INTO posts (title, slug, excerpt, content, author_id, level, university_id, is_university_general, created_at)
-SELECT '701,805 University Admission Spaces Sat Empty: What JAMB''s Numbers Mean for You', 'jamb-701805-unfilled-university-admission-slots-2026', 'Nigerian universities filled only 48% of their approved 2026 admission quota. The number looks shocking until you break it down - and it is good news for candidates still waiting.', '<p><img src="/assets/img/news/jamb-empty-slots.png" alt="701,805 University Admission Spaces Sat Empty: What JAMB&#039;s Numbers Mean for You" width="1200" height="630" style="width:100%;height:auto;border-radius:14px;margin-bottom:1.2rem;"></p>
+SELECT '701,805 University Admission Spaces Sat Empty: What JAMB''s Numbers Mean for You', 'jamb-701805-unfilled-university-admission-slots-2026', 'Nigerian universities filled only 48% of their approved 2026 admission quota. The number looks shocking until you break it down - and it is good news for candidates still waiting.', '<!-- msb-updated: 2026-11-26 09:00:00 -->
+<p><img src="/assets/img/news/jamb-empty-slots.png" alt="701,805 University Admission Spaces Sat Empty: What JAMB&#039;s Numbers Mean for You" width="1200" height="630" style="width:100%;height:auto;border-radius:14px;margin-bottom:1.2rem;"></p>
 <p>Half of Nigeria''s university admission capacity went unused in the 2026 exercise, and the figure has been widely reported as a scandal. Presented by JAMB''s Registrar, Professor Segun Aina, at the fourth-quarter meeting of the Committee of Vice-Chancellors of Nigerian Universities, the numbers are these:</p>
 
 <ul>
@@ -388,8 +413,10 @@ SELECT '701,805 University Admission Spaces Sat Empty: What JAMB''s Numbers Mean
 <li><a href="https://edugist.org/jamb-nigerian-universities-leave-over-700000-admission-slots-unfilled-in-2026/" rel="nofollow noopener" target="_blank">Edugist: Nigerian universities leave over 700,000 admission slots unfilled in 2026</a></li>
 <li><a href="https://ireadtolive.org/jamb-publish-admission-figures-approved-quotas/" rel="nofollow noopener" target="_blank">iRead To Live: Why JAMB should publish admission figures against approved quotas</a></li>
 </ul>
-<p style="font-size:0.85rem;color:#64748b;margin-top:2rem;"><em>Updated on 26 November 2026. This article was written for MyStudy Base from the announcements and reports listed above; always confirm fees and dates on the examination body''s own website before you act.</em></p>', 13, 'University', NULL, 1, NOW()
+<p style="font-size:0.85rem;color:#64748b;margin-top:2rem;"><em>This article covers the news of 17 November 2026. Last reviewed 26 November 2026. Always confirm fees, dates and rules on the examination body''s own website before you act.</em></p>', 13, 'University', NULL, 1, '2026-11-17 09:00:00'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM posts WHERE slug = 'jamb-701805-unfilled-university-admission-slots-2026');
+
+UPDATE posts SET created_at = '2026-11-17 09:00:00' WHERE slug = 'jamb-701805-unfilled-university-admission-slots-2026';
 
 INSERT INTO post_images (post_id, file_path, caption, sort_order)
 SELECT id, 'assets/img/news/jamb-empty-slots.png', '701,805 University Admission Spaces Sat Empty: What JAMB''s Numbers Mean for You', 0
@@ -397,7 +424,8 @@ FROM posts WHERE slug = 'jamb-701805-unfilled-university-admission-slots-2026' A
 
 -- NUC Warns Students Against Unapproved University Centres: Why Your Degree Could Be Rejected
 INSERT INTO posts (title, slug, excerpt, content, author_id, level, university_id, is_university_general, created_at)
-SELECT 'NUC Warns Students Against Unapproved University Centres: Why Your Degree Could Be Rejected', 'nuc-warns-students-against-unapproved-university-centres', 'The NUC has declared the University of America and the London College of Management and Leadership Education unauthorised in Nigeria. Here is what that means for NYSC, Law School and professional registration.', '<p><img src="/assets/img/news/nuc-unapproved-centres.png" alt="NUC Warns Students Against Unapproved University Centres: Why Your Degree Could Be Rejected" width="1200" height="630" style="width:100%;height:auto;border-radius:14px;margin-bottom:1.2rem;"></p>
+SELECT 'NUC Warns Students Against Unapproved University Centres: Why Your Degree Could Be Rejected', 'nuc-warns-students-against-unapproved-university-centres', 'The NUC has declared the University of America and the London College of Management and Leadership Education unauthorised in Nigeria. Here is what that means for NYSC, Law School and professional registration.', '<!-- msb-updated: 2026-11-26 09:00:00 -->
+<p><img src="/assets/img/news/nuc-unapproved-centres.png" alt="NUC Warns Students Against Unapproved University Centres: Why Your Degree Could Be Rejected" width="1200" height="630" style="width:100%;height:auto;border-radius:14px;margin-bottom:1.2rem;"></p>
 <p>On Tuesday, 17 November 2026, the National Universities Commission issued a public notice naming two foreign institutions and the Nigerian centres they were using. It is worth reading the list carefully, because the consequences run well beyond the institutions named.</p>
 
 <h3>What the NUC said</h3>
@@ -428,8 +456,10 @@ SELECT 'NUC Warns Students Against Unapproved University Centres: Why Your Degre
 <li><a href="https://edugist.org/nuc-warns-nigerians-against-enrolling-at-unapproved-university-of-america-centres/" rel="nofollow noopener" target="_blank">Edugist: NUC warns Nigerians against enrolling at unapproved University of America centres</a></li>
 <li><a href="https://www.bbc.com/pidgin/articles/ck7v2dlm5dp2o.lite" rel="nofollow noopener" target="_blank">BBC News Pidgin: NUC raises alarm over activities of two foreign universities</a></li>
 </ul>
-<p style="font-size:0.85rem;color:#64748b;margin-top:2rem;"><em>Updated on 26 November 2026. This article was written for MyStudy Base from the announcements and reports listed above; always confirm fees and dates on the examination body''s own website before you act.</em></p>', 13, 'University', NULL, 1, NOW()
+<p style="font-size:0.85rem;color:#64748b;margin-top:2rem;"><em>This article covers the news of 17 November 2026. Last reviewed 26 November 2026. Always confirm fees, dates and rules on the examination body''s own website before you act.</em></p>', 13, 'University', NULL, 1, '2026-11-17 09:00:00'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM posts WHERE slug = 'nuc-warns-students-against-unapproved-university-centres');
+
+UPDATE posts SET created_at = '2026-11-17 09:00:00' WHERE slug = 'nuc-warns-students-against-unapproved-university-centres';
 
 INSERT INTO post_images (post_id, file_path, caption, sort_order)
 SELECT id, 'assets/img/news/nuc-unapproved-centres.png', 'NUC Warns Students Against Unapproved University Centres: Why Your Degree Could Be Rejected', 0
@@ -437,7 +467,8 @@ FROM posts WHERE slug = 'nuc-warns-students-against-unapproved-university-centre
 
 -- NUC Proposes a Three-to-Four Week Break for Universities Around the 2027 Elections
 INSERT INTO posts (title, slug, excerpt, content, author_id, level, university_id, is_university_general, created_at)
-SELECT 'NUC Proposes a Three-to-Four Week Break for Universities Around the 2027 Elections', 'nuc-proposes-election-break-for-universities-in-2027', 'Lecturers and university staff are expected to serve as returning officers, so the commission is proposing a short academic break. Here is what it means for your lecture calendar and your exams.', '<p><img src="/assets/img/news/nuc-election-break.png" alt="NUC Proposes a Three-to-Four Week Break for Universities Around the 2027 Elections" width="1200" height="630" style="width:100%;height:auto;border-radius:14px;margin-bottom:1.2rem;"></p>
+SELECT 'NUC Proposes a Three-to-Four Week Break for Universities Around the 2027 Elections', 'nuc-proposes-election-break-for-universities-in-2027', 'Lecturers and university staff are expected to serve as returning officers, so the commission is proposing a short academic break. Here is what it means for your lecture calendar and your exams.', '<!-- msb-updated: 2026-11-26 09:00:00 -->
+<p><img src="/assets/img/news/nuc-election-break.png" alt="NUC Proposes a Three-to-Four Week Break for Universities Around the 2027 Elections" width="1200" height="630" style="width:100%;height:auto;border-radius:14px;margin-bottom:1.2rem;"></p>
 <p>Something unusual is being proposed for Nigerian universities: a short, deliberate break in the academic calendar to accommodate the 2027 general elections. The National Universities Commission raised it with the Independent National Electoral Commission on Monday, 23 November 2026.</p>
 
 <h3>Why the break is on the table at all</h3>
@@ -467,8 +498,10 @@ SELECT 'NUC Proposes a Three-to-Four Week Break for Universities Around the 2027
 <li><a href="https://theprecisionng.com/2026/11/2027-elections-nuc-proposes-four-week-break-for-nigerian-universities.html" rel="nofollow noopener" target="_blank">Precision News: 2027 Elections - NUC proposes four-week break for Nigerian universities</a></li>
 <li><a href="https://edugist.org/2026/11/" rel="nofollow noopener" target="_blank">Edugist: November 2026 education news round-up</a></li>
 </ul>
-<p style="font-size:0.85rem;color:#64748b;margin-top:2rem;"><em>Updated on 26 November 2026. This article was written for MyStudy Base from the announcements and reports listed above; always confirm fees and dates on the examination body''s own website before you act.</em></p>', 13, 'University', NULL, 1, NOW()
+<p style="font-size:0.85rem;color:#64748b;margin-top:2rem;"><em>This article covers the news of 25 November 2026. Last reviewed 26 November 2026. Always confirm fees, dates and rules on the examination body''s own website before you act.</em></p>', 13, 'University', NULL, 1, '2026-11-25 09:00:00'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM posts WHERE slug = 'nuc-proposes-election-break-for-universities-in-2027');
+
+UPDATE posts SET created_at = '2026-11-25 09:00:00' WHERE slug = 'nuc-proposes-election-break-for-universities-in-2027';
 
 INSERT INTO post_images (post_id, file_path, caption, sort_order)
 SELECT id, 'assets/img/news/nuc-election-break.png', 'NUC Proposes a Three-to-Four Week Break for Universities Around the 2027 Elections', 0
@@ -476,7 +509,8 @@ FROM posts WHERE slug = 'nuc-proposes-election-break-for-universities-in-2027' A
 
 -- New Universities Approved for the 2026/2027 Session: Medical, Engineering and General Options
 INSERT INTO posts (title, slug, excerpt, content, author_id, level, university_id, is_university_general, created_at)
-SELECT 'New Universities Approved for the 2026/2027 Session: Medical, Engineering and General Options', 'new-universities-approved-nuc-2026-2027-session', 'The NUC has licensed new institutions in Anambra, Ebonyi and Ibadan, with more programmes opening and admission under way. Here is what is new and how to check any institution yourself.', '<p><img src="/assets/img/news/nuc-new-universities.png" alt="New Universities Approved for the 2026/2027 Session: Medical, Engineering and General Options" width="1200" height="630" style="width:100%;height:auto;border-radius:14px;margin-bottom:1.2rem;"></p>
+SELECT 'New Universities Approved for the 2026/2027 Session: Medical, Engineering and General Options', 'new-universities-approved-nuc-2026-2027-session', 'The NUC has licensed new institutions in Anambra, Ebonyi and Ibadan, with more programmes opening and admission under way. Here is what is new and how to check any institution yourself.', '<!-- msb-updated: 2026-11-26 09:00:00 -->
+<p><img src="/assets/img/news/nuc-new-universities.png" alt="New Universities Approved for the 2026/2027 Session: Medical, Engineering and General Options" width="1200" height="630" style="width:100%;height:auto;border-radius:14px;margin-bottom:1.2rem;"></p>
 <p>Every November the National Universities Commission approves new institutions and new programmes, and this year''s batch is already taking students. Here is what was approved, and what it means if you are shopping for where to study.</p>
 
 <h3>Transatlantic University of Medicine and Health Sciences, Anambra</h3>
@@ -507,8 +541,10 @@ SELECT 'New Universities Approved for the 2026/2027 Session: Medical, Engineerin
 <li><a href="https://thesun.ng/ebonyi-new-varsity-begins-students-admission/" rel="nofollow noopener" target="_blank">The Sun: Ebonyi new varsity begins students&#039; admission</a></li>
 <li><a href="https://www.vanguardngr.com/2026/11/nuc-approves-7-new-programmes-for-precious-cornerstone-varsity/" rel="nofollow noopener" target="_blank">Vanguard: NUC approves 7 new programmes for Precious Cornerstone varsity</a></li>
 </ul>
-<p style="font-size:0.85rem;color:#64748b;margin-top:2rem;"><em>Updated on 26 November 2026. This article was written for MyStudy Base from the announcements and reports listed above; always confirm fees and dates on the examination body''s own website before you act.</em></p>', 13, 'University', NULL, 1, NOW()
+<p style="font-size:0.85rem;color:#64748b;margin-top:2rem;"><em>This article covers the news of 21 November 2026. Last reviewed 26 November 2026. Always confirm fees, dates and rules on the examination body''s own website before you act.</em></p>', 13, 'University', NULL, 1, '2026-11-21 09:00:00'
 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM posts WHERE slug = 'new-universities-approved-nuc-2026-2027-session');
+
+UPDATE posts SET created_at = '2026-11-21 09:00:00' WHERE slug = 'new-universities-approved-nuc-2026-2027-session';
 
 INSERT INTO post_images (post_id, file_path, caption, sort_order)
 SELECT id, 'assets/img/news/nuc-new-universities.png', 'New Universities Approved for the 2026/2027 Session: Medical, Engineering and General Options', 0

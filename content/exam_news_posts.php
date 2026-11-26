@@ -20,6 +20,8 @@ return [
 
     [
         'slug'  => 'waec-2027-registration-open-hybrid-examinations',
+        'date'  => '2026-11-17 09:00:00',
+        'date_label' => '17 November 2026',
         'title' => 'WAEC 2027 Registration Is Open, and the Exam Will Be Hybrid: What That Means for You',
         'excerpt' => 'WAEC opened 2027 WASSCE registration for school candidates on 17 November 2026 and confirmed for the first time that the 2027 examination will run in hybrid mode. Here is what changed, what did not, and what your school has to do.',
         'level' => 'Secondary',
@@ -62,6 +64,8 @@ HTML,
 
     [
         'slug'  => 'waec-2027-registration-dates-cass-and-the-january-deadline',
+        'date'  => '2026-11-18 09:00:00',
+        'date_label' => '18 November 2026',
         'title' => 'WAEC 2027 Registration Dates: The Three Windows Every SS3 Candidate Should Know',
         'excerpt' => 'CASS uploads, offline entry and online registration run on three separate clocks, and the first one closes on 17 December 2026. Here are the dates, in order, and what each stage actually involves.',
         'level' => 'Secondary',
@@ -107,6 +111,8 @@ HTML,
 
     [
         'slug'  => 'waec-gce-private-candidates-two-dietes-a-year',
+        'date'  => '2026-11-19 09:00:00',
+        'date_label' => '19 November 2026',
         'title' => 'WAEC GCE: What Private Candidates Should Know Now That Computer-Based Testing Is Here',
         'excerpt' => 'WAEC gives private candidates two chances a year, and the paper is no longer a paper-only affair. Here is how the GCE route works, what it costs in time, and why most candidates still need a proper study plan.',
         'level' => 'Secondary',
@@ -146,6 +152,8 @@ HTML,
 
     [
         'slug'  => 'waec-2026-results-by-the-numbers',
+        'date'  => '2026-08-06 09:00:00',
+        'date_label' => '6 August 2026',
         'title' => 'WAEC 2026 Results by the Numbers: Nearly Two Million Sat, 61.54% Met the University Benchmark',
         'excerpt' => 'WAEC released the 2026 CB-WASSCE results in August with a slightly lower pass rate than 2025 and 167,486 results withheld. Here are the numbers that matter for a 2027 candidate, explained.',
         'level' => 'Secondary',
@@ -191,6 +199,8 @@ HTML,
 
     [
         'slug'  => 'neco-2027-ssce-registration-open-exam-moved-to-april',
+        'date'  => '2026-11-06 09:00:00',
+        'date_label' => '6 November 2026',
         'title' => 'NECO 2027 SSCE: Registration Is Open and the Whole Examination Has Moved Ten Weeks Earlier',
         'excerpt' => 'NECO opened 2027 SSCE Internal registration on 2 November 2026 and moved the examination to 1 April - 11 May 2027, weeks before WAEC writes. Here are the dates, the fee and what changed.',
         'level' => 'Secondary',
@@ -235,6 +245,8 @@ HTML,
 
     [
         'slug'  => 'neco-2027-bece-private-candidates-banned-and-the-nlin',
+        'date'  => '2026-11-20 09:00:00',
+        'date_label' => '20 November 2026',
         'title' => 'NECO 2027 BECE: Private Candidates Barred, Every Candidate Gets a Learners Number',
         'excerpt' => 'NECO released its 2027 Basic Education Certificate Examination guidelines on 20 November 2026, and they contain sharp new rules for JSS 3 students and the schools entering them.',
         'level' => 'Secondary',
@@ -273,6 +285,8 @@ HTML,
 
     [
         'slug'  => 'jamb-2027-utme-six-point-checklist-and-pre-registration-app',
+        'date'  => '2026-11-18 09:00:00',
+        'date_label' => '18 November 2026',
         'title' => 'JAMB Gives 2027 UTME Candidates a Six-Point Checklist and a Pre-Registration App',
         'excerpt' => 'JAMB has told candidates to fix their NIMC records, phone, email and subject combinations before registration - and the Registrar has announced a mobile app that lets you do most of it from home.',
         'level' => 'Secondary',
@@ -318,6 +332,8 @@ HTML,
 
     [
         'slug'  => 'jamb-2027-registration-dates-fees-what-is-confirmed',
+        'date'  => '2026-11-21 09:00:00',
+        'date_label' => '21 November 2026',
         'title' => 'JAMB 2027 UTME: What Is Confirmed, What Is Only Rumour, and How to Prepare',
         'excerpt' => 'Registration dates, fees and even the exam date for the 2027 UTME are still unannounced. Here is a clear separation of what JAMB has actually said from what people online are guessing.',
         'level' => 'Secondary',
@@ -370,6 +386,8 @@ HTML,
 
     [
         'slug'  => 'jamb-701805-unfilled-university-admission-slots-2026',
+        'date'  => '2026-11-17 09:00:00',
+        'date_label' => '17 November 2026',
         'title' => '701,805 University Admission Spaces Sat Empty: What JAMB\'s Numbers Mean for You',
         'excerpt' => 'Nigerian universities filled only 48% of their approved 2026 admission quota. The number looks shocking until you break it down - and it is good news for candidates still waiting.',
         'level' => 'University',
@@ -412,6 +430,8 @@ HTML,
 
     [
         'slug'  => 'nuc-warns-students-against-unapproved-university-centres',
+        'date'  => '2026-11-17 09:00:00',
+        'date_label' => '17 November 2026',
         'title' => 'NUC Warns Students Against Unapproved University Centres: Why Your Degree Could Be Rejected',
         'excerpt' => 'The NUC has declared the University of America and the London College of Management and Leadership Education unauthorised in Nigeria. Here is what that means for NYSC, Law School and professional registration.',
         'level' => 'University',
@@ -452,6 +472,8 @@ HTML,
 
     [
         'slug'  => 'nuc-proposes-election-break-for-universities-in-2027',
+        'date'  => '2026-11-25 09:00:00',
+        'date_label' => '25 November 2026',
         'title' => 'NUC Proposes a Three-to-Four Week Break for Universities Around the 2027 Elections',
         'excerpt' => 'Lecturers and university staff are expected to serve as returning officers, so the commission is proposing a short academic break. Here is what it means for your lecture calendar and your exams.',
         'level' => 'University',
@@ -491,6 +513,8 @@ HTML,
 
     [
         'slug'  => 'new-universities-approved-nuc-2026-2027-session',
+        'date'  => '2026-11-21 09:00:00',
+        'date_label' => '21 November 2026',
         'title' => 'New Universities Approved for the 2026/2027 Session: Medical, Engineering and General Options',
         'excerpt' => 'The NUC has licensed new institutions in Anambra, Ebonyi and Ibadan, with more programmes opening and admission under way. Here is what is new and how to check any institution yourself.',
         'level' => 'University',

@@ -25,7 +25,59 @@ if (method_exists($postModel, 'getRelatedPosts')) {
 
 $currentUrl = urlencode(SITE_URL . '/post.php?slug=' . $post['slug']);
 $encodedTitle = urlencode($page_title);
+
+// The picture the post opens with, for the search engines and for sharing.
+$postImage = '';
+if (preg_match('/<img[^>]+src=["\']([^"\']+)["\']/i', (string)$post['content'], $imgMatch)) {
+    $postImage = $imgMatch[1];
+    if ($postImage !== '' && $postImage[0] === '/') {
+        $postImage = SITE_URL . $postImage;
+    }
+}
+
+// The article itself, as a search engine wants to see it: when it was
+// published, when it was last touched, and who published it.
+//
+// The published date is the day the news broke. The modified date is the day
+// the text was last reviewed, which the publisher leaves in a small comment
+// at the top of the post.
+$reviewedAt = null;
+if (preg_match('/<!--\s*msb-updated:\s*([^>]+?)\s*-->/', (string)$post['content'], $updMatch)) {
+    $reviewedAt = strtotime($updMatch[1]) ?: null;
+}
+
+$articleSchema = [
+    '@context'         => 'https://schema.org',
+    '@type'            => 'BlogPosting',
+    'headline'         => $post['title'],
+    'description'      => $post['excerpt'] ?: mb_substr(strip_tags((string)$post['content']), 0, 300),
+    'datePublished'    => date('c', strtotime($post['created_at'])),
+    'dateModified'     => date('c', $reviewedAt ?: strtotime($post['created_at'])),
+    'mainEntityOfPage' => [
+        '@type' => 'WebPage',
+        '@id'   => SITE_URL . '/post.php?slug=' . rawurlencode($post['slug']),
+    ],
+    'author' => [
+        '@type' => 'Organization',
+        'name'  => SITE_NAME,
+        'url'   => SITE_URL,
+    ],
+    'publisher' => [
+        '@type' => 'Organization',
+        'name'  => SITE_NAME,
+        'logo'  => [
+            '@type' => 'ImageObject',
+            'url'   => SITE_URL . '/assets/uploads/site_logo_1774176868.png',
+        ],
+    ],
+    'image' => $postImage ?: SITE_URL . '/assets/uploads/site_logo_1774176868.png',
+    'inLanguage' => 'en',
+];
+if (!empty($post['level'])) {
+    $articleSchema['articleSection'] = $post['level'];
+}
 ?>
+<script type="application/ld+json"><?php echo json_encode($articleSchema, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE); ?></script>
 <style>
 /* Clean & Premium Post Design */
 body {
