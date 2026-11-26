@@ -74,7 +74,7 @@ function msb_paystack_key(bool $secret): string
 // Site configuration fallbacks. The admin Settings page is authoritative at
 // runtime; these apply on a fresh install or if the database is unreachable.
 define('SITE_NAME_DEFAULT', 'MyStudy Base');
-define('SITE_DESCRIPTION_DEFAULT', 'MyStudy Base is your all-in-one hub for exams, quizzes, study materials, tutorials and competitive challenges for students.');
+define('SITE_DESCRIPTION_DEFAULT', 'MyStudy Base gives Nigerian students free WAEC, NECO and JAMB past questions with answers, free CBT practice tests for every subject, past question downloads, study materials and tutorials.');
 define('WHATSAPP_NUMBER_DEFAULT', '+2348001234567');
 
 /**
