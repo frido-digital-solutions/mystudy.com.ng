@@ -6,7 +6,7 @@ require_once __DIR__ . '/includes/seo.php';
 // this is the page they land on, so it says so in the title and in the
 // description - the same words, said plainly.
 $page_title = 'Free WAEC, NECO & JAMB Past Questions and Answers - CBT Practice';
-$page_description = 'MyStudy Base gives Nigerian students free WAEC, NECO and JAMB past questions with answers, free CBT practice tests for every subject, past question downloads and study materials - free to take, free to keep, on phone and on web.';
+$page_description = 'Free WAEC, NECO and JAMB past questions with answers, CBT practice and study materials for secondary and university students. Practise free - MyStudy Base.';
 
 // Performance: Check if we have cached data
 $cache_file = __DIR__ . '/cache/homepage_data.json';
@@ -217,7 +217,7 @@ seo_jsonld([
                     <span class="highlight">Past Questions &amp; CBT Practice</span>
                 </h1>
                 <p class="hero-description">
-                    Past questions with answers, free CBT practice tests and study materials for Nigerian students - <?php echo SITE_NAME; ?>. Take a WAEC, NECO or JAMB paper the way the real exam works, see your score the moment you finish, and keep the corrections for next time. Works on your phone too, even without internet.
+                    Past questions with answers, free CBT practice tests and study materials for Nigerian secondary and university students - <?php echo SITE_NAME; ?>. Take a WAEC, NECO or JAMB paper the way the real exam works, see your score the moment you finish, and keep the corrections for next time. In university, find course materials, lecture notes, past exam questions and a CGPA calculator. Works on your phone too, even without internet.
                 </p>
                 
                 <div class="hero-cta-group">
@@ -426,7 +426,7 @@ seo_jsonld([
         </div>
         <div class="row g-4">
             <div class="col-md-6">
-                <div class="edu-level-card">
+                <a class="edu-level-card d-block text-decoration-none" style="color:inherit;" href="materials.php?level=Secondary">
                     <div class="edu-level-icon">🎓</div>
                     <h3 class="edu-level-title">Secondary School</h3>
                     <p class="edu-level-desc">Complete preparation for WAEC, NECO, and JAMB exams.</p>
@@ -436,10 +436,10 @@ seo_jsonld([
                         <li><i class="fas fa-check"></i> SS1 - SS3 Study Notes</li>
                         <li><i class="fas fa-check"></i> Video Lessons for All Subjects</li>
                     </ul>
-                </div>
+                </a>
             </div>
             <div class="col-md-6">
-                <div class="edu-level-card">
+                <a class="edu-level-card d-block text-decoration-none" style="color:inherit;" href="materials.php?level=University">
                     <div class="edu-level-icon">🏛️</div>
                     <h3 class="edu-level-title">University</h3>
                     <p class="edu-level-desc">Resources for Nigerian university students across all levels.</p>
@@ -449,7 +449,7 @@ seo_jsonld([
                         <li><i class="fas fa-check"></i> 100 - 500 Level Resources</li>
                         <li><i class="fas fa-check"></i> Project & Research Materials</li>
                     </ul>
-                </div>
+                </a>
             </div>
         </div>
     </div>
