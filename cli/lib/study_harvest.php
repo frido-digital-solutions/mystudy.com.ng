@@ -191,6 +191,49 @@ function study_fetch_many(array $urls, array $opts = []): array
 }
 
 /**
+ * Fetch a lot of URLs at the same time, trying again the ones that failed.
+ *
+ * A shared host will drop a request now and then, and a page that quietly
+ * fails would leave a paper half written. So anything that comes back empty
+ * is fetched again, one at a time and with a pause between attempts.
+ *
+ * @param string[] $urls
+ * @param array    $opts  parallel, timeout, tries
+ * @return array<string,string|null>  url => body
+ */
+function study_fetch_many_retry(array $urls, array $opts = []): array
+{
+    $tries = max(1, (int)($opts['tries'] ?? 3));
+    $bodies = study_fetch_many($urls, $opts);
+
+    $missing = [];
+    foreach ($urls as $url) {
+        if (($bodies[$url] ?? null) === null || trim((string)$bodies[$url]) === '') {
+            $missing[] = $url;
+        }
+    }
+
+    for ($round = 1; $round < $tries && $missing; $round++) {
+        usleep(700000);
+        foreach ($missing as $url) {
+            $body = study_fetch($url, $opts);
+            if ($body !== null && trim($body) !== '') {
+                $bodies[$url] = $body;
+            }
+        }
+        $still = [];
+        foreach ($missing as $url) {
+            if (!isset($bodies[$url]) || trim((string)$bodies[$url]) === '') {
+                $still[] = $url;
+            }
+        }
+        $missing = $still;
+    }
+
+    return $bodies;
+}
+
+/**
  * The text of a node, with the tags gone and the spacing kept sane.
  */
 function study_node_text($node): string

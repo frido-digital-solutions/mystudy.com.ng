@@ -109,24 +109,35 @@ foreach ($subjects as $subject) {
 
     // Fetch the pages of the subject, a window of them at a time.
     $collected = [];
+    $missing  = [];
     for ($from = 1; $from <= $last; $from += 10) {
         $urls = [];
         for ($i = 0; $i < 10 && $from + $i <= $last; $i++) {
             $urls[] = "https://www.schoolngr.com/classroom/$code/$slug?page=" . ($from + $i);
         }
-        $bodies = study_fetch_many($urls, ['parallel' => $parallel]);
+        $bodies = study_fetch_many_retry($urls, ['parallel' => $parallel]);
 
         foreach ($urls as $url) {
             $body = $bodies[$url] ?? null;
-            if ($body === null) continue;
+            if ($body === null || trim($body) === '') {
+                $missing[] = $url;
+                continue;
+            }
+            $got = 0;
             foreach (schoolngr_questions($body) as $q) {
+                $got++;
                 if ($q['year'] <= 0) continue;      // no year on the question: skip it
                 $collected[] = $q;
             }
+            if ($got === 0) $missing[] = $url;     // a page that came back empty
         }
         // A short pause between windows: the site is a shared host and will
         // start refusing requests if it is hit too hard.
         usleep(400000);
+    }
+
+    if ($missing) {
+        study_say("  ! $code $slug - " . count($missing) . " pages did not come back, this subject is incomplete");
     }
 
     if (!$collected) {

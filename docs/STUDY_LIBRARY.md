@@ -43,7 +43,7 @@ source, add its names to that file first.
 
 ## Where the questions come from
 
-Four harvesters, one per source. They all follow the same rules:
+Five harvesters, one per source. They all follow the same rules:
 
 * they are idempotent - a paper already in the library is skipped, so a run
   can be stopped and started again;
@@ -58,6 +58,7 @@ Four harvesters, one per source. They all follow the same rules:
 | `php cli/harvest_smartest.php` | SmarTest | 221 papers across JAMB, WAEC and NECO, question + options + answer |
 | `php cli/harvest_skolra.php` | Skolra | 416 WAEC and JAMB papers, 1988-2024, question + options + answer + worked explanation |
 | `php cli/harvest_studyproper.php` | StudyProper | papers for all three examinations, question + options + answer + worked explanation |
+| `php cli/harvest_schoolngr.php` | SchoolNGR | NECO, WAEC and JAMB papers, question + options + answer, each question carrying the year it came from |
 
 Run them in this order - the earlier ones are quicker, so the library is
 useful sooner:
@@ -67,11 +68,16 @@ php cli/harvest_acadmate.php
 php cli/harvest_smartest.php
 php cli/harvest_skolra.php
 php cli/harvest_studyproper.php
+php cli/harvest_schoolngr.php
 ```
 
-The StudyProper run is the longest: it walks every examination, every
-subject and every year from 2005 to 2026. Stop it and start it again as
-often as you like - it skips what it has already stored.
+The StudyProper and SchoolNGR runs are the longest: between them they walk
+every examination, every subject and every year. Stop either and start it
+again as often as you like - both skip what they have already stored.
+
+Both take `--exam=waec|gce|jamb|neco` to work on one examination at a time.
+Run one at a time: a source that is asked for too much at once starts
+dropping requests.
 
 ### The CA bundle
 
@@ -100,6 +106,7 @@ php cli/harvest_acadmate.php
 php cli/harvest_smartest.php
 php cli/harvest_skolra.php
 php cli/harvest_studyproper.php
+php cli/harvest_schoolngr.php
 ```
 
 They write straight into the live database. Nothing else is needed.
