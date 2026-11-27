@@ -108,9 +108,9 @@ foreach (array_slice($bad, 0, 10) as $o) echo "$o\n";
 
 $dupes = $pdo->query("
     SELECT COUNT(*) FROM (
-        SELECT paper_id, question, COUNT(*) c
+        SELECT paper_id, MD5(TRIM(question)) h, COUNT(*) c
         FROM study_questions
-        GROUP BY paper_id, question
+        GROUP BY paper_id, MD5(TRIM(question))
         HAVING c > 1
     ) t
 ")->fetchColumn();
