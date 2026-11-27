@@ -278,8 +278,11 @@ function study_replace_questions(PDO $pdo, int $paperId, array $questions): int
 
 /**
  * The papers already in the library for a source, as
- * "exam|subject|year|paper_code" keys. A harvester uses this to skip work
- * it has already done.
+ * "exam|subject|year|paper_code|source" keys. A harvester uses this to skip
+ * work it has already done.
+ *
+ * The source is part of the key: the same paper from two different sources
+ * is two papers, and one source must not stop another from being stored.
  */
 function study_existing_paper_keys(PDO $pdo, string $source): array
 {
@@ -289,9 +292,17 @@ function study_existing_paper_keys(PDO $pdo, string $source): array
     $stmt->execute([$source]);
     $keys = [];
     foreach ($stmt->fetchAll() as $row) {
-        $keys[$row['exam'] . '|' . $row['subject_slug'] . '|' . $row['year'] . '|' . $row['paper_code']] = true;
+        $keys[$row['exam'] . '|' . $row['subject_slug'] . '|' . $row['year'] . '|' . $row['paper_code'] . '|' . $source] = true;
     }
     return $keys;
+}
+
+/**
+ * The key that identifies one paper.
+ */
+function study_paper_key(string $exam, string $subjectSlug, int $year, string $paperCode, string $source): string
+{
+    return $exam . '|' . $subjectSlug . '|' . $year . '|' . $paperCode . '|' . $source;
 }
 
 /**

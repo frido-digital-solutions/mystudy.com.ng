@@ -69,7 +69,7 @@ foreach ($pages as $key => $pageList) {
     [$sourceSlug, $year] = explode('|', $key);
     $subject = study_canonical_subject('acadmate', $sourceSlug);
     if (!$subject) continue;
-    $paperKey = 'JAMB|' . $subject['slug'] . '|' . $year . '|objective';
+    $paperKey = study_paper_key('JAMB', $subject['slug'], $year, 'objective', 'acadmate');
     if (isset($existing[$paperKey])) continue;
     $todo[] = [
         'source_slug' => $sourceSlug,

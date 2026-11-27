@@ -69,16 +69,19 @@ function studyproper_nonce(): ?string
 }
 
 /**
- * Ask the site for one group of questions.
+ * Ask the site for one subject's questions.
+ *
+ * The site answers at most 100 questions a call, so the rest is picked up a
+ * page at a time. It is asked for a subject, never for a year: a year it has
+ * no questions for is ignored, and it answers with a different year's paper
+ * instead - so asking for a year would put questions in the wrong year.
  */
-function studyproper_questions(string $nonce, string $exam, string $subject, string $year): array
+function studyproper_questions(string $nonce, string $exam, string $subject): array
 {
     $collected = [];
-    $total = null;
+    $seen = [];
 
-    // The site answers at most 100 questions a call, so the rest is picked
-    // up a page at a time until everything it holds has been read.
-    for ($page = 1; $page <= 20; $page++) {
+    for ($page = 1; $page <= 60; $page++) {
         $ch = curl_init(AJAX_URL);
         $caBundle = study_ca_bundle();
         curl_setopt_array($ch, [
@@ -97,7 +100,7 @@ function studyproper_questions(string $nonce, string $exam, string $subject, str
                 'nonce'       => $nonce,
                 'exam'        => $exam,
                 'subject'     => $subject,
-                'year'        => $year,
+                'year'        => '',
                 'institution' => '',
                 'limit'       => 100,
                 'page'        => $page,
@@ -113,13 +116,17 @@ function studyproper_questions(string $nonce, string $exam, string $subject, str
         if (!is_array($json) || empty($json['success'])) break;
 
         $batch = $json['data']['questions'] ?? [];
-        if ($total === null) $total = (int)($json['data']['count'] ?? 0);
         if (!$batch) break;
 
         foreach ($batch as $q) {
+            $id = isset($q['id']) ? (string)$q['id'] : null;
+            if ($id !== null) {
+                if (isset($seen[$id])) continue;
+                $seen[$id] = true;
+            }
             $collected[] = $q;
         }
-        if (count($collected) >= $total) break;
+        if (count($batch) < 100) break;   // the last page is a short one
     }
 
     return $collected;
@@ -179,8 +186,49 @@ foreach ($examMap as $examCode => $meta) {
         $subject = study_canonical_subject('studyproper', $subjectValue);
         if (!$subject) continue;   // not an examination subject we keep
 
-        foreach ($years as $year) {
-            $key = $meta['exam'] . '|' . $subject['slug'] . '|' . $year . '|' . $meta['paper_code'];
+        // One request per subject, no year filter. The site ignores a year
+        // it has no questions for and answers with a different year's paper,
+        // so the year is never asked for - it is read from each question
+        // instead, and a question is only filed under the year it names.
+        $raw = studyproper_questions($nonce, $examCode, $subjectValue);
+        if (!$raw) {
+            study_say('    ' . $examCode . '/' . $subjectValue . ': nothing returned');
+            continue;
+        }
+        study_say('    ' . $examCode . '/' . $subjectValue . ': ' . count($raw) . ' questions fetched');
+
+        $byYear = [];
+        foreach ($raw as $q) {
+            $year = (int)($q['year'] ?? 0);
+            if ($year < 1970 || $year > 2100) continue;   // a question with no year is not filed
+
+            $options = [];
+            foreach (['a', 'b', 'c', 'd', 'e'] as $letter) {
+                $optionKey = 'option_' . $letter;
+                if (trim((string)($q[$optionKey] ?? '')) !== '') {
+                    $options[] = ['label' => strtoupper($letter), 'text' => (string)$q[$optionKey]];
+                }
+            }
+            if (!$options) continue;   // a question with no options is not usable
+
+            $byYear[$year][] = [
+                'question'           => trim((string)$q['question']),
+                'options'            => $options,
+                'correct_option'     => strtoupper(trim((string)($q['correct_answer'] ?? ''))),
+                'explanation'        => !empty($q['explanation']) ? trim((string)$q['explanation']) : null,
+                'topic'              => !empty($q['topic']) ? trim((string)$q['topic']) : null,
+                'source_question_id' => isset($q['id']) ? (string)$q['id'] : null,
+            ];
+        }
+        ksort($byYear);
+        study_say('      years: ' . (implode(', ', array_keys($byYear)) ?: 'none'));
+
+        foreach ($byYear as $year => $list) {
+            foreach ($list as $i => $item) {
+                $list[$i]['display_number'] = $i + 1;
+            }
+
+            $key = study_paper_key($meta['exam'], $subject['slug'], $year, $meta['paper_code'], 'studyproper');
             if (isset($existing[$key])) continue;
 
             $groups++;
@@ -188,33 +236,6 @@ foreach ($examMap as $examCode => $meta) {
                 study_say('Limit reached (' . $limit . ' groups). Stopping.');
                 break 3;
             }
-
-            $raw = studyproper_questions($nonce, $examCode, $subjectValue, (string)$year);
-            if (!$raw) continue;
-
-            $list = [];
-            $n = 0;
-            foreach ($raw as $q) {
-                $n++;
-                $options = [];
-                foreach (['a', 'b', 'c', 'd', 'e'] as $letter) {
-                    $key2 = 'option_' . $letter;
-                    if (!empty($q[$key2])) {
-                        $options[] = ['label' => strtoupper($letter), 'text' => (string)$q[$key2]];
-                    }
-                }
-                if (!$options) continue;
-                $list[] = [
-                    'display_number'   => $n,
-                    'question'         => trim((string)$q['question']),
-                    'options'          => $options,
-                    'correct_option'   => strtoupper(trim((string)($q['correct_answer'] ?? ''))),
-                    'explanation'      => !empty($q['explanation']) ? trim((string)$q['explanation']) : null,
-                    'topic'            => !empty($q['topic']) ? trim((string)$q['topic']) : null,
-                    'source_question_id' => isset($q['id']) ? (string)$q['id'] : null,
-                ];
-            }
-            if (!$list) continue;
 
             $title = $meta['label'] . ' ' . $subject['name'] . ' ' . $year . ' Past Questions and Answers';
 

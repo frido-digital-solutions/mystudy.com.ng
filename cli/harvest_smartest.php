@@ -71,7 +71,7 @@ if ($refresh) {
 
 $work = [];
 foreach ($todo as $paper) {
-    $key = $paper['exam'] . '|' . $paper['subject']['slug'] . '|' . $paper['year'] . '|objective';
+    $key = study_paper_key($paper['exam'], $paper['subject']['slug'], $paper['year'], 'objective', 'smartest');
     if (isset($existing[$key])) continue;
     $work[] = $paper;
 }
