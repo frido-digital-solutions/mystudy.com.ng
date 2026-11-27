@@ -14,6 +14,8 @@
  * dies half way through loses nothing.
  */
 
+require_once __DIR__ . '/study_math.php';
+
 /**
  * The canonical subject for a source's own name of a subject.
  *
@@ -235,14 +237,35 @@ function study_fetch_many_retry(array $urls, array $opts = []): array
 
 /**
  * The text of a node, with the tags gone and the spacing kept sane.
+ *
+ * A formula on the page is written three times over - as MathML, as its
+ * LaTeX source, and as a picture of the formula. Reading the page as it
+ * stands gives all three at once, so a formula arrives as a mess. The
+ * shared reader in cli/lib/study_math.php takes the formula out on its own
+ * and writes it as plain text a student can read: "1/2", not "\frac{1}{2}".
  */
 function study_node_text($node): string
 {
     if ($node === null) return '';
-    $text = $node->textContent ?? '';
-    $text = html_entity_decode($text, ENT_QUOTES | ENT_HTML5, 'UTF-8');
-    $text = preg_replace('/\s+/u', ' ', $text);
-    return trim((string)$text);
+
+    $plain = function ($n): string {
+        $text = $n->textContent ?? '';
+        $text = html_entity_decode($text, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        $text = preg_replace('/\s+/u', ' ', $text);
+        return trim((string)$text);
+    };
+
+    if (!is_object($node) || !isset($node->ownerDocument) || $node->ownerDocument === null) {
+        return $plain($node);
+    }
+
+    $xp = new DOMXPath($node->ownerDocument);
+    $maths = $xp->query(".//*[contains(@class,'katex') or self::math or @data-testid='react-katex' or contains(@class,'math-svg')]", $node);
+    if (!$maths->length) {
+        return $plain($node);
+    }
+
+    return study_math_text($node);
 }
 
 /**

@@ -19,6 +19,7 @@
 require_once __DIR__ . '/../config/config.php';
 require_once __DIR__ . '/../includes/study_schema.php';
 require_once __DIR__ . '/lib/study_harvest.php';
+require_once __DIR__ . '/lib/parse_skolra.php';
 
 $dryRun   = false;
 $limit    = 0;
@@ -185,101 +186,3 @@ function skolra_year_from_title(string $html): ?int
  *
  * @return array<int,array>
  */
-function skolra_questions(string $html): array
-{
-    $doc = study_dom($html);
-    if (!$doc) return [];
-
-    $xp = new DOMXPath($doc);
-    $out = [];
-    $number = 0;
-
-    foreach ($xp->query("//ol[contains(@class,'q-opts')]") as $ol) {
-        $number++;
-
-        // The question sits in the block just above its options.
-        $question = '';
-        $stem = null;
-        $prev = $ol->previousSibling;
-        while ($prev !== null) {
-            if ($prev->nodeType === XML_ELEMENT_NODE) {
-                $stem = $prev;
-                break;
-            }
-            $prev = $prev->previousSibling;
-        }
-        if ($stem) {
-            $question = skolra_text($stem);
-        }
-        if ($question === '') continue;
-
-        // The page prints the question number as part of the question text.
-        $question = preg_replace('/^\s*\d{1,3}\s*[\.\)]\s*/u', '', $question);
-        if ($question === '') continue;
-
-        $options = [];
-        $answer  = '';
-        foreach ($xp->query('./li[contains(@class,"q-opt")]', $ol) as $li) {
-            $labelNode = $xp->query('.//span[contains(@class,"q-l")]', $li)->item(0);
-            $textNode  = $xp->query('.//div[contains(@class,"q-t")]', $li)->item(0);
-            if (!$labelNode) continue;
-            $label = strtoupper(study_node_text($labelNode));
-            $text  = $textNode ? skolra_text($textNode) : '';
-            if ($label === '') continue;
-            $options[] = ['label' => $label, 'text' => $text];
-            if (strpos(' ' . $li->getAttribute('class') . ' ', ' q-right ') !== false) {
-                $answer = $label;
-            }
-        }
-        if (!$options) continue;
-
-        // The worked explanation sits under the answer.
-        $explanation = null;
-        $why = $xp->query(".//div[contains(@class,'q-why')]", $ol->parentNode ?: $doc);
-        if ($why->length) {
-            $explanation = skolra_text($why->item(0));
-            if ($explanation === '') $explanation = null;
-        }
-
-        $out[$number] = [
-            'display_number' => $number,
-            'question'       => $question,
-            'options'        => $options,
-            'correct_option' => $answer,
-            'explanation'    => $explanation,
-            'topic'          => null,
-        ];
-    }
-
-    return $out;
-}
-
-/**
- * The text of a node, with the maths kept and the duplicated KaTeX
- * rendering taken out.
- *
- * KaTeX writes the formula twice: once as MathML, which reads as text, and
- * once as HTML, which is marked aria-hidden for screen readers. Keeping both
- * would print every formula twice, so the hidden copy is dropped.
- */
-function skolra_text($node): string
-{
-    if ($node === null) return '';
-
-    $doc = $node->ownerDocument;
-    if ($doc === null) return study_node_text($node);
-
-    $xp = new DOMXPath($doc);
-    $hidden = $xp->query(".//span[contains(@class,'katex-html')]", $node);
-    $kept = [];
-    foreach ($hidden as $span) {
-        $kept[] = $span;
-    }
-    foreach ($kept as $span) {
-        $span->parentNode->removeChild($span);
-    }
-
-    $text = study_node_text($node);
-    $text = preg_replace('/\s*\n\s*/u', ' ', $text);
-    return trim((string)$text);
-}
