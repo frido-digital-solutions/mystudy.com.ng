@@ -19,6 +19,16 @@ function seo_render_exam_page(array $exam, ?string $subject = null): void {
     $papers = seo_exam_papers($pdo, $examKey, $subject ?: '', 12);
     $others = array_values(array_filter(seo_exam_pages(), static fn($e) => $e['key'] !== $examKey));
 
+    // The Study library holds the same subject under its own name. Finding it
+    // lets a student move from a timed test to the real paper, year by year.
+    $studySlug = null;
+    try {
+        require_once __DIR__ . '/../models/Study.php';
+        $studySlug = (new Study($pdo))->slugForSubjectName($examKey, (string)$subject);
+    } catch (Throwable $e) {
+        $studySlug = null;
+    }
+
     $h1 = $subject
         ? sprintf('Free %s %s past questions and answers', $examKey, $subject)
         : sprintf('Free %s past questions and answers', $examKey);
@@ -60,6 +70,11 @@ function seo_render_exam_page(array $exam, ?string $subject = null): void {
                     <a class="btn btn-success" href="<?php echo SITE_URL; ?>/quiz.php?id=<?php echo (int)($papers[0]['id'] ?? 0); ?>">
                         <i class="fas fa-play"></i> Start the <?php echo htmlspecialchars($subject); ?> paper
                     </a>
+                    <?php if ($studySlug): ?>
+                        <a class="btn btn-outline-success" href="<?php echo SITE_URL; ?>/study.php?exam=<?php echo urlencode($examKey); ?>&amp;subject=<?php echo urlencode($studySlug); ?>">
+                            <i class="fas fa-layer-group"></i> Read it by year
+                        </a>
+                    <?php endif; ?>
                     <a class="btn btn-outline-success" href="<?php echo SITE_URL; ?>/<?php echo $exam['file']; ?>">
                         All <?php echo htmlspecialchars($examKey); ?> subjects
                     </a>

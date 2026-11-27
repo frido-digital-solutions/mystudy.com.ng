@@ -148,4 +148,27 @@ class Study
         $name = $stmt->fetchColumn();
         return $name === false ? null : (string)$name;
     }
+
+    /**
+     * The library's slug for a subject the rest of the site knows by name.
+     *
+     * The old quiz pages call a subject "English Language" or "C.R.S"; the
+     * library calls the same subject "english-language" or "crs". This finds
+     * the link between them, so a student can move from one to the other.
+     */
+    public function slugForSubjectName(string $exam, string $subjectName): ?string
+    {
+        $wanted = strtolower(preg_replace('/[^a-z0-9]+/i', '', $subjectName));
+        if ($wanted === '') return null;
+
+        $stmt = $this->pdo->prepare("
+            SELECT DISTINCT subject_slug, subject_name FROM study_papers WHERE exam = ?
+        ");
+        $stmt->execute([$exam]);
+        foreach ($stmt->fetchAll() as $row) {
+            $candidate = strtolower(preg_replace('/[^a-z0-9]+/i', '', (string)$row['subject_name']));
+            if ($candidate === $wanted) return (string)$row['subject_slug'];
+        }
+        return null;
+    }
 }
