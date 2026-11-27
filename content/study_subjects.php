@@ -25,6 +25,7 @@ return [
     'english-language' => [
         'name' => 'English Language',
         'acadmate' => ['use-of-english'],
+        'studyproper' => ['English Language', 'english language'],
         'smartest' => ['english-language'],
         'studentfirst' => ['english'],
         'skolra' => ['english'],
@@ -32,6 +33,7 @@ return [
     'mathematics' => [
         'name' => 'Mathematics',
         'acadmate' => ['mathematics'],
+        'studyproper' => ['mathematics'],
         'skolra' => ['mathematics'],
         'smartest' => ['mathematics'],
         'studentfirst' => ['mathematics'],
@@ -39,6 +41,7 @@ return [
     'physics' => [
         'name' => 'Physics',
         'acadmate' => ['physics'],
+        'studyproper' => ['physics'],
         'skolra' => ['physics'],
         'smartest' => ['physics'],
         'studentfirst' => ['physics'],
@@ -46,6 +49,7 @@ return [
     'chemistry' => [
         'name' => 'Chemistry',
         'acadmate' => ['chemistry'],
+        'studyproper' => ['chemistry'],
         'skolra' => ['chemistry'],
         'smartest' => ['chemistry'],
         'studentfirst' => ['chemistry'],
@@ -53,6 +57,7 @@ return [
     'biology' => [
         'name' => 'Biology',
         'acadmate' => ['biology'],
+        'studyproper' => ['biology'],
         'skolra' => ['biology'],
         'smartest' => ['biology'],
         'studentfirst' => ['biology'],
@@ -60,6 +65,7 @@ return [
     'government' => [
         'name' => 'Government',
         'acadmate' => ['government'],
+        'studyproper' => ['government'],
         'skolra' => ['government'],
         'smartest' => ['government'],
         'studentfirst' => ['government'],
@@ -67,6 +73,7 @@ return [
     'economics' => [
         'name' => 'Economics',
         'acadmate' => ['economics'],
+        'studyproper' => ['economics'],
         'skolra' => ['economics'],
         'smartest' => ['economics'],
         'studentfirst' => ['economics'],
@@ -74,6 +81,7 @@ return [
     'commerce' => [
         'name' => 'Commerce',
         'acadmate' => ['commerce'],
+        'studyproper' => ['commerce'],
         'skolra' => ['commerce'],
         'smartest' => ['commerce'],
         'studentfirst' => ['commerce'],
@@ -81,6 +89,7 @@ return [
     'geography' => [
         'name' => 'Geography',
         'acadmate' => ['geography'],
+        'studyproper' => ['geography'],
         'skolra' => ['geography'],
         'smartest' => ['geography'],
         'studentfirst' => ['geography'],
@@ -88,6 +97,7 @@ return [
     'literature' => [
         'name' => 'Literature in English',
         'acadmate' => ['literature-in-english'],
+        'studyproper' => ['englishlit'],
         'skolra' => ['literature'],
         'smartest' => ['literature'],
         'studentfirst' => ['literature'],
@@ -95,6 +105,7 @@ return [
     'crs' => [
         'name' => 'Christian Religious Studies',
         'acadmate' => ['christian-religious-knowledge'],
+        'studyproper' => ['crk'],
         'skolra' => ['crk'],
         'smartest' => ['crs'],
         'studentfirst' => ['crs'],
@@ -102,12 +113,14 @@ return [
     'irs' => [
         'name' => 'Islamic Studies',
         'smartest' => ['islamic-studies'],
+        'studyproper' => ['irk'],
         'skolra' => ['irk'],
         'studentfirst' => ['irs'],
     ],
     'accounting' => [
         'name' => 'Financial Accounting',
         'acadmate' => ['accounts'],
+        'studyproper' => ['accounting'],
         'skolra' => ['accounts'],
         'smartest' => ['accounting'],
         'studentfirst' => ['accounting'],
@@ -115,18 +128,21 @@ return [
     'agricultural-science' => [
         'name' => 'Agricultural Science',
         'smartest' => ['agricultural-science'],
+        'studyproper' => ['agriculture'],
         'skolra' => ['agricultural-science'],
         'studentfirst' => ['agriculture'],
     ],
     'computer-studies' => [
         'name' => 'Computer Studies',
         'smartest' => ['computer-studies'],
+        'studyproper' => ['computerstudies'],
         'skolra' => ['computer-studies'],
         'studentfirst' => ['computer-studies'],
     ],
     'civic-education' => [
         'name' => 'Civic Education',
         'studentfirst' => ['civic-education'],
+        'studyproper' => ['civiledu'],
         'skolra' => ['civic-education'],
     ],
     'further-mathematics' => [
@@ -178,11 +194,13 @@ return [
     'art' => [
         'name' => 'Fine Art',
         'smartest' => ['art'],
+        'studyproper' => ['fineart'],
         'skolra' => ['fine-arts'],
     ],
     'history' => [
         'name' => 'History',
         'smartest' => ['history'],
+        'studyproper' => ['history'],
         'skolra' => ['history'],
     ],
     'music' => [
@@ -193,6 +211,7 @@ return [
     'arabic' => [
         'name' => 'Arabic',
         'smartest' => ['arabic'],
+        'studyproper' => ['arabicstudies'],
         'skolra' => ['arabic'],
     ],
     'french' => [
@@ -203,16 +222,19 @@ return [
     'hausa' => [
         'name' => 'Hausa',
         'smartest' => ['hausa'],
+        'studyproper' => ['hausa'],
         'skolra' => ['hausa'],
     ],
     'igbo' => [
         'name' => 'Igbo',
         'smartest' => ['igbo'],
+        'studyproper' => ['igbo'],
         'skolra' => ['igbo'],
     ],
     'yoruba' => [
         'name' => 'Yoruba',
         'smartest' => ['yoruba'],
+        'studyproper' => ['yoruba'],
         'skolra' => ['yoruba'],
     ],
     'catering-craft' => [
@@ -222,6 +244,7 @@ return [
     'insurance' => [
         'name' => 'Insurance',
         'skolra' => ['insurance'],
+        'studyproper' => ['insurance'],
     ],
     'office-practice' => [
         'name' => 'Office Practice',

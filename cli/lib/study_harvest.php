@@ -39,6 +39,32 @@ function study_canonical_subject(string $source, string $slug): ?array
 }
 
 /**
+ * A CA bundle that is still current.
+ *
+ * The one XAMPP ships with is from 2022 and no longer has the roots some
+ * sites use, which makes every request to them fail with "unable to get
+ * local issuer certificate". A fresh bundle is downloaded to .scratch/ and
+ * used instead when it is there.
+ */
+function study_ca_bundle(): ?string
+{
+    static $path = null;
+    if ($path !== null) return $path === '' ? null : $path;
+
+    foreach ([
+        dirname(__DIR__, 2) . '/.scratch/cacert.pem',
+        '/c/Users/USER/Downloads/mystudybase.com.ng-main/.scratch/cacert.pem',
+    ] as $candidate) {
+        if (@is_file($candidate) && filesize($candidate) > 50000) {
+            $path = $candidate;
+            return $path;
+        }
+    }
+    $path = '';
+    return null;
+}
+
+/**
  * Fetch a URL and return the body.
  *
  * @param string $url
@@ -52,7 +78,7 @@ function study_fetch(string $url, array $opts = []): ?string
              . '(KHTML, like Gecko) Chrome/126.0 Safari/537.36 MyStudyBaseStudyHarvester/1.0';
 
     $ch = curl_init($url);
-    curl_setopt_array($ch, [
+    $options = [
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_FOLLOWLOCATION => true,
         CURLOPT_MAXREDIRS      => 5,
@@ -64,7 +90,11 @@ function study_fetch(string $url, array $opts = []): ?string
             'Accept: text/html,application/xhtml+xml,application/json;q=0.9,*/*;q=0.8',
             'Accept-Language: en-NG,en;q=0.9',
         ],
-    ]);
+    ];
+    $ca = study_ca_bundle();
+    if ($ca) $options[CURLOPT_CAINFO] = $ca;
+    curl_setopt_array($ch, $options);
+
     $body = curl_exec($ch);
     $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
     curl_close($ch);
@@ -97,7 +127,7 @@ function study_fetch_many(array $urls, array $opts = []): array
         while (count($handles) < $max && $queue !== []) {
             $url = array_shift($queue);
             $ch  = curl_init($url);
-            curl_setopt_array($ch, [
+            $options = [
                 CURLOPT_RETURNTRANSFER => true,
                 CURLOPT_FOLLOWLOCATION => true,
                 CURLOPT_MAXREDIRS      => 5,
@@ -109,11 +139,13 @@ function study_fetch_many(array $urls, array $opts = []): array
                     'Accept: text/html,application/xhtml+xml,application/json;q=0.9,*/*;q=0.8',
                     'Accept-Language: en-NG,en;q=0.9',
                 ],
-            ]);
+            ];
+            $ca = study_ca_bundle();
+            if ($ca) $options[CURLOPT_CAINFO] = $ca;
+            curl_setopt_array($ch, $options);
             curl_multi_add_handle($multi, $ch);
             $handles[$url] = $ch;
         }
-
         $running = null;
         do {
             curl_multi_exec($multi, $running);
