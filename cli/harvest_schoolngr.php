@@ -199,27 +199,45 @@ study_say($dryRun
 /**
  * The last page of a subject's listing that still holds questions.
  *
- * The pages are found by halving the way down, which takes about nine
- * requests instead of one request per page.
+ * The size of the listing is not known in advance - WAEC Agricultural
+ * Science runs to several hundred pages - so the end is found by doubling
+ * until a page comes back empty, and then by halving the way back down to
+ * the last page that still has questions on it.
  */
 function schoolngr_last_page(string $code, string $slug): int
 {
-    $has = function (int $page) use ($code, $slug): bool {
+    // Returns true when the page has questions, false when it has none, and
+    // null when the page could not be read at all. A page that could not be
+    // read is treated as having questions, so that a bad fetch shortens
+    // nothing.
+    $has = function (int $page) use ($code, $slug): ?bool {
         $body = study_fetch_retry("https://www.schoolngr.com/classroom/$code/$slug?page=$page");
-        if ($body === null) return false;
+        if ($body === null) return null;
         return count(schoolngr_questions($body)) > 0;
     };
 
-    if (!$has(1)) return 0;
+    if ($has(1) === false) return 0;
 
+    // Find a page past the end of the listing.
     $low  = 1;
-    $high = 400;
+    $high = 32;
+    while (true) {
+        $probe = $has($high);
+        if ($probe === false) break;
+        $low = $high;
+        $high *= 2;
+        if ($high > 8192) { $high = 8192; break; }
+        usleep(250000);
+    }
+
+    // Now halve the way down to the last page that still has questions.
     while ($low < $high) {
-        $mid = (int)ceil(($low + $high + 1) / 2);
-        if ($has($mid)) {
-            $low = $mid;
-        } else {
+        $mid = (int)floor(($low + $high + 1) / 2);
+        $probe = $has($mid);
+        if ($probe === false) {
             $high = $mid - 1;
+        } else {
+            $low = $mid;
         }
         usleep(250000);
     }
