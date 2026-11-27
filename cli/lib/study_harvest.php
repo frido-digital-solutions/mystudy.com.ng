@@ -106,6 +106,28 @@ function study_fetch(string $url, array $opts = []): ?string
 }
 
 /**
+ * Fetch a URL, trying again when the site lets us down.
+ *
+ * Some of the sites we read are shared hosts that drop a connection now and
+ * then. A single failure would otherwise throw away a whole paper, so a
+ * failed fetch is tried again a couple of times before it is given up on.
+ *
+ * @param string $url
+ * @param array  $opts  timeout, user agent, tries
+ * @return string|null  null when the page could not be read at all
+ */
+function study_fetch_retry(string $url, array $opts = []): ?string
+{
+    $tries = max(1, (int)($opts['tries'] ?? 3));
+    for ($i = 1; $i <= $tries; $i++) {
+        $body = study_fetch($url, $opts);
+        if ($body !== null && trim($body) !== '') return $body;
+        if ($i < $tries) usleep(600000);
+    }
+    return null;
+}
+
+/**
  * Fetch a lot of URLs at the same time.
  *
  * @param string[] $urls
