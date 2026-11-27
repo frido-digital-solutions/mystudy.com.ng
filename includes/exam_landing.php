@@ -67,6 +67,9 @@ function seo_render_exam_page(array $exam, ?string $subject = null): void {
                     <a class="btn btn-success" href="<?php echo SITE_URL; ?>/quizzes.php?exam=<?php echo urlencode($examKey); ?>">
                         <i class="fas fa-play"></i> Take a free <?php echo htmlspecialchars($examKey); ?> CBT test
                     </a>
+                    <a class="btn btn-outline-success" href="<?php echo SITE_URL; ?>/study.php?exam=<?php echo urlencode($examKey); ?>">
+                        <i class="fas fa-layer-group"></i> <?php echo htmlspecialchars($examKey); ?> past questions by year
+                    </a>
                     <a class="btn btn-outline-success" href="<?php echo SITE_URL; ?>/materials.php?level=Secondary&amp;secondary_board=<?php echo urlencode($examKey); ?>">
                         <i class="fas fa-book-open"></i> <?php echo htmlspecialchars($examKey); ?> study materials
                     </a>

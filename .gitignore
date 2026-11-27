@@ -74,3 +74,14 @@ Desktop.ini
 *~
 .idea/
 .vscode/
+
+# ============================================================
+# STUDY LIBRARY EXPORTS - generated, not source.
+# The library is built by the harvesters in cli/. These exports run to
+# tens of megabytes, so they are made when they are needed rather
+# than kept in the repository.
+content/study_library.sql
+content/study_library.sql.gz
+
+# My own scratch space for probing source sites.
+.scratch/

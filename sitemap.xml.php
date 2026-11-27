@@ -26,6 +26,7 @@ add_url($urls, $base . '/leaderboard.php', 'daily', 0.7);
 add_url($urls, $base . '/materials.php', 'weekly', 0.7);
 add_url($urls, $base . '/tutorials.php', 'weekly', 0.7);
 add_url($urls, $base . '/quizzes.php', 'daily', 0.9);
+add_url($urls, $base . '/study.php', 'daily', 0.9);
 add_url($urls, $base . '/discussions.php', 'daily', 0.8);
 add_url($urls, $base . '/battle_hub.php', 'daily', 0.7);
 add_url($urls, $base . '/blog.php', 'daily', 0.8);
@@ -57,6 +58,37 @@ foreach (seo_exam_pages() as $examPage) {
             0.8
         );
     }
+}
+
+// The Study library: every exam, every subject, every year that has a
+// paper. These are the pages a student lands on from a search for
+// "waec past questions 2020" or "neco english past questions and answers".
+try {
+    require_once __DIR__ . '/includes/study_schema.php';
+    require_once __DIR__ . '/models/Study.php';
+    msb_ensure_study_tables($pdo);
+    $studyModel = new Study($pdo);
+    foreach (['JAMB', 'WAEC', 'NECO'] as $studyExam) {
+        add_url($urls, $base . '/study.php?exam=' . rawurlencode($studyExam), 'daily', 0.85);
+        foreach ($studyModel->subjects($studyExam) as $studySubject) {
+            add_url(
+                $urls,
+                $base . '/study.php?exam=' . rawurlencode($studyExam) . '&subject=' . rawurlencode($studySubject['subject_slug']),
+                'weekly',
+                0.75
+            );
+            foreach ($studyModel->years($studyExam, $studySubject['subject_slug']) as $studyYear) {
+                add_url(
+                    $urls,
+                    $base . '/study.php?exam=' . rawurlencode($studyExam) . '&subject=' . rawurlencode($studySubject['subject_slug']) . '&year=' . (int)$studyYear['year'],
+                    'weekly',
+                    0.7
+                );
+            }
+        }
+    }
+} catch (Throwable $e) {
+    // A library that cannot be read must not take the sitemap down.
 }
 
 // Dynamic quizzes (public)

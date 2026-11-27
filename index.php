@@ -325,6 +325,11 @@ seo_jsonld([
                 </div>
             <?php endforeach; ?>
         </div>
+        <div class="text-center mt-4">
+            <a class="btn btn-outline-success" href="<?php echo SITE_URL; ?>/study.php">
+                <i class="fas fa-layer-group"></i> Browse every past question by subject and year
+            </a>
+        </div>
     </div>
 </section>
 

@@ -291,6 +291,7 @@ if (isset($_SESSION['user_id']) && isset($pdo)) {
                             <li><a class="dropdown-item fw-bold text-primary" href="<?php echo SITE_URL; ?>/users.php"><i class="fas fa-users"></i> Find Friends</a></li>
                             <li><hr class="dropdown-divider"></li>
                             <li><a class="dropdown-item" href="<?php echo SITE_URL; ?>/materials.php"><i class="fas fa-book-open"></i> Study Materials</a></li>
+                            <li><a class="dropdown-item" href="<?php echo SITE_URL; ?>/study.php"><i class="fas fa-layer-group"></i> Past Questions Library</a></li>
                             <li><a class="dropdown-item" href="<?php echo SITE_URL; ?>/tutorials.php"><i class="fab fa-youtube"></i> Video Tutorials</a></li>
                             <li><a class="dropdown-item" href="<?php echo SITE_URL; ?>/quizzes.php"><i class="fas fa-brain"></i> Practice Quizzes</a></li>
                             <li><a class="dropdown-item" href="<?php echo SITE_URL; ?>/discussions.php"><i class="fas fa-comments text-info"></i> Community Forum</a></li>
