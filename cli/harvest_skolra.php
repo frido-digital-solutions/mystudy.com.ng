@@ -50,15 +50,31 @@ if (!$sitemap) {
 preg_match_all('#<loc>(https://skolra\.ng/[^<]+)</loc>#', $sitemap, $m);
 $todo = [];
 foreach ($m[1] as $url) {
-    if (!preg_match('#/(waec|jamb|neco)-past-questions/([a-z0-9-]+)/(\d{4})/?$#', $url, $p)) continue;
-    $subject = study_canonical_subject('skolra', $p[2]);
-    if (!$subject) continue;
-    $todo[] = [
-        'url'     => $url,
-        'exam'    => $examCodes[$p[1]],
-        'year'    => (int)$p[3],
-        'subject' => $subject,
-    ];
+    // A paper with its year in the path: /waec-past-questions/physics/2020
+    if (preg_match('#/(waec|jamb|neco)-past-questions/([a-z0-9-]+)/(\d{4})/?$#', $url, $p)) {
+        $subject = study_canonical_subject('skolra', $p[2]);
+        if (!$subject) continue;
+        $todo[] = [
+            'url'     => $url,
+            'exam'    => $examCodes[$p[1]],
+            'year'    => (int)$p[3],
+            'subject' => $subject,
+        ];
+        continue;
+    }
+    // A subject hub with no year in the path: /neco-past-questions/mathematics.
+    // The year is in the page title, so it is read from there.
+    if (preg_match('#/(waec|jamb|neco)-past-questions/([a-z0-9-]+)/?$#', $url, $p)) {
+        $subject = study_canonical_subject('skolra', $p[2]);
+        if (!$subject) continue;
+        $todo[] = [
+            'url'      => $url,
+            'exam'     => $examCodes[$p[1]],
+            'year'     => 0,
+            'subject'  => $subject,
+            'needs_year' => true,
+        ];
+    }
 }
 study_say(count($todo) . ' Skolra papers listed.');
 
@@ -99,6 +115,17 @@ foreach (array_chunk($work, $batch) as $chunk) {
             study_say('  x ' . $paper['exam'] . ' ' . $paper['subject']['slug'] . ' ' . $paper['year'] . ' - page not reachable');
             continue;
         }
+
+        // A subject hub carries its year in the title: "... (2008)".
+        if (empty($paper['year'])) {
+            $year = skolra_year_from_title($body);
+            if (!$year) {
+                study_say('  x ' . $paper['exam'] . ' ' . $paper['subject']['slug'] . ' - no year on the page, skipped');
+                continue;
+            }
+            $paper['year'] = $year;
+        }
+
         $list = skolra_questions($body);
         if (!$list) {
             study_say('  x ' . $paper['exam'] . ' ' . $paper['subject']['slug'] . ' ' . $paper['year'] . ' - nothing parsed');
@@ -135,6 +162,23 @@ study_say('');
 study_say($dryRun
     ? 'Dry run: ' . $papers . ' papers would have been written.'
     : 'Done: ' . $papers . ' papers, ' . $questions . ' questions.');
+
+/**
+ * The year a subject hub belongs to, taken from its title.
+ *
+ * A page with no year in its address still names the year it holds:
+ * "NECO Mathematics Past Questions and Answers (2008)".
+ */
+function skolra_year_from_title(string $html): ?int
+{
+    if (preg_match('#<title>(.*?)</title>#is', $html, $m)) {
+        $title = html_entity_decode(strip_tags($m[1]), ENT_QUOTES, 'UTF-8');
+        if (preg_match('/\((\d{4})\)/', $title, $y)) {
+            return (int)$y[1];
+        }
+    }
+    return null;
+}
 
 /**
  * Pull the questions, options, answers and explanations out of one page.

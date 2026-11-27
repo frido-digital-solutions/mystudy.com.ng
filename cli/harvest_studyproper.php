@@ -18,10 +18,12 @@ require_once __DIR__ . '/lib/study_harvest.php';
 $dryRun  = false;
 $limit   = 0;
 $refresh = false;
+$onlyExam = '';
 foreach (array_slice($argv, 1) as $arg) {
     if ($arg === '--dry-run')      { $dryRun = true; }
     elseif ($arg === '--refresh')  { $refresh = true; }
     elseif (strpos($arg, '--limit=') === 0) { $limit = (int)substr($arg, 8); }
+    elseif (strpos($arg, '--exam=') === 0)  { $onlyExam = strtolower(substr($arg, 7)); }
 }
 
 msb_ensure_study_tables($pdo);
@@ -172,6 +174,7 @@ $questions = 0;
 $groups = 0;
 
 foreach ($examMap as $examCode => $meta) {
+    if ($onlyExam !== '' && $onlyExam !== $examCode) continue;
     foreach ($subjectLists[$examCode] as $subjectValue) {
         $subject = study_canonical_subject('studyproper', $subjectValue);
         if (!$subject) continue;   // not an examination subject we keep
