@@ -101,6 +101,10 @@ foreach ($subjects as $subject) {
     $slug = $subject['slug'];
 
     $last = schoolngr_last_page($code, $slug);
+    if ($last === -1) {
+        study_say("  x $code $slug - the subject could not be read, skipped");
+        continue;
+    }
     if ($last < 1) {
         study_say("  x $code $slug - no questions");
         continue;
@@ -136,8 +140,11 @@ foreach ($subjects as $subject) {
         usleep(400000);
     }
 
+    // A subject with a missing page would give a paper that is quietly short
+    // of questions, so it is left for another run rather than stored.
     if ($missing) {
-        study_say("  ! $code $slug - " . count($missing) . " pages did not come back, this subject is incomplete");
+        study_say("  x $code $slug - " . count($missing) . " pages did not come back, skipped");
+        continue;
     }
 
     if (!$collected) {
@@ -206,23 +213,31 @@ study_say($dryRun
  */
 function schoolngr_last_page(string $code, string $slug): int
 {
-    // Returns true when the page has questions, false when it has none, and
-    // null when the page could not be read at all. A page that could not be
-    // read is treated as having questions, so that a bad fetch shortens
-    // nothing.
+    // Returns true when the page has questions, false when it has none.
+    // A page that cannot be read at all is fetched again; if it still cannot
+    // be read the subject is given up on, because guessing would either cut
+    // the subject short or invent pages that are not there.
     $has = function (int $page) use ($code, $slug): ?bool {
-        $body = study_fetch_retry("https://www.schoolngr.com/classroom/$code/$slug?page=$page");
-        if ($body === null) return null;
-        return count(schoolngr_questions($body)) > 0;
+        for ($try = 0; $try < 3; $try++) {
+            $body = study_fetch_retry("https://www.schoolngr.com/classroom/$code/$slug?page=$page", ['tries' => 2]);
+            if ($body !== null) {
+                return count(schoolngr_questions($body)) > 0;
+            }
+            usleep(1200000);
+        }
+        return null;      // the page could not be read
     };
 
-    if ($has(1) === false) return 0;
+    $first = $has(1);
+    if ($first === null) return -1;      // the subject could not be read
+    if ($first === false) return 0;      // the subject has no questions
 
     // Find a page past the end of the listing.
     $low  = 1;
     $high = 32;
     while (true) {
         $probe = $has($high);
+        if ($probe === null) return -1;
         if ($probe === false) break;
         $low = $high;
         $high *= 2;
@@ -234,6 +249,7 @@ function schoolngr_last_page(string $code, string $slug): int
     while ($low < $high) {
         $mid = (int)floor(($low + $high + 1) / 2);
         $probe = $has($mid);
+        if ($probe === null) return -1;
         if ($probe === false) {
             $high = $mid - 1;
         } else {

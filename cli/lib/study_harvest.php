@@ -324,20 +324,48 @@ function study_replace_questions(PDO $pdo, int $paperId, array $questions): int
         VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     ");
     $n = 0;
+    $seen = [];
     foreach ($questions as $q) {
-        if (trim((string)($q['question'] ?? '')) === '') continue;
+        $question = trim((string)($q['question'] ?? ''));
+        if ($question === '') continue;
+
+        // The same question listed twice in one paper is stored once.
+        $fingerprint = md5(strtolower(preg_replace('/\s+/', ' ', $question)));
+        if (isset($seen[$fingerprint])) continue;
+        $seen[$fingerprint] = true;
+
+        // An option must have a label and something to read.
+        $options = [];
+        foreach (($q['options'] ?? []) as $o) {
+            $label = strtoupper(trim((string)($o['label'] ?? '')));
+            $text  = trim((string)($o['text'] ?? ''));
+            if ($label === '' || $text === '') continue;
+            $options[] = ['label' => $label, 'text' => $text];
+        }
+        if (count($options) < 2) continue;
+
+        // The answer must be one of the options that are actually there.
+        $answer = strtoupper(trim((string)($q['correct_option'] ?? '')));
+        $labels = array_column($options, 'label');
+        if ($answer === '' || !in_array($answer, $labels, true)) continue;
+
         $stmt->execute([
             $paperId,
             (int)$q['display_number'],
-            (string)$q['question'],
-            json_encode(array_values($q['options'] ?? []), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
-            strtoupper((string)($q['correct_option'] ?? '')),
+            $question,
+            json_encode(array_values($options), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+            $answer,
             $q['explanation'] ?? null,
             $q['topic'] ?? null,
             $q['source_question_id'] ?? null,
         ]);
         $n++;
     }
+
+    // The paper must say how many questions it really holds, not how many
+    // were offered to it.
+    $pdo->prepare("UPDATE study_papers SET question_count = ? WHERE id = ?")->execute([$n, $paperId]);
+
     return $n;
 }
 

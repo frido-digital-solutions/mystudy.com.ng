@@ -176,7 +176,7 @@ function smartest_questions(string $html): array
             $spans = (new DOMXPath($doc))->query('./span', $optLi);
             if ($spans->length < 2) continue;
             $label = strtoupper(rtrim(study_node_text($spans->item(0)), '.'));
-            $text  = study_node_text($spans->item(1));
+            $text  = smartest_option_text($spans->item(1));
             if ($label === '') continue;
             $options[] = ['label' => $label, 'text' => $text];
         }
@@ -202,4 +202,35 @@ function smartest_questions(string $html): array
     }
 
     return $out;
+}
+
+/**
+ * The text of one option.
+ *
+ * A formula is written as a picture of the formula, so there is no text to
+ * read - the formula itself is kept in the picture's label for screen
+ * readers. Without this, an option like "1/2" would come back empty and the
+ * question would be unusable.
+ */
+function smartest_option_text($node): string
+{
+    if ($node === null) return '';
+
+    $text = study_node_text($node);
+    if (trim($text) !== '') return $text;
+
+    $doc = $node->ownerDocument;
+    if ($doc === null) return $text;
+
+    // A formula is written as a picture of the formula, so there is no text
+    // to read - the formula itself is kept in the picture's label for screen
+    // readers. Without this, an option like "1/2" would come back empty and
+    // the question would be unusable.
+    $xp = new DOMXPath($doc);
+    foreach ($xp->query(".//*[@aria-label]", $node) as $el) {
+        $label = trim($el->getAttribute('aria-label'));
+        if ($label !== '') return $label;
+    }
+
+    return $text;
 }
