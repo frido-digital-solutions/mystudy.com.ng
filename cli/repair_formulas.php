@@ -28,6 +28,7 @@ $rows = $pdo->query("
     WHERE q.question REGEXP '\\\\\\\\[a-zA-Z]+'
        OR q.options_json REGEXP '\\\\\\\\[a-zA-Z]+'
        OR q.question REGEXP '[a-zA-Z]{3,}[0-9]{3,}'
+       OR (q.question NOT LIKE '% | %' AND q.question REGEXP '[0-9]{2,}([ ]+[0-9]{2,}){2,}')
 ")->fetchAll();
 
 study_say(count($rows) . ' papers still hold a formula or a table that was not written out.');

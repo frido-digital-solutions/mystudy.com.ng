@@ -118,64 +118,159 @@ seo_jsonld([
 ]);
 ?>
 
-<div class="max-w-5xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
+<!-- ===================================================================
+     The look of the Study pages.
+     Written here rather than in the site stylesheet, so that the Study
+     pages carry their own design and cannot be broken by another page's
+     change to the shared stylesheet.
+     =================================================================== -->
+<style>
+.st-wrap{max-width:1080px;margin:0 auto;padding:28px 16px 56px}
+.st-crumbs{font-size:.86rem;color:#64748b;margin-bottom:22px}
+.st-crumbs a{color:#475569;text-decoration:none}
+.st-crumbs a:hover{color:#059669}
+.st-crumbs .sep{margin:0 7px;color:#cbd5e1}
+.st-crumbs .here{color:#0f172a;font-weight:600}
 
-  <nav class="text-sm text-slate-500 mb-6" aria-label="Breadcrumb">
+.st-head{margin-bottom:26px}
+.st-head h1{font-size:2rem;font-weight:800;color:#0f172a;margin:0 0 8px;letter-spacing:-.02em;line-height:1.15}
+.st-head p{color:#475569;margin:0;max-width:70ch;line-height:1.65;font-size:1.02rem}
+.st-eyebrow{display:inline-block;font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#059669;background:#ecfdf5;border:1px solid #a7f3d0;border-radius:999px;padding:3px 10px;margin-bottom:12px}
+
+.st-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:18px}
+.st-grid-2{grid-template-columns:repeat(auto-fill,minmax(230px,1fr))}
+
+.st-card{display:block;background:#fff;border:1px solid #e2e8f0;border-radius:16px;padding:22px;text-decoration:none;color:inherit;box-shadow:0 1px 2px rgba(15,23,42,.04);transition:transform .18s ease,box-shadow .18s ease,border-color .18s ease}
+.st-card:hover{transform:translateY(-3px);border-color:#34d399;box-shadow:0 12px 28px rgba(16,185,129,.12)}
+.st-card:focus-visible{outline:3px solid rgba(16,185,129,.45);outline-offset:2px}
+
+.st-card-top{display:flex;align-items:center;gap:13px;margin-bottom:14px}
+.st-card-top img{width:46px;height:46px;object-fit:contain;flex:0 0 auto}
+.st-card-top h2{font-size:1.2rem;font-weight:800;color:#0f172a;margin:0;letter-spacing:-.01em}
+.st-card-top p{margin:2px 0 0;font-size:.78rem;color:#64748b;line-height:1.4}
+.st-card p.st-blurb{font-size:.9rem;color:#475569;margin:0 0 16px;line-height:1.6}
+
+.st-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;border-top:1px solid #f1f5f9;padding-top:14px;text-align:center}
+.st-stats div:last-child{text-align:right}
+.st-stats div:first-child{text-align:left}
+.st-stats dt{font-size:.7rem;color:#94a3b8;text-transform:uppercase;letter-spacing:.05em;font-weight:600}
+.st-stats dd{margin:3px 0 0;font-size:1.12rem;font-weight:800;color:#0f172a}
+.st-stats dd small{font-size:.74rem;font-weight:600;color:#64748b}
+
+.st-row{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.st-row-name{font-weight:700;color:#0f172a;font-size:1.02rem;line-height:1.3}
+.st-row-sub{font-size:.83rem;color:#64748b;margin-top:3px}
+.st-row-go{flex:0 0 auto;width:32px;height:32px;border-radius:50%;background:#f1f5f9;color:#64748b;display:flex;align-items:center;justify-content:center;transition:background .18s ease,color .18s ease}
+.st-card:hover .st-row-go{background:#10b981;color:#fff}
+.st-year{font-size:1.3rem;font-weight:800;color:#0f172a;line-height:1.2}
+
+.st-note{background:#fffbeb;border:1px solid #fde68a;color:#92400e;border-radius:14px;padding:16px 18px;font-size:.94rem;line-height:1.6}
+
+.st-paper{background:#fff;border:1px solid #e2e8f0;border-radius:18px;box-shadow:0 1px 3px rgba(15,23,42,.05);overflow:hidden;margin-bottom:34px}
+.st-paper-head{padding:20px 24px;border-bottom:1px solid #f1f5f9;background:linear-gradient(180deg,#f8fafc,#fff)}
+.st-paper-head h2{margin:0;font-size:1.18rem;font-weight:800;color:#0f172a;letter-spacing:-.01em}
+.st-paper-meta{margin:6px 0 0;font-size:.84rem;color:#64748b;display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.st-paper-meta a{color:#059669}
+
+.st-qs{padding:8px 24px 24px}
+.st-q{border-bottom:1px solid #f1f5f9;padding:20px 0}
+.st-q:last-child{border-bottom:0;padding-bottom:4px}
+.st-q-head{display:flex;gap:12px;align-items:flex-start}
+.st-num{flex:0 0 auto;min-width:30px;height:30px;border-radius:9px;background:#ecfdf5;color:#047857;font-weight:800;font-size:.88rem;display:flex;align-items:center;justify-content:center;margin-top:1px}
+.st-q-text{margin:0;font-size:1rem;line-height:1.7;color:#0f172a;font-weight:500;white-space:normal}
+.st-q-text table{width:100%;border-collapse:collapse;margin:10px 0;font-size:.92rem}
+.st-q-text td,.st-q-text th{border:1px solid #e2e8f0;padding:7px 10px;text-align:left}
+
+.st-opts{list-style:none;margin:14px 0 0;padding:0;display:flex;flex-direction:column;gap:8px}
+.st-opt{display:flex;gap:11px;align-items:flex-start;padding:10px 13px;border:1px solid #e2e8f0;border-radius:11px;background:#fff;font-size:.94rem;line-height:1.6;color:#334155}
+.st-opt-label{flex:0 0 auto;min-width:24px;height:24px;border-radius:7px;background:#f1f5f9;color:#475569;font-weight:800;font-size:.78rem;display:flex;align-items:center;justify-content:center}
+.st-opt-text{flex:1 1 auto;min-width:0}
+.st-opt.is-answer{border-color:#6ee7b7;background:#ecfdf5;color:#065f46}
+.st-opt.is-answer .st-opt-label{background:#10b981;color:#fff}
+.st-answer-tag{margin-left:auto;flex:0 0 auto;font-size:.68rem;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:#047857;background:#d1fae5;border-radius:999px;padding:3px 9px}
+
+.st-exp{margin-top:12px;background:#f8fafc;border:1px solid #e2e8f0;border-left:3px solid #10b981;border-radius:0 12px 12px 0;padding:13px 16px;font-size:.9rem;line-height:1.65;color:#475569}
+.st-exp strong{color:#0f172a}
+
+.st-toolbar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;margin-bottom:18px}
+.st-toggle{border:1px solid #e2e8f0;background:#fff;color:#334155;font-size:.86rem;font-weight:600;padding:9px 16px;border-radius:999px;cursor:pointer;display:inline-flex;align-items:center;gap:8px;transition:all .18s ease}
+.st-toggle:hover{border-color:#10b981;color:#059669}
+.st-hide-answers .st-answer-tag{display:none}
+.st-hide-answers .st-opt.is-answer{background:#fff;color:#334155;border-color:#e2e8f0}
+.st-hide-answers .st-opt.is-answer .st-opt-label{background:#f1f5f9;color:#475569}
+
+.st-cta{margin-top:34px;background:#fff;border:1px solid #e2e8f0;border-radius:18px;padding:24px;display:flex;flex-wrap:wrap;gap:16px;align-items:center;justify-content:space-between}
+.st-cta h2{margin:0 0 5px;font-size:1.08rem;font-weight:800;color:#0f172a}
+.st-cta p{margin:0;font-size:.9rem;color:#64748b;line-height:1.6}
+.st-btn{display:inline-block;background:#10b981;color:#fff;text-decoration:none;font-weight:700;font-size:.9rem;padding:11px 20px;border-radius:999px;transition:background .18s ease}
+.st-btn:hover{background:#059669;color:#fff}
+
+@media (max-width:640px){
+  .st-wrap{padding:20px 14px 44px}
+  .st-head h1{font-size:1.6rem}
+  .st-qs{padding:6px 16px 20px}
+  .st-paper-head{padding:16px}
+  .st-cta{flex-direction:column;align-items:flex-start}
+}
+</style>
+
+<div class="st-wrap">
+
+  <nav class="st-crumbs" aria-label="Breadcrumb">
     <?php $last = end($crumbs); foreach ($crumbs as $label => $href): ?>
       <?php if ($href === $last): ?>
-        <span class="text-slate-900 font-medium"><?php echo htmlspecialchars($label); ?></span>
+        <span class="here"><?php echo htmlspecialchars($label); ?></span>
       <?php else: ?>
-        <a href="<?php echo htmlspecialchars($href); ?>" class="hover:text-brand-600"><?php echo htmlspecialchars($label); ?></a>
-        <span class="mx-1">/</span>
+        <a href="<?php echo htmlspecialchars($href); ?>"><?php echo htmlspecialchars($label); ?></a>
+        <span class="sep">/</span>
       <?php endif; ?>
     <?php endforeach; ?>
   </nav>
 
   <?php if (!$exam): ?>
     <!-- ============================ the three examinations ============ -->
-    <h1 class="text-3xl font-bold text-slate-900 mb-2">Study</h1>
-    <p class="text-slate-600 mb-8 max-w-2xl">
-      Real past questions and answers for the three examinations Nigerian students sit.
-      Pick an examination, pick a subject, pick a year, and read the whole paper with the
-      answer under every question.
-    </p>
+    <header class="st-head">
+      <span class="st-eyebrow">Past questions library</span>
+      <h1>Study</h1>
+      <p>Real past questions and answers for the three examinations Nigerian students sit.
+         Pick an examination, pick a subject, pick a year, and read the whole paper with the
+         answer under every question.</p>
+    </header>
 
     <?php if ($totalQs === 0): ?>
-      <div class="rounded-xl border border-amber-200 bg-amber-50 p-6 text-amber-900">
+      <div class="st-note" style="margin-bottom:22px">
         The library is being filled. Papers are being added now - check back shortly.
       </div>
     <?php endif; ?>
 
-    <div class="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+    <div class="st-grid">
       <?php foreach ($examMeta as $key => $meta):
-        $s = $summary[$key];
+        $s = $summary[$key] ?? ['questions' => 0, 'subjects' => 0, 'from_year' => 0, 'to_year' => 0];
         $years = $s['from_year'] && $s['to_year']
           ? ($s['from_year'] === $s['to_year'] ? (string)$s['from_year'] : $s['from_year'] . ' - ' . $s['to_year'])
           : 'no papers yet';
       ?>
-        <a href="<?php echo SITE_URL; ?>/study.php?exam=<?php echo urlencode($key); ?>"
-           class="group block rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition hover:border-brand-400 hover:shadow-md">
-          <div class="flex items-center gap-3 mb-3">
-            <img src="<?php echo SITE_URL; ?><?php echo $meta['logo']; ?>" alt="<?php echo $key; ?>" width="48" height="48"
-                 class="h-12 w-12 object-contain">
+        <a class="st-card" href="<?php echo SITE_URL; ?>/study.php?exam=<?php echo urlencode($key); ?>">
+          <div class="st-card-top">
+            <img src="<?php echo SITE_URL; ?><?php echo $meta['logo']; ?>" alt="<?php echo $key; ?>" width="46" height="46" loading="lazy">
             <div>
-              <h2 class="text-xl font-bold text-slate-900 group-hover:text-brand-700"><?php echo $key; ?></h2>
-              <p class="text-xs text-slate-500"><?php echo htmlspecialchars($meta['full']); ?></p>
+              <h2><?php echo $key; ?></h2>
+              <p><?php echo htmlspecialchars($meta['full']); ?></p>
             </div>
           </div>
-          <p class="text-sm text-slate-600 mb-4"><?php echo htmlspecialchars($meta['blurb']); ?></p>
-          <dl class="grid grid-cols-3 gap-2 text-center border-t border-slate-100 pt-4">
+          <p class="st-blurb"><?php echo htmlspecialchars($meta['blurb']); ?></p>
+          <dl class="st-stats">
             <div>
-              <dt class="text-xs text-slate-500">Questions</dt>
-              <dd class="text-lg font-bold text-slate-900"><?php echo number_format($s['questions']); ?></dd>
+              <dt>Questions</dt>
+              <dd><?php echo number_format($s['questions']); ?></dd>
             </div>
             <div>
-              <dt class="text-xs text-slate-500">Subjects</dt>
-              <dd class="text-lg font-bold text-slate-900"><?php echo number_format($s['subjects']); ?></dd>
+              <dt>Subjects</dt>
+              <dd><?php echo number_format($s['subjects']); ?></dd>
             </div>
             <div>
-              <dt class="text-xs text-slate-500">Years</dt>
-              <dd class="text-sm font-bold text-slate-900 pt-1"><?php echo htmlspecialchars($years); ?></dd>
+              <dt>Years</dt>
+              <dd><small><?php echo htmlspecialchars($years); ?></small></dd>
             </div>
           </dl>
         </a>
@@ -183,63 +278,62 @@ seo_jsonld([
     </div>
 
   <?php elseif ($subject === ''): ?>
-    <!-- ============================ subjects of one examination ======= -->
-    <h1 class="text-3xl font-bold text-slate-900 mb-2"><?php echo $examKey; ?> past questions</h1>
-    <p class="text-slate-600 mb-8">
-      <?php echo htmlspecialchars($exam['full']); ?>. Choose a subject to see the years it covers.
-    </p>
-
+    <!-- ============================ the subjects of one examination ==== -->
     <?php $subjects = $study->subjects($examKey); ?>
+    <header class="st-head">
+      <span class="st-eyebrow"><?php echo htmlspecialchars($examKey); ?> past questions</span>
+      <h1><?php echo htmlspecialchars($examKey); ?> past questions</h1>
+      <p><?php echo htmlspecialchars($exam['full']); ?>. Choose a subject to see the years it covers.</p>
+    </header>
+
     <?php if (!$subjects): ?>
-      <div class="rounded-xl border border-amber-200 bg-amber-50 p-6 text-amber-900">
-        No <?php echo $examKey; ?> papers yet.
-      </div>
+      <div class="st-note">No papers for this examination yet.</div>
     <?php else: ?>
-      <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      <div class="st-grid">
         <?php foreach ($subjects as $s):
-          $sName = $examKey === 'JAMB' && $s['subject_slug'] === 'english-language'
-            ? 'Use of English'
-            : $s['subject_name'];
-          $span = $s['from_year'] === $s['to_year']
-            ? (string)$s['from_year']
-            : $s['from_year'] . ' - ' . $s['to_year'];
+          $sName = $s['subject_name'] ?: ucfirst(str_replace('-', ' ', $s['subject_slug']));
         ?>
-          <a href="<?php echo SITE_URL; ?>/study.php?exam=<?php echo urlencode($examKey); ?>&amp;subject=<?php echo urlencode($s['subject_slug']); ?>"
-             class="group flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-4 py-4 shadow-sm transition hover:border-brand-400 hover:shadow-md">
-            <span class="min-w-0">
-              <span class="block font-semibold text-slate-900 group-hover:text-brand-700"><?php echo htmlspecialchars($sName); ?></span>
-              <span class="block text-sm text-slate-500">
-                <?php echo number_format((int)$s['questions']); ?> questions &middot; <?php echo htmlspecialchars($span); ?>
-              </span>
-            </span>
-            <span class="shrink-0 text-slate-400 group-hover:text-brand-600" aria-hidden="true">&rarr;</span>
+          <a class="st-card" href="<?php echo SITE_URL; ?>/study.php?exam=<?php echo urlencode($examKey); ?>&amp;subject=<?php echo urlencode($s['subject_slug']); ?>">
+            <div class="st-row">
+              <div>
+                <div class="st-row-name"><?php echo htmlspecialchars($sName); ?></div>
+                <div class="st-row-sub">
+                  <?php echo number_format($s['questions']); ?> questions
+                  <?php if ($s['from_year'] && $s['to_year']): ?>
+                    &middot; <?php echo (int)$s['from_year']; ?> - <?php echo (int)$s['to_year']; ?>
+                  <?php endif; ?>
+                </div>
+              </div>
+              <span class="st-row-go" aria-hidden="true"><i class="fas fa-arrow-right"></i></span>
+            </div>
           </a>
         <?php endforeach; ?>
       </div>
     <?php endif; ?>
 
   <?php elseif ($year <= 0): ?>
-    <!-- ============================ years of one subject ============== -->
+    <!-- ============================ the years of one subject ============ -->
     <?php $years = $study->years($examKey, $subject); ?>
-    <h1 class="text-3xl font-bold text-slate-900 mb-2"><?php echo htmlspecialchars($examKey . ' ' . $subjectName); ?></h1>
-    <p class="text-slate-600 mb-8">Choose a year to read the paper.</p>
+    <header class="st-head">
+      <span class="st-eyebrow"><?php echo htmlspecialchars($examKey); ?> &middot; <?php echo htmlspecialchars($subjectName); ?></span>
+      <h1><?php echo htmlspecialchars($examKey . ' ' . $subjectName); ?></h1>
+      <p>Choose a year to read the paper. Every question comes with its options and the
+         correct answer.</p>
+    </header>
 
     <?php if (!$years): ?>
-      <div class="rounded-xl border border-amber-200 bg-amber-50 p-6 text-amber-900">
-        No papers for this subject yet.
-      </div>
+      <div class="st-note">No papers for this subject yet.</div>
     <?php else: ?>
-      <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      <div class="st-grid st-grid-2">
         <?php foreach ($years as $y): ?>
-          <a href="<?php echo SITE_URL; ?>/study.php?exam=<?php echo urlencode($examKey); ?>&amp;subject=<?php echo urlencode($subject); ?>&amp;year=<?php echo (int)$y['year']; ?>"
-             class="group flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-4 py-4 shadow-sm transition hover:border-brand-400 hover:shadow-md">
-            <span>
-              <span class="block text-lg font-bold text-slate-900 group-hover:text-brand-700"><?php echo (int)$y['year']; ?></span>
-              <span class="block text-sm text-slate-500">
-                <?php echo number_format((int)$y['questions']); ?> questions in <?php echo (int)$y['papers']; ?> paper<?php echo ((int)$y['papers'] === 1 ? '' : 's'); ?>
-              </span>
-            </span>
-            <span class="shrink-0 text-slate-400 group-hover:text-brand-600" aria-hidden="true">&rarr;</span>
+          <a class="st-card" href="<?php echo SITE_URL; ?>/study.php?exam=<?php echo urlencode($examKey); ?>&amp;subject=<?php echo urlencode($subject); ?>&amp;year=<?php echo (int)$y['year']; ?>">
+            <div class="st-row">
+              <div>
+                <div class="st-year"><?php echo (int)$y['year']; ?></div>
+                <div class="st-row-sub"><?php echo number_format($y['questions']); ?> questions</div>
+              </div>
+              <span class="st-row-go" aria-hidden="true"><i class="fas fa-arrow-right"></i></span>
+            </div>
           </a>
         <?php endforeach; ?>
       </div>
@@ -248,59 +342,54 @@ seo_jsonld([
   <?php else: ?>
     <!-- ============================ the paper itself ================== -->
     <?php $papers = $study->papers($examKey, $subject, $year); ?>
-    <h1 class="text-3xl font-bold text-slate-900 mb-2">
-      <?php echo htmlspecialchars($examKey . ' ' . $subjectName . ' ' . $year); ?>
-    </h1>
-    <p class="text-slate-600 mb-6">
-      Real <?php echo $examKey; ?> objective paper, <?php echo (int)$year; ?>. Read every question, then check the answer.
-    </p>
+    <header class="st-head">
+      <span class="st-eyebrow"><?php echo htmlspecialchars($examKey); ?> &middot; <?php echo htmlspecialchars($subjectName); ?> &middot; <?php echo (int)$year; ?></span>
+      <h1><?php echo htmlspecialchars($examKey . ' ' . $subjectName . ' ' . $year); ?></h1>
+      <p>Real <?php echo htmlspecialchars($examKey); ?> objective paper, <?php echo (int)$year; ?>. Read every question, then check the answer.</p>
+    </header>
 
     <?php if (!$papers): ?>
-      <div class="rounded-xl border border-amber-200 bg-amber-50 p-6 text-amber-900">
-        No paper found for that year.
-      </div>
+      <div class="st-note">No paper found for that year.</div>
     <?php endif; ?>
 
-    <?php foreach ($papers as $paper):
+    <?php $showAnswers = true; foreach ($papers as $paper):
       $questions = $study->questions((int)$paper['id']);
       if (!$questions) continue;
     ?>
-      <article class="mb-10">
-        <div class="flex flex-wrap items-baseline justify-between gap-2 border-b-2 border-slate-900 pb-2 mb-6">
-          <h2 class="text-xl font-bold text-slate-900"><?php echo htmlspecialchars($paper['title']); ?></h2>
-          <p class="text-sm text-slate-500">
-            <?php echo count($questions); ?> questions
+      <article class="st-paper">
+        <div class="st-paper-head">
+          <h2><?php echo htmlspecialchars($paper['title']); ?></h2>
+          <p class="st-paper-meta">
+            <span><?php echo count($questions); ?> questions</span>
             <?php if (!empty($paper['source_url'])): ?>
-              &middot; <a href="<?php echo htmlspecialchars($paper['source_url']); ?>" rel="nofollow noopener" target="_blank" class="underline">source</a>
+              <span>&middot; <a href="<?php echo htmlspecialchars($paper['source_url']); ?>" rel="nofollow noopener" target="_blank">view the source</a></span>
             <?php endif; ?>
           </p>
         </div>
 
-        <ol class="space-y-6">
+        <div class="st-qs">
           <?php foreach ($questions as $q):
             $options = json_decode((string)$q['options_json'], true);
             if (!is_array($options)) $options = [];
             $answer = strtoupper(trim((string)$q['correct_option']));
           ?>
-            <li class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-              <p class="font-medium text-slate-900 mb-3">
-                <span class="text-slate-400 mr-1"><?php echo (int)$q['display_number']; ?>.</span>
-                <?php echo nl2br(htmlspecialchars($q['question'])); ?>
-              </p>
+            <div class="st-q">
+              <div class="st-q-head">
+                <span class="st-num"><?php echo (int)$q['display_number']; ?></span>
+                <p class="st-q-text"><?php echo nl2br(htmlspecialchars($q['question'])); ?></p>
+              </div>
 
               <?php if ($options): ?>
-                <ul class="space-y-1.5">
+                <ul class="st-opts">
                   <?php foreach ($options as $opt):
                     $label = strtoupper(trim((string)($opt['label'] ?? '')));
                     $isAnswer = $answer !== '' && $label === $answer;
                   ?>
-                    <li class="flex gap-2 text-sm <?php echo $isAnswer ? 'text-emerald-800 font-medium' : 'text-slate-700'; ?>">
-                      <span class="shrink-0 w-6 font-semibold <?php echo $isAnswer ? 'text-emerald-700' : 'text-slate-500'; ?>">
-                        <?php echo htmlspecialchars($label); ?>.
-                      </span>
-                      <span><?php echo nl2br(htmlspecialchars((string)($opt['text'] ?? ''))); ?></span>
+                    <li class="st-opt<?php echo $isAnswer ? ' is-answer' : ''; ?>">
+                      <span class="st-opt-label"><?php echo htmlspecialchars($label); ?></span>
+                      <span class="st-opt-text"><?php echo nl2br(htmlspecialchars((string)($opt['text'] ?? ''))); ?></span>
                       <?php if ($isAnswer): ?>
-                        <span class="ml-1 shrink-0 rounded bg-emerald-100 px-1.5 py-0.5 text-xs font-semibold text-emerald-800">answer</span>
+                        <span class="st-answer-tag">Answer</span>
                       <?php endif; ?>
                     </li>
                   <?php endforeach; ?>
@@ -308,27 +397,25 @@ seo_jsonld([
               <?php endif; ?>
 
               <?php if (!empty($q['explanation'])): ?>
-                <div class="mt-3 rounded-lg bg-slate-50 p-3 text-sm text-slate-700">
-                  <span class="font-semibold text-slate-900">Explanation:</span>
+                <div class="st-exp">
+                  <strong>Why:</strong>
                   <?php echo nl2br(htmlspecialchars($q['explanation'])); ?>
                 </div>
               <?php endif; ?>
-            </li>
+            </div>
           <?php endforeach; ?>
-        </ol>
+        </div>
       </article>
     <?php endforeach; ?>
   <?php endif; ?>
 
-  <div class="mt-10 rounded-2xl border border-slate-200 bg-slate-50 p-6">
-    <h2 class="text-lg font-bold text-slate-900 mb-2">Want the papers timed and scored?</h2>
-    <p class="text-sm text-slate-600 mb-3">
-      This library is for reading. If you want to sit a paper under exam conditions and get a
-      score, the practice quizzes do that.
-    </p>
-    <a href="<?php echo SITE_URL; ?>/quizzes.php" class="inline-block rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700">
-      Open the practice quizzes
-    </a>
+  <div class="st-cta">
+    <div>
+      <h2>Want the papers timed and scored?</h2>
+      <p>This library is for reading. If you want to sit a paper under exam conditions and get a
+         score, the practice quizzes do that.</p>
+    </div>
+    <a class="st-btn" href="<?php echo SITE_URL; ?>/quizzes.php">Open the practice quizzes</a>
   </div>
 </div>
 
