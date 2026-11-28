@@ -141,6 +141,32 @@ foreach ($subjects as $subject) {
         usleep(400000);
     }
 
+    // A page that did not come back is asked for again, one at a time and
+    // with a pause: the site drops requests when it is hit too hard, and a
+    // single dropped page would cost a whole subject.
+    if ($missing) {
+        $stillMissing = [];
+        $late = [];
+        foreach ($missing as $url) {
+            $body = study_fetch_retry($url);
+            if ($body === null || trim($body) === '') {
+                $stillMissing[] = $url;
+                usleep(1200000);
+                continue;
+            }
+            $got = 0;
+            foreach (schoolngr_questions($body) as $q) {
+                $got++;
+                if ($q['year'] <= 0) continue;      // no year on the question: skip it
+                $late[] = $q;
+            }
+            if ($got === 0) $stillMissing[] = $url;   // a page that came back empty
+            else usleep(400000);
+        }
+        $collected = array_merge($collected, $late);
+        $missing = $stillMissing;
+    }
+
     // A subject with a missing page would give a paper that is quietly short
     // of questions, so it is left for another run rather than stored.
     if ($missing) {
