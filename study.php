@@ -136,6 +136,7 @@ seo_jsonld([
 .st-head h1{font-size:2rem;font-weight:800;color:#0f172a;margin:0 0 8px;letter-spacing:-.02em;line-height:1.15}
 .st-head p{color:#475569;margin:0;max-width:70ch;line-height:1.65;font-size:1.02rem}
 .st-eyebrow{display:inline-block;font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#059669;background:#ecfdf5;border:1px solid #a7f3d0;border-radius:999px;padding:3px 10px;margin-bottom:12px}
+.st-count{display:inline-block;font-size:.95rem;font-weight:700;color:#047857;background:#ecfdf5;border:1px solid #a7f3d0;border-radius:999px;padding:5px 14px;margin-top:12px}
 
 .st-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:18px}
 .st-grid-2{grid-template-columns:repeat(auto-fill,minmax(230px,1fr))}
@@ -230,8 +231,8 @@ seo_jsonld([
   <?php if (!$exam): ?>
     <!-- ============================ the three examinations ============ -->
     <header class="st-head">
-      <span class="st-eyebrow">Past questions library: <?php echo number_format($totalQs); ?> total Questions Available</span>
-      <h1>Study Real Past Questions and Answers for: JAMB, WAEC, and NECO.</h1>
+      <h1>Study Real Past Questions and Answers.</h1>
+      <span class="st-count"><?php echo number_format($totalQs); ?> total Questions Available</span>
     </header>
 
     <?php if ($totalQs === 0): ?>
