@@ -93,14 +93,26 @@ try {
     ")->fetchAll();
     $fix = $pdo->prepare("UPDATE study_papers SET question_count = ? WHERE id = ?");
     $fixed = 0;
+    $empty = [];
     foreach ($counts as $c) {
+        if ((int)$c['actual'] === 0) {
+            // A paper with no questions in it is an empty page for a student.
+            $empty[] = (int)$c['id'];
+            continue;
+        }
         if ((int)$c['question_count'] === (int)$c['actual']) continue;
         $fix->execute([(int)$c['actual'], (int)$c['id']]);
         $fixed++;
     }
 
+    // A paper with no questions is taken out of the library.
+    $rmPaper = $pdo->prepare("DELETE FROM study_papers WHERE id = ?");
+    foreach ($empty as $id) {
+        $rmPaper->execute([$id]);
+    }
+
     $pdo->commit();
-    echo "\nRemoved " . count($drop) . " questions, corrected $fixed paper counts.\n";
+    echo "\nRemoved " . count($drop) . " questions, corrected $fixed paper counts, removed " . count($empty) . " empty papers.\n";
 } catch (Throwable $e) {
     $pdo->rollBack();
     echo 'Repair failed and was rolled back: ' . $e->getMessage() . "\n";
