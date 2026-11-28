@@ -184,6 +184,11 @@ function study_latex_to_text(string $latex): string
         return '√(' . study_latex_to_text($m[1]) . ')';
     }, $latex);
 
+    // A degree sign written as a power is the sign itself: 100^\circ C is
+    // 100°C, not 100^° C. This is done before the powers are read, so that
+    // the sign is not turned into a power first.
+    $latex = preg_replace('/\^\s*\{?\s*\\\\(?:circ|degree)\s*\}?/', '°', $latex);
+
     // Powers and subscripts.
     $latex = preg_replace_callback('/\^\{([^{}]*)\}/', function ($m) {
         return '^(' . study_latex_to_text($m[1]) . ')';
@@ -193,6 +198,21 @@ function study_latex_to_text(string $latex): string
     }, $latex);
     $latex = preg_replace('/\^(\w)/', '^($1)', $latex);
     $latex = preg_replace('/_(\w)/', '_($1)', $latex);
+
+    // A power or a subscript of a number is written as it is written on
+    // paper: y^(2) becomes y², not y^(2).
+    $superscripts = ['0' => '⁰', '1' => '¹', '2' => '²', '3' => '³', '4' => '⁴',
+                     '5' => '⁵', '6' => '⁶', '7' => '⁷', '8' => '⁸', '9' => '⁹',
+                     'n' => 'ⁿ', '+' => '⁺', '-' => '⁻'];
+    $subscripts  = ['0' => '₀', '1' => '₁', '2' => '₂', '3' => '₃', '4' => '₄',
+                     '5' => '₅', '6' => '₆', '7' => '₇', '8' => '₈', '9' => '₉',
+                     'n' => 'ₙ', '+' => '₊', '-' => '₋'];
+    $latex = preg_replace_callback('/\^\(([0-9n+\-]{1,2})\)/', function ($m) use ($superscripts) {
+        return strtr($m[1], $superscripts);
+    }, $latex);
+    $latex = preg_replace_callback('/_\(([0-9n+\-]{1,2})\)/', function ($m) use ($subscripts) {
+        return strtr($m[1], $subscripts);
+    }, $latex);
 
     // Greek letters and the symbols a paper uses.
     $symbols = [
