@@ -220,7 +220,6 @@ seo_jsonld([
 .st-lock-btn.primary:hover{background:#059669;color:#fff;transform:translateY(-2px)}
 .st-lock-btn.ghost{background:#fff;color:#047857;border:1.5px solid #a7f3d0}
 .st-lock-btn.ghost:hover{background:#ecfdf5;color:#065f46}
-.st-lock-note{margin:16px 0 0;font-size:.82rem;color:#94a3b8}
 
 @media (max-width:640px){
   .st-wrap{padding:20px 14px 44px}
@@ -369,14 +368,16 @@ seo_jsonld([
     <?php endif; ?>
 
     <?php
-    // A visitor who is not signed in reads the first five questions of a
-    // paper. The rest is behind a clean invitation to sign in - and the
-    // invitation remembers the paper, so signing in opens this exact page.
+    // A visitor who is not signed in reads the first five questions of the
+    // first paper. The rest of the paper - and the same paper from another
+    // source - stays behind a clean invitation to sign in, and the invitation
+    // remembers the paper, so signing in opens this exact page.
     $isSignedIn = is_logged_in();
     $freeCount  = 5;
     $returnTo   = msb_current_path();
 
-    foreach ($papers as $paper):
+    foreach ($papers as $paperIndex => $paper):
+      if (!$isSignedIn && $paperIndex > 0) break;   // one paper is enough to show
       $questions = $study->questions((int)$paper['id']);
       if (!$questions) continue;
       $total    = count($questions);
@@ -388,9 +389,6 @@ seo_jsonld([
           <h2><?php echo htmlspecialchars($paper['title']); ?></h2>
           <p class="st-paper-meta">
             <span><?php echo number_format($total); ?> questions</span>
-            <?php if (!$isSignedIn && $hidden > 0): ?>
-              <span>&middot; showing the first <?php echo number_format($freeCount); ?></span>
-            <?php endif; ?>
             <?php if (!empty($paper['source_url'])): ?>
               <span>&middot; <a href="<?php echo htmlspecialchars($paper['source_url']); ?>" rel="nofollow noopener" target="_blank">view the source</a></span>
             <?php endif; ?>
@@ -454,12 +452,7 @@ seo_jsonld([
               <div class="st-lock-card">
                 <div class="st-lock-icon"><i class="fas fa-lock"></i></div>
                 <h3>Log in to read the whole paper</h3>
-                <p>
-                  You are reading the first <?php echo number_format($freeCount); ?> of
-                  <?php echo number_format($total); ?> questions. Create a free account or log in and the
-                  full paper opens, with the options and the correct answer under every question.
-                  It is free, and you will come straight back to this page.
-                </p>
+                <p>Create a free account or log in to view all the full questions and other papers for free.</p>
                 <div class="st-lock-actions">
                   <a class="st-lock-btn primary" href="<?php echo htmlspecialchars(SITE_URL . '/login.php?return=' . rawurlencode($returnTo)); ?>">
                     <i class="fas fa-right-to-bracket"></i> Log in
@@ -468,7 +461,6 @@ seo_jsonld([
                     <i class="fas fa-user-plus"></i> Create a free account
                   </a>
                 </div>
-                <p class="st-lock-note">Free forever. No card needed.</p>
               </div>
             </div>
           <?php endif; ?>

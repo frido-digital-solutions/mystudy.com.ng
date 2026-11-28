@@ -47,7 +47,7 @@ if (!$cached_data) {
 if ($cached_data) {
     $latestMaterials = $cached_data['materials'];
     $featuredTutorials = $cached_data['tutorials'];
-    $latestPosts = $cached_data['posts'];
+    $latestPosts = $cached_data['posts6'] ?? $cached_data['posts'];
     $latestQuizzes = $cached_data['quizzes'];
     $latestChallenges = $cached_data['challenges'];
     $openBattles = $cached_data['battles'];
@@ -55,13 +55,14 @@ if ($cached_data) {
     // Limit queries to only what's needed for performance
     $latestMaterials = $materialModel->searchMaterials(null, null, null, null, null, 3, 0, 'approved');
     $featuredTutorials = $tutorialModel->searchTutorials(null, null, null, 2, 0); // 2 tutorials (saves ~200KB of YouTube thumbnails)
-    $latestPosts = $postModel->list(3, 0);
+    $latestPosts = $postModel->list(6, 0);
     $latestQuizzes = $quizModel->list(3, 0, null); // 3 quizzes
     $latestChallenges = $quizModel->listChallenges(null, 3); // 3 challenges
     $openBattles = $battleModel->getPublicOpenChallenges(3); // 3 battles
     
     // Cache the data
     $cache_data = [
+        'posts6'     => $latestPosts,
         'materials' => $latestMaterials,
         'tutorials' => $featuredTutorials,
         'posts' => $latestPosts,
@@ -79,66 +80,25 @@ if ($cached_data) {
     file_put_contents($cache_file, json_encode($cache_data));
 }
 
-// Build mixed hero slider data (posts + quizzes + battles)
-$heroSlides = [];
-
-foreach ($latestPosts as $p) {
-    // FORCE NO IMAGES for blog cards to prevent massive LCP payloads (e.g. 2.3MB user uploads).
-    // Using the ultra-fast CSS gradient instead.
-    $heroSlides[] = [
-        'type' => 'blog',
-        'title' => $p['title'],
-        'subtitle' => 'Latest blog insight',
-        'image' => null, 
-        'gradient' => 'linear-gradient(135deg, #10b981 0%, #059669 100%)', // Blog gradient
-        'icon' => 'fas fa-newspaper',
-        'cta_label' => 'Read Post',
-        'cta_url' => SITE_URL . '/post.php?slug=' . rawurlencode($p['slug']),
-    ];
-}
-
-foreach ($latestQuizzes as $q) {
-    $heroSlides[] = [
-        'type' => 'quiz',
-        'title' => $q['title'],
-        'subtitle' => 'Practice quiz (' . ($q['subject'] ?? 'General') . ')',
-        'image' => null, // No image for quizzes - will use gradient background
-        'gradient' => 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', // Professional gradient
-        'icon' => 'fas fa-brain', // Quiz icon
-        'cta_label' => 'Start Quiz',
-        'cta_url' => SITE_URL . '/quiz.php?id=' . (int)$q['id'],
-    ];
-}
-
-foreach ($latestChallenges as $c) {
-    $heroSlides[] = [
-        'type' => 'challenge',
-        'title' => $c['title'],
-        'subtitle' => 'Live challenge event',
-        'image' => null, // No image for challenges - will use gradient background
-        'gradient' => 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)', // Challenge gradient
-        'icon' => 'fas fa-trophy', // Challenge icon
-        'cta_label' => 'View Challenge',
-        'cta_url' => SITE_URL . '/quiz.php?id=' . (int)$c['id'],
-    ];
-}
-
-foreach ($openBattles as $b) {
-    $heroSlides[] = [
-        'type' => 'battle',
-        'title' => $b['quiz_title'],
-        'subtitle' => 'Open battle by ' . ($b['challenger_name'] ?? 'Player'),
-        'image' => null, // No image for battles - will use gradient background
-        'gradient' => 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)', // Battle gradient
-        'icon' => 'fas fa-gamepad', // Battle icon
-        'cta_label' => 'Join Battle',
-        'cta_url' => SITE_URL . '/battle_invite.php?code=' . urlencode($b['invite_code']),
-    ];
-}
-
-if (!empty($heroSlides)) {
-    shuffle($heroSlides);
-    $heroSlides = array_slice($heroSlides, 0, 5); // 5 max (was 8) to reduce DOM size
+// The thumbnails the posts were published with, so the blog slides can show
+// the picture that belongs to each post.
+$postThumbs = [];
+try {
+    $postIds = array_map(static fn($p) => (int)($p['id'] ?? 0), $latestPosts);
+    $postIds = array_values(array_filter($postIds));
+    if ($postIds) {
+        $in = implode(',', $postIds);
+        $rows = $pdo->query("SELECT post_id, file_path FROM post_images WHERE post_id IN ({$in}) ORDER BY sort_order ASC, id ASC")
+            ->fetchAll(PDO::FETCH_ASSOC);
+        foreach ($rows as $row) {
+            $pid = (int)$row['post_id'];
+            if (!isset($postThumbs[$pid]) && !empty($row['file_path'])) {
+                $postThumbs[$pid] = SITE_URL . '/' . ltrim((string)$row['file_path'], '/');
+            }
+        }
+    }
+} catch (Throwable $e) {
+    $postThumbs = [];
 }
 
 include 'includes/header.php';
@@ -237,7 +197,16 @@ $heroMatHref    = SITE_URL . '/materials.php';
 <style>
 .hs-section{padding:34px 0 10px;background:linear-gradient(180deg,#f8fafc 0%,#ffffff 100%)}
 .hs-card{position:relative;background:#fff;border:1px solid #e2e8f0;border-radius:26px;box-shadow:0 20px 50px rgba(15,23,42,.08);overflow:hidden;min-height:430px}
-.hs-slide{display:none;padding:38px 40px 44px;box-sizing:border-box;min-height:430px}
+.hs-slide{display:none;padding:38px 78px 44px;box-sizing:border-box;min-height:430px}
+.hs-nav{position:absolute;top:50%;transform:translateY(-50%);width:46px;height:46px;border-radius:50%;border:1.5px solid #a7f3d0;background:#fff;color:#059669;display:flex;align-items:center;justify-content:center;cursor:pointer;z-index:5;box-shadow:0 6px 18px rgba(15,23,42,.10);transition:all .18s ease}
+.hs-nav:hover{background:#10b981;color:#fff;border-color:#10b981;transform:translateY(-50%) scale(1.06)}
+.hs-nav:focus-visible{outline:3px solid rgba(16,185,129,.45);outline-offset:2px}
+.hs-nav.prev{left:16px}
+.hs-nav.next{right:16px}
+.hs-nav i{font-size:1rem}
+.hs-audience{display:flex;flex-wrap:wrap;gap:10px;margin:-6px 0 22px}
+.hs-chip{display:inline-flex;align-items:center;gap:8px;font-size:.86rem;font-weight:600;color:#334155;background:#f8fafc;border:1px solid #e2e8f0;border-radius:999px;padding:7px 15px}
+.hs-chip i{color:#059669}
 .hs-slide.is-active{display:block;animation:hsFade .5s ease both}
 @keyframes hsFade{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
 .hs-eyebrow{display:inline-flex;align-items:center;gap:8px;font-size:.74rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#047857;background:#ecfdf5;border:1px solid #a7f3d0;border-radius:999px;padding:5px 13px;margin-bottom:16px}
@@ -270,6 +239,7 @@ $heroMatHref    = SITE_URL . '/materials.php';
 @media (max-width:900px){
   .hs-slide{padding:30px 24px 44px;min-height:0}
   .hs-card{min-height:0}
+  .hs-nav{display:none}
   .hs-stats{grid-template-columns:repeat(2,1fr)}
   .hs-feats{grid-template-columns:1fr}
   .hs-ctas{flex-direction:column}
@@ -289,6 +259,12 @@ $heroMatHref    = SITE_URL . '/materials.php';
                     Read the real examination papers with the options and the correct answer under every
                     question. Then sit the same papers as a timed CBT and get your score the moment you finish.
                 </p>
+
+                <div class="hs-audience">
+                    <span class="hs-chip"><i class="fas fa-school"></i> Secondary school students</span>
+                    <span class="hs-chip"><i class="fas fa-user-graduate"></i> University students</span>
+                    <span class="hs-chip"><i class="fas fa-mobile-screen"></i> Works on your phone</span>
+                </div>
 
                 <div class="hs-logos">
                     <?php foreach ($heroExamLogos as $heroLogo): ?>
@@ -389,6 +365,13 @@ $heroMatHref    = SITE_URL . '/materials.php';
                 </div>
             </div>
 
+            <button type="button" class="hs-nav prev" id="heroPrev" aria-label="Previous slide">
+                <i class="fas fa-chevron-left" aria-hidden="true"></i>
+            </button>
+            <button type="button" class="hs-nav next" id="heroNext" aria-label="Next slide">
+                <i class="fas fa-chevron-right" aria-hidden="true"></i>
+            </button>
+
             <div class="hs-dots" id="heroDots" role="tablist" aria-label="Home page highlights"></div>
         </div>
     </div>
@@ -425,10 +408,17 @@ $heroMatHref    = SITE_URL . '/materials.php';
 
     function next() { go((current + 1) % slides.length); }
 
+    function prev() { go((current - 1 + slides.length) % slides.length); }
+
     function restart() {
         if (timer) clearInterval(timer);
         timer = setInterval(next, 7000);
     }
+
+    var prevBtn = document.getElementById('heroPrev');
+    var nextBtn = document.getElementById('heroNext');
+    if (prevBtn) prevBtn.addEventListener('click', function () { prev(); restart(); });
+    if (nextBtn) nextBtn.addEventListener('click', function () { next(); restart(); });
 
     card.addEventListener('mouseenter', function () { if (timer) clearInterval(timer); });
     card.addEventListener('mouseleave', restart);
@@ -479,46 +469,154 @@ $heroMatHref    = SITE_URL . '/materials.php';
     </div>
 </section>
 
-<?php if (!empty($heroSlides)): ?>
-<section class="hero-slider-section">
+<?php if (!empty($latestPosts)): ?>
+<!-- ===========================================
+     BLOG SLIDESHOW - the latest posts, with the
+     picture that belongs to each one
+     =========================================== -->
+<style>
+.bl-section{padding:46px 0 18px;background:#ffffff}
+.bl-head{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;margin-bottom:22px}
+.bl-head h2{margin:0;font-size:clamp(1.35rem,2.6vw,1.85rem);font-weight:800;color:#0f172a;letter-spacing:-.02em}
+.bl-head p{margin:6px 0 0;font-size:.94rem;color:#64748b}
+.bl-all{display:inline-flex;align-items:center;gap:8px;background:#fff;border:1.5px solid #a7f3d0;color:#047857;text-decoration:none;font-weight:700;font-size:.88rem;padding:9px 18px;border-radius:999px;white-space:nowrap;transition:all .18s ease}
+.bl-all:hover{background:#ecfdf5;color:#065f46}
+.bl-stage{position:relative}
+.bl-slide{display:none;background:#fff;border:1px solid #e2e8f0;border-radius:22px;overflow:hidden;box-shadow:0 14px 36px rgba(15,23,42,.07);grid-template-columns:minmax(0,44%) 1fr}
+.bl-slide.is-active{display:grid;animation:blFade .45s ease both}
+@keyframes blFade{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.bl-media{position:relative;background:#0f172a;aspect-ratio:1200/630;align-self:center;width:100%;border-radius:14px;overflow:hidden}
+.bl-media img{width:100%;height:100%;object-fit:cover;display:block}
+.bl-media .bl-fallback{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#10b981 0%,#059669 100%);color:#fff;font-size:2.2rem}
+.bl-body{padding:30px 32px;display:flex;flex-direction:column;justify-content:center}
+.bl-tag{display:inline-block;align-self:flex-start;font-size:.7rem;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:#047857;background:#ecfdf5;border:1px solid #a7f3d0;border-radius:999px;padding:4px 12px;margin-bottom:12px}
+.bl-title{margin:0 0 12px;font-size:clamp(1.15rem,2.2vw,1.5rem);font-weight:800;color:#0f172a;line-height:1.3;letter-spacing:-.015em}
+.bl-excerpt{margin:0 0 16px;font-size:.95rem;line-height:1.65;color:#475569}
+.bl-date{display:inline-flex;align-items:center;gap:7px;font-size:.82rem;color:#94a3b8;margin-bottom:18px}
+.bl-cta{display:inline-flex;align-items:center;gap:9px;align-self:flex-start;background:#10b981;color:#fff;text-decoration:none;font-weight:700;font-size:.9rem;padding:11px 22px;border-radius:999px;transition:all .18s ease}
+.bl-cta:hover{background:#059669;color:#fff;transform:translateY(-2px)}
+.bl-nav{position:absolute;top:50%;transform:translateY(-50%);width:44px;height:44px;border-radius:50%;border:1.5px solid #a7f3d0;background:#fff;color:#059669;display:flex;align-items:center;justify-content:center;cursor:pointer;z-index:5;box-shadow:0 6px 18px rgba(15,23,42,.12);transition:all .18s ease}
+.bl-nav:hover{background:#10b981;color:#fff;border-color:#10b981}
+.bl-nav:focus-visible{outline:3px solid rgba(16,185,129,.45);outline-offset:2px}
+.bl-nav.prev{left:-14px}
+.bl-nav.next{right:-14px}
+.bl-dots{display:flex;justify-content:center;gap:9px;margin-top:20px}
+.bl-dot{width:9px;height:9px;border-radius:999px;border:none;background:#cbd5e1;cursor:pointer;padding:0;transition:all .2s ease}
+.bl-dot.is-active{background:#10b981;width:26px}
+.bl-dot:focus-visible{outline:3px solid rgba(16,185,129,.45);outline-offset:2px}
+@media (max-width:900px){
+  .bl-slide{grid-template-columns:1fr}
+  .bl-media{min-height:0;aspect-ratio:1200/630}
+  .bl-body{padding:22px}
+  .bl-nav{display:none}
+  .bl-head{flex-direction:column;align-items:flex-start}
+}
+</style>
+
+<section class="bl-section">
     <div class="container">
-        <div class="hero-slider" id="heroSlider">
-            <?php foreach ($heroSlides as $idx => $slide): ?>
-            <div class="hero-slide<?php echo $idx === 0 ? ' active' : ''; ?>">
-                <div class="hero-slide-media">
-                    <?php if (!empty($slide['image'])): ?>
-                        <img src="<?php echo htmlspecialchars($slide['image']); ?>" alt="<?php echo htmlspecialchars($slide['title']); ?>">
+        <div class="bl-head">
+            <div>
+                <h2>Latest from the blog</h2>
+                <p>What is happening in the examinations, and what it means for you.</p>
+            </div>
+            <a class="bl-all" href="<?php echo SITE_URL; ?>/blog.php">See all posts <i class="fas fa-arrow-right"></i></a>
+        </div>
+
+        <div class="bl-stage" id="blogStage">
+            <?php foreach ($latestPosts as $idx => $p):
+                $thumb = $postThumbs[(int)($p['id'] ?? 0)] ?? '';
+                $isUniversity = strtolower((string)($p['level'] ?? '')) === 'university';
+            ?>
+            <article class="bl-slide<?php echo $idx === 0 ? ' is-active' : ''; ?>" data-slide="<?php echo (int)$idx; ?>">
+                <div class="bl-media">
+                    <?php if ($thumb !== ''): ?>
+                        <img src="<?php echo htmlspecialchars($thumb); ?>" alt="<?php echo htmlspecialchars($p['title']); ?>" loading="lazy">
                     <?php else: ?>
-                        <div class="hero-slide-gradient" style="background: <?php echo htmlspecialchars($slide['gradient'] ?? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'); ?>">
-                            <i class="<?php echo htmlspecialchars($slide['icon'] ?? 'fas fa-star'); ?>"></i>
-                        </div>
+                        <div class="bl-fallback"><i class="fas fa-newspaper"></i></div>
                     <?php endif; ?>
-                    <span class="hero-slide-tag">
-                        <?php
-                        if ($slide['type'] === 'blog') echo 'Blog Post';
-                        elseif ($slide['type'] === 'battle') echo 'Battle Hub';
-                        elseif ($slide['type'] === 'challenge') echo 'Challenge Quiz';
-                        else echo 'Quiz';
-                        ?>
-                    </span>
                 </div>
-                <div class="hero-slide-body">
-                    <h3 class="hero-slide-title"><?php echo htmlspecialchars($slide['title']); ?></h3>
-                    <p class="hero-slide-subtitle"><?php echo htmlspecialchars($slide['subtitle']); ?></p>
-                    <a href="<?php echo htmlspecialchars($slide['cta_url']); ?>" class="hero-slide-cta">
-                        <?php echo htmlspecialchars($slide['cta_label']); ?> <i class="fas fa-arrow-right"></i>
+                <div class="bl-body">
+                    <span class="bl-tag"><?php echo $isUniversity ? 'University' : 'Secondary'; ?></span>
+                    <h3 class="bl-title"><?php echo htmlspecialchars($p['title']); ?></h3>
+                    <p class="bl-excerpt"><?php
+                        $blExcerpt = trim((string)($p['excerpt'] ?? ''));
+                        if (mb_strlen($blExcerpt) > 180) {
+                            $blExcerpt = mb_substr($blExcerpt, 0, 180);
+                            $blCut = mb_strrpos($blExcerpt, ' ');
+                            if ($blCut !== false && $blCut > 60) $blExcerpt = mb_substr($blExcerpt, 0, $blCut);
+                            $blExcerpt = rtrim($blExcerpt, " ,.;:") . '…';
+                        }
+                        echo htmlspecialchars($blExcerpt);
+                    ?></p>
+                    <span class="bl-date"><i class="far fa-calendar"></i> <?php echo date('M j, Y', strtotime((string)$p['created_at'])); ?></span>
+                    <a class="bl-cta" href="<?php echo SITE_URL; ?>/post.php?slug=<?php echo urlencode($p['slug']); ?>">
+                        Read post <i class="fas fa-arrow-right"></i>
                     </a>
                 </div>
-            </div>
+            </article>
             <?php endforeach; ?>
+
+            <button type="button" class="bl-nav prev" id="blogPrev" aria-label="Previous post">
+                <i class="fas fa-chevron-left" aria-hidden="true"></i>
+            </button>
+            <button type="button" class="bl-nav next" id="blogNext" aria-label="Next post">
+                <i class="fas fa-chevron-right" aria-hidden="true"></i>
+            </button>
         </div>
-        <div class="hero-slider-dots" id="heroSliderDots">
-            <?php foreach ($heroSlides as $idx => $_): ?>
-            <button type="button" class="hero-dot<?php echo $idx === 0 ? ' active' : ''; ?>" data-index="<?php echo $idx; ?>" aria-label="Go to slide <?php echo $idx + 1; ?>"></button>
-            <?php endforeach; ?>
-        </div>
+
+        <div class="bl-dots" id="blogDots" role="tablist" aria-label="Latest blog posts"></div>
     </div>
 </section>
+
+<script>
+(function () {
+    var stage = document.getElementById('blogStage');
+    if (!stage) return;
+    var slides = Array.prototype.slice.call(stage.querySelectorAll('.bl-slide'));
+    var dotsBox = document.getElementById('blogDots');
+    var dots = [];
+    var current = 0;
+    var timer = null;
+
+    slides.forEach(function (slide, i) {
+        var dot = document.createElement('button');
+        dot.type = 'button';
+        dot.className = 'bl-dot' + (i === 0 ? ' is-active' : '');
+        dot.setAttribute('aria-label', 'Show post ' + (i + 1));
+        dot.addEventListener('click', function () { go(i); restart(); });
+        dotsBox.appendChild(dot);
+        dots.push(dot);
+    });
+
+    function go(i) {
+        if (i < 0 || i >= slides.length) return;
+        slides[current].classList.remove('is-active');
+        dots[current].classList.remove('is-active');
+        current = i;
+        slides[current].classList.add('is-active');
+        dots[current].classList.add('is-active');
+    }
+
+    function next() { go((current + 1) % slides.length); }
+    function prev() { go((current - 1 + slides.length) % slides.length); }
+
+    function restart() {
+        if (timer) clearInterval(timer);
+        timer = setInterval(next, 8000);
+    }
+
+    var prevBtn = document.getElementById('blogPrev');
+    var nextBtn = document.getElementById('blogNext');
+    if (prevBtn) prevBtn.addEventListener('click', function () { prev(); restart(); });
+    if (nextBtn) nextBtn.addEventListener('click', function () { next(); restart(); });
+
+    stage.addEventListener('mouseenter', function () { if (timer) clearInterval(timer); });
+    stage.addEventListener('mouseleave', restart);
+
+    restart();
+})();
+</script>
 <?php endif; ?>
 
 <!-- ===========================================
@@ -748,9 +846,18 @@ $heroMatHref    = SITE_URL . '/materials.php';
         </div>
         
         <div class="blog-grid">
-            <?php foreach ($latestPosts as $p): ?>
+            <?php foreach ($latestPosts as $p):
+                $thumb = $postThumbs[(int)($p['id'] ?? 0)] ?? '';
+            ?>
             <a href="post.php?slug=<?php echo urlencode($p['slug']); ?>" class="blog-card-warm">
-                <div class="blog-card-thumb">📰</div>
+                <div class="blog-card-thumb" style="padding:0; overflow:hidden; background:#f1f5f9;">
+                    <?php if ($thumb !== ''): ?>
+                        <img src="<?php echo htmlspecialchars($thumb); ?>" alt="<?php echo htmlspecialchars($p['title']); ?>" loading="lazy"
+                             style="width:100%; height:100%; object-fit:cover; display:block;">
+                    <?php else: ?>
+                        <span style="font-size:1.8rem;"><i class="fas fa-newspaper"></i></span>
+                    <?php endif; ?>
+                </div>
                 <div class="blog-card-body">
                     <span class="blog-card-tag"><?php echo htmlspecialchars($p['level'] ?? 'General'); ?></span>
                     <h4 class="blog-card-title"><?php echo htmlspecialchars(mb_strimwidth($p['title'], 0, 60, '...')); ?></h4>
@@ -778,45 +885,5 @@ $heroMatHref    = SITE_URL . '/materials.php';
         <?php endif; ?>
     </div>
 </section>
-
-<script>
-(function(){
-  var slider = document.getElementById('heroSlider');
-  var dotsWrap = document.getElementById('heroSliderDots');
-  if (!slider || !dotsWrap) return;
-  var slides = Array.prototype.slice.call(slider.querySelectorAll('.hero-slide'));
-  var dots = Array.prototype.slice.call(dotsWrap.querySelectorAll('.hero-dot'));
-  if (!slides.length) return;
-  var current = 0;
-
-  function goTo(index) {
-    slides[current].classList.remove('active');
-    dots[current].classList.remove('active');
-    current = index;
-    slides[current].classList.add('active');
-    dots[current].classList.add('active');
-  }
-
-  dots.forEach(function(dot, idx){
-    dot.addEventListener('click', function(){
-      goTo(idx);
-      restartAuto();
-    });
-  });
-
-  var timer;
-  function startAuto() {
-    timer = setInterval(function(){
-      var next = (current + 1) % slides.length;
-      goTo(next);
-    }, 7000);
-  }
-  function restartAuto() {
-    if (timer) clearInterval(timer);
-    startAuto();
-  }
-  startAuto();
-})();
-</script>
 
 <?php include 'includes/footer.php'; ?>
