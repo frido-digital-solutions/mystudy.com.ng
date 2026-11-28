@@ -152,7 +152,9 @@ function study_latex_to_text(string $latex): string
     $latex = preg_replace('/\\\\begin\{[^}]*\}(\{[^}]*\})?/', ' ', $latex);
     $latex = preg_replace('/\\\\end\{[^}]*\}/', '; ', $latex);
     $latex = str_replace('\\\\', '; ', $latex);
-    $latex = str_replace('&', '  ', $latex);
+    // The cells of a row of a table are apart by a bar, so that a student can
+    // see where one cell ends and the next begins.
+    $latex = str_replace('&', ' | ', $latex);
 
     // The words inside \text{...} are just words.
     $latex = preg_replace('/\\\\text\{([^{}]*)\}/', '$1', $latex);

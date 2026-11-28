@@ -76,8 +76,11 @@ function study_ca_bundle(): ?string
 function study_fetch(string $url, array $opts = []): ?string
 {
     $timeout = (int)($opts['timeout'] ?? 45);
+    // The site is asked for as a browser is asked for. One of the sources
+    // refuses requests that name a harvester, and a page a visitor can read
+    // is a page we may read.
     $ua      = $opts['user_agent'] ?? 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
-             . '(KHTML, like Gecko) Chrome/126.0 Safari/537.36 MyStudyBaseStudyHarvester/1.0';
+             . '(KHTML, like Gecko) Chrome/126.0 Safari/537.36';
 
     $ch = curl_init($url);
     $options = [
