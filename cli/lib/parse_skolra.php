@@ -3,6 +3,7 @@
  * The reader for skolra pages, kept apart so it can be used and tested on its own.
  */
 require_once __DIR__ . '/study_harvest.php';
+require_once __DIR__ . '/study_html.php';
 
 function skolra_questions(string $html): array
 {
@@ -91,8 +92,14 @@ function skolra_text($node): string
 
     $xp = new DOMXPath($doc);
     $maths = $xp->query(".//*[contains(@class,'katex') or self::math or contains(@class,'math-svg')]", $node);
-    if ($maths->length) {
+    if ($maths->length && !$xp->query(".//table", $node)->length) {
         return study_math_text($node);
+    }
+
+    // A question can hold a table. A table is read as a table: one line for
+    // each row, the cells apart by a bar.
+    if ($xp->query(".//table", $node)->length) {
+        return study_html_to_text($node);
     }
 
     $text = study_node_text($node);

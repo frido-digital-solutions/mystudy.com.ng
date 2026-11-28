@@ -22,7 +22,7 @@ function smartest_questions(string $html): array
         if ($li->nodeType !== XML_ELEMENT_NODE || strtolower($li->tagName) !== 'li') continue;
 
         $stemNode = (new DOMXPath($doc))->query(".//div[contains(@class,'q-stem')]", $li)->item(0);
-        $question = study_node_text($stemNode);
+        $question = $stemNode ? smartest_stem_text($stemNode) : '';
         if ($question === '') continue;
 
         $number = 0;
@@ -75,5 +75,26 @@ function smartest_questions(string $html): array
 function smartest_option_text($node): string
 {
     if ($node === null) return '';
+    return study_node_text($node);
+}
+
+/**
+ * The text of the question itself.
+ *
+ * A question can hold a table - a balance sheet, a list of prices - and a
+ * table is read as a table: one line for each row, the cells apart by a bar.
+ */
+function smartest_stem_text($node): string
+{
+    if ($node === null) return '';
+    require_once __DIR__ . '/study_html.php';
+
+    $doc = $node->ownerDocument;
+    if ($doc === null) return study_node_text($node);
+
+    $xp = new DOMXPath($doc);
+    if ($xp->query(".//table", $node)->length) {
+        return study_html_to_text($node);
+    }
     return study_node_text($node);
 }

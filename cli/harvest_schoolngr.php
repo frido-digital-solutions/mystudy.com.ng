@@ -31,6 +31,7 @@ $limit    = 0;
 $parallel = 6;
 $refresh  = false;
 $examOnly = '';
+$subjectOnly = '';
 $budget   = 15;      // minutes one subject may take before it is left alone
 foreach (array_slice($argv, 1) as $arg) {
     if ($arg === '--dry-run')      { $dryRun = true; }
@@ -38,6 +39,7 @@ foreach (array_slice($argv, 1) as $arg) {
     elseif (strpos($arg, '--limit=') === 0)      { $limit = (int)substr($arg, 8); }
     elseif (strpos($arg, '--parallel=') === 0)   { $parallel = (int)substr($arg, 11); }
     elseif (strpos($arg, '--budget=') === 0)     { $budget = (int)substr($arg, 9); }
+    elseif (strpos($arg, '--subject=') === 0)    { $subjectOnly = strtolower(substr($arg, 10)); }
     elseif (strpos($arg, '--exam=') === 0)       { $examOnly = strtolower(substr($arg, 7)); }
 }
 
@@ -67,6 +69,7 @@ foreach (array_keys($examCodes) as $code) {
     preg_match_all("#href='/classroom/$code/([a-z0-9-]+)'#", $listing, $m);
     $found = 0;
     foreach (array_unique($m[1]) as $slug) {
+        if ($subjectOnly !== '' && $slug !== $subjectOnly) continue;
         $canonical = study_canonical_subject('schoolngr', $slug);
         if (!$canonical) continue;
         $subjects[] = [

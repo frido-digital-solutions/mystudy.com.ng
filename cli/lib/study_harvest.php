@@ -397,12 +397,16 @@ function study_write_questions(PDO $pdo, int $paperId, array $questions): int
         if (isset($seen[$fingerprint])) continue;
         $seen[$fingerprint] = true;
 
-        // An option must have a label and something to read.
+        // An option must have a label and something to read, and no two
+        // options may carry the same label.
         $options = [];
+        $optionLabels = [];
         foreach (($q['options'] ?? []) as $o) {
             $label = strtoupper(trim((string)($o['label'] ?? '')));
             $text  = trim((string)($o['text'] ?? ''));
             if ($label === '' || $text === '') continue;
+            if (isset($optionLabels[$label])) continue;   // the same option twice
+            $optionLabels[$label] = true;
             $options[] = ['label' => $label, 'text' => $text];
         }
         if (count($options) < 2) continue;

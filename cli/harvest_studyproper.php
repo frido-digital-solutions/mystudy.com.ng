@@ -13,17 +13,20 @@
  */
 require_once __DIR__ . '/../config/config.php';
 require_once __DIR__ . '/../includes/study_schema.php';
+require_once __DIR__ . '/lib/study_html.php';
 require_once __DIR__ . '/lib/study_harvest.php';
 
 $dryRun  = false;
 $limit   = 0;
 $refresh = false;
 $onlyExam = '';
+$onlySubject = '';
 foreach (array_slice($argv, 1) as $arg) {
     if ($arg === '--dry-run')      { $dryRun = true; }
     elseif ($arg === '--refresh')  { $refresh = true; }
     elseif (strpos($arg, '--limit=') === 0) { $limit = (int)substr($arg, 8); }
     elseif (strpos($arg, '--exam=') === 0)  { $onlyExam = strtolower(substr($arg, 7)); }
+    elseif (strpos($arg, '--subject=') === 0) { $onlySubject = strtolower(substr($arg, 10)); }
 }
 
 msb_ensure_study_tables($pdo);
@@ -185,6 +188,7 @@ foreach ($examMap as $examCode => $meta) {
     foreach ($subjectLists[$examCode] as $subjectValue) {
         $subject = study_canonical_subject('studyproper', $subjectValue);
         if (!$subject) continue;   // not an examination subject we keep
+        if ($onlySubject !== '' && $subject['slug'] !== $onlySubject) continue;
 
         // One request per subject, no year filter. The site ignores a year
         // it has no questions for and answers with a different year's paper,
@@ -206,13 +210,13 @@ foreach ($examMap as $examCode => $meta) {
             foreach (['a', 'b', 'c', 'd', 'e'] as $letter) {
                 $optionKey = 'option_' . $letter;
                 if (trim((string)($q[$optionKey] ?? '')) !== '') {
-                    $options[] = ['label' => strtoupper($letter), 'text' => (string)$q[$optionKey]];
+                    $options[] = ['label' => strtoupper($letter), 'text' => study_text_to_plain((string)$q[$optionKey])];
                 }
             }
             if (!$options) continue;   // a question with no options is not usable
 
             $byYear[$year][] = [
-                'question'           => trim((string)$q['question']),
+                'question'           => study_text_to_plain((string)$q['question']),
                 'options'            => $options,
                 'correct_option'     => strtoupper(trim((string)($q['correct_answer'] ?? ''))),
                 'explanation'        => !empty($q['explanation']) ? trim((string)$q['explanation']) : null,

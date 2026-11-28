@@ -163,6 +163,10 @@ function study_latex_to_text(string $latex): string
     $latex = preg_replace('/\\\\mbox\{([^{}]*)\}/', '$1', $latex);
 
     // Fractions: \frac{a}{b} becomes (a/b).
+    // A fraction written without braces (\frac34) is read as well.
+    $latex = preg_replace_callback('/\\\\(?:d?frac|tfrac)(\d)(\d)/', function ($m) {
+        return '(' . $m[1] . '/' . $m[2] . ')';
+    }, $latex);
     for ($i = 0; $i < 6; $i++) {
         $before = $latex;
         $latex = preg_replace_callback('/\\\\(?:d?frac|tfrac)\{([^{}]*)\}\{([^{}]*)\}/', function ($m) {

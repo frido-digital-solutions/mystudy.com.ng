@@ -27,9 +27,10 @@ $rows = $pdo->query("
     JOIN study_papers p ON p.id = q.paper_id
     WHERE q.question REGEXP '\\\\\\\\[a-zA-Z]+'
        OR q.options_json REGEXP '\\\\\\\\[a-zA-Z]+'
+       OR q.question REGEXP '[a-zA-Z]{3,}[0-9]{3,}'
 ")->fetchAll();
 
-study_say(count($rows) . ' papers still hold a formula that was not written out.');
+study_say(count($rows) . ' papers still hold a formula or a table that was not written out.');
 
 foreach ($rows as $row) {
     $url = $row['source_url'];

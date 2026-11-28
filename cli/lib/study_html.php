@@ -48,6 +48,33 @@ if (!function_exists('study_html_to_text')) {
             }
         }
 
+        // A subscript and a superscript are written as they are written on
+        // paper: log₁₀2, not log102.
+        $subscriptMap = ['0' => '₀', '1' => '₁', '2' => '₂', '3' => '₃', '4' => '₄',
+                         '5' => '₅', '6' => '₆', '7' => '₇', '8' => '₈', '9' => '₉',
+                         'n' => 'ₙ', 'i' => 'ᵢ', '+' => '₊', '-' => '₋', '.' => '.'];
+        $superscriptMap = ['0' => '⁰', '1' => '¹', '2' => '²', '3' => '³', '4' => '⁴',
+                           '5' => '⁵', '6' => '⁶', '7' => '⁷', '8' => '⁸', '9' => '⁹',
+                           'n' => 'ⁿ', 'i' => 'ⁱ', '+' => '⁺', '-' => '⁻', '.' => '.'];
+        foreach ([['sub', $subscriptMap], ['sup', $superscriptMap]] as [$tag, $map]) {
+            foreach ($xp->query(".//" . $tag, $copy) as $node) {
+                $text = strtr($node->textContent, $map);
+                if ($node->parentNode) {
+                    $node->parentNode->replaceChild($doc->createTextNode($text), $node);
+                }
+            }
+        }
+
+        // A formula is written out first, so that a table that holds a
+        // formula holds it as readable text and not as the mess the page
+        // keeps of it.
+        foreach ($xp->query(".//*[contains(@class,'katex') or self::math or @data-testid='react-katex' or contains(@class,'math-svg')]", $copy) as $math) {
+            $plain = study_math_text($math);
+            if ($math->parentNode) {
+                $math->parentNode->replaceChild($doc->createTextNode($plain), $math);
+            }
+        }
+
         // A table becomes lines of text, one line for each row.
         foreach ($xp->query(".//table", $copy) as $table) {
             $rows = [];
