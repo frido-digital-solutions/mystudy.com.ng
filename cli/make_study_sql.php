@@ -54,6 +54,44 @@ $lines[] = 'SET NAMES utf8mb4;';
 $lines[] = 'SET FOREIGN_KEY_CHECKS = 0;';
 $lines[] = '';
 
+// The tables come with the file, so that importing it into a server that has
+// never seen the Study library works on its own.
+$lines[] = 'CREATE TABLE IF NOT EXISTS `study_papers` (';
+$lines[] = '    `id` INT(11) NOT NULL AUTO_INCREMENT,';
+$lines[] = '    `exam` VARCHAR(10) NOT NULL,';
+$lines[] = '    `subject_slug` VARCHAR(120) NOT NULL,';
+$lines[] = '    `subject_name` VARCHAR(160) NOT NULL,';
+$lines[] = '    `year` SMALLINT(6) NOT NULL,';
+$lines[] = '    `paper_code` VARCHAR(40) NOT NULL DEFAULT \'objective\',';
+$lines[] = '    `title` VARCHAR(255) NOT NULL,';
+$lines[] = '    `source` VARCHAR(60) NOT NULL,';
+$lines[] = '    `source_url` VARCHAR(500) DEFAULT NULL,';
+$lines[] = '    `question_count` INT(11) NOT NULL DEFAULT 0,';
+$lines[] = '    `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,';
+$lines[] = '    PRIMARY KEY (`id`),';
+$lines[] = '    UNIQUE KEY `uniq_paper` (`exam`, `subject_slug`, `year`, `paper_code`, `source`),';
+$lines[] = '    INDEX `idx_paper_browse` (`exam`, `subject_slug`, `year`),';
+$lines[] = '    INDEX `idx_paper_exam` (`exam`)';
+$lines[] = ') ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;';
+$lines[] = '';
+$lines[] = 'CREATE TABLE IF NOT EXISTS `study_questions` (';
+$lines[] = '    `id` INT(11) NOT NULL AUTO_INCREMENT,';
+$lines[] = '    `paper_id` INT(11) NOT NULL,';
+$lines[] = '    `display_number` INT(11) NOT NULL,';
+$lines[] = '    `question` TEXT NOT NULL,';
+$lines[] = '    `options_json` TEXT NOT NULL,';
+$lines[] = '    `correct_option` VARCHAR(8) NOT NULL DEFAULT \'\',';
+$lines[] = '    `explanation` TEXT DEFAULT NULL,';
+$lines[] = '    `topic` VARCHAR(190) DEFAULT NULL,';
+$lines[] = '    `source_question_id` VARCHAR(64) DEFAULT NULL,';
+$lines[] = '    PRIMARY KEY (`id`),';
+$lines[] = '    UNIQUE KEY `uniq_question` (`paper_id`, `display_number`),';
+$lines[] = '    INDEX `idx_question_paper` (`paper_id`),';
+$lines[] = '    CONSTRAINT `study_questions_paper_fk`';
+$lines[] = '        FOREIGN KEY (`paper_id`) REFERENCES `study_papers` (`id`) ON DELETE CASCADE';
+$lines[] = ') ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;';
+$lines[] = '';
+
 foreach ($papers as $p) {
     $lines[] = '-- ' . $p['exam'] . ' ' . $p['subject_name'] . ' ' . $p['year'] . ' (' . $p['source'] . ')';
     $lines[] = 'INSERT INTO study_papers (exam, subject_slug, subject_name, year, paper_code, title, source, source_url, question_count)';
