@@ -78,7 +78,7 @@ if (!function_exists('study_html_to_text')) {
         // A formula written into the text is written out, line by line, so
         // that the line breaks of a table survive.
         foreach ($lines as $i => $line) {
-            if ($line !== '' && preg_match('/\\\\\(|\\\\\[|\\\\[a-zA-Z]+\{|\$[^$]+\$/', $line)) {
+            if ($line !== '' && preg_match('/\\\\\(|\\\\\[|\\\\[a-zA-Z]+|\$[^$]+\$/', $line)) {
                 $lines[$i] = study_latex_to_text($line);
             }
         }
@@ -121,5 +121,31 @@ if (!function_exists('study_html_to_text')) {
             return trim(preg_replace('/\s+/u', ' ', html_entity_decode($html, ENT_QUOTES | ENT_HTML5, 'UTF-8')));
         }
         return study_html_to_text($root);
+    }
+
+    /**
+     * Text that is read into the plain text a student should see.
+     *
+     * The markup is read first, and then a formula written into the text is
+     * written out. A formula is only looked for where there is LaTeX to
+     * find, so a price written with a naira or a dollar sign is left alone.
+     *
+     * @param string $text
+     * @return string
+     */
+    function study_text_to_plain(string $text): string
+    {
+        require_once __DIR__ . '/study_math.php';
+
+        $text = study_html_string_to_text($text);
+        if (trim($text) === '') return '';
+
+        $lines = explode("\n", $text);
+        foreach ($lines as $i => $line) {
+            if ($line !== '' && preg_match('/\\\\\(|\\\\\[|\\\\[a-zA-Z]+/', $line)) {
+                $lines[$i] = study_latex_to_text($line);
+            }
+        }
+        return trim(implode("\n", $lines));
     }
 }

@@ -28,8 +28,10 @@ foreach ($rows as $r) {
 
     $hasLatexQ = (bool)preg_match('/\\\\[a-zA-Z]+/', $r['question']);
     $hasLatexO = (bool)preg_match('/\\\\[a-zA-Z]+/', $otext);
-    $hasTagQ   = (bool)preg_match('/<[a-zA-Z\/][^>]*>/', $r['question']);
-    $hasTagO   = (bool)preg_match('/<[a-zA-Z\/][^>]*>/', $otext);
+    // A tag is a name in angle brackets. A sign of "less than" is not a tag:
+    // "y < 6" is a piece of mathematics, not markup.
+    $hasTagQ   = (bool)preg_match('/<\/?[a-zA-Z][a-zA-Z0-9]*(\s[^<>]*)?\/?>/', $r['question']);
+    $hasTagO   = (bool)preg_match('/<\/?[a-zA-Z][a-zA-Z0-9]*(\s[^<>]*)?\/?>/', $otext);
 
     if ($hasLatexQ) $latexQ++;
     if ($hasLatexO) $latexO++;

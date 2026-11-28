@@ -271,7 +271,7 @@ function study_node_text($node): string
     $text = preg_replace('/\s+/u', ' ', $text);
     $text = trim((string)$text);
 
-    if (preg_match('/\\\\\(|\\\\\[|\\\\[a-zA-Z]+\{/', $text)) {
+    if (preg_match('/\\\\\(|\\\\\[|\\\\[a-zA-Z]+/', $text)) {
         $text = study_latex_to_text($text);
     }
     return $text;

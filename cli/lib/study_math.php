@@ -248,8 +248,13 @@ function study_latex_to_text(string $latex): string
     }
 
     // Anything still in LaTeX is dropped rather than shown raw.
+    // A letter that was escaped in LaTeX (O\Obasanjo) is the letter itself.
+    $latex = preg_replace('/\\\\([A-Za-z])/', '$1', $latex);
     $latex = preg_replace('/\\\\[a-zA-Z]+/', '', $latex);
     $latex = str_replace(['{', '}', '$'], '', $latex);
+
+    // A bracket of the formula that was left over.
+    $latex = str_replace(['\\(', '\\)', '\\[', '\\]'], '', $latex);
 
     $latex = preg_replace('/\s+/u', ' ', $latex);
     return trim((string)$latex);
