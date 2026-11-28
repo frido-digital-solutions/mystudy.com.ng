@@ -62,7 +62,7 @@ deployment:
     - DEPLOYPATH=$(sh deploy/target.sh) && /bin/cp -f dashboard.php deactivate-account.php discussion_view.php discussions.php download.php faq.php forgot-password.php frozen.php leaderboard.php login.php logout.php $DEPLOYPATH || true
     - DEPLOYPATH=$(sh deploy/target.sh) && /bin/cp -f maintenance.php material.php materials.php messages.php my_quizzes.php notifications.php notify_challenge_end.php payment_success.php performance.php post.php privacy-policy.php process_battle_action.php process_challenge.php process_open_challenge.php profile.php profile_public.php $DEPLOYPATH || true
     - DEPLOYPATH=$(sh deploy/target.sh) && /bin/cp -f quiz.php quiz_battle.php quiz_battle_play.php quiz_battle_result.php quiz_battle_submit.php quiz_multi.php quiz_result.php quiz_special.php quiz_start.php quiz_submit.php quizzes.php $DEPLOYPATH || true
-    - DEPLOYPATH=$(sh deploy/target.sh) && /bin/cp -f register.php reset-password.php settings.php sitemap.xml.php terms.php timetable.php tools.php tutorials.php universities.php upload-material.php upload_receipt.php users.php verify-email.php verify_redirect.php $DEPLOYPATH || true
+    - DEPLOYPATH=$(sh deploy/target.sh) && /bin/cp -f register.php reset-password.php settings.php sitemap.xml.php study.php terms.php timetable.php tools.php tutorials.php universities.php upload-material.php upload_receipt.php users.php verify-email.php verify_redirect.php $DEPLOYPATH || true
     # The examination landing pages and their subject pages. These are the
     # pages Google indexes ("WAEC Mathematics past questions"), so they must
     # actually reach the server or every link to them is a 404.
