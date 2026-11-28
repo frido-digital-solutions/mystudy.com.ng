@@ -230,11 +230,8 @@ seo_jsonld([
   <?php if (!$exam): ?>
     <!-- ============================ the three examinations ============ -->
     <header class="st-head">
-      <span class="st-eyebrow">Past questions library</span>
-      <h1>Study</h1>
-      <p>Real past questions and answers for the three examinations Nigerian students sit.
-         Pick an examination, pick a subject, pick a year, and read the whole paper with the
-         answer under every question.</p>
+      <span class="st-eyebrow">Past questions library: <?php echo number_format($totalQs); ?> total Questions Available</span>
+      <h1>Study Real Past Questions and Answers for: JAMB, WAEC, and NECO.</h1>
     </header>
 
     <?php if ($totalQs === 0): ?>
@@ -258,7 +255,6 @@ seo_jsonld([
               <p><?php echo htmlspecialchars($meta['full']); ?></p>
             </div>
           </div>
-          <p class="st-blurb"><?php echo htmlspecialchars($meta['blurb']); ?></p>
           <dl class="st-stats">
             <div>
               <dt>Questions</dt>
