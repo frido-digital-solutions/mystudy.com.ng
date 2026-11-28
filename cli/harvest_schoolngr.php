@@ -31,11 +31,13 @@ $limit    = 0;
 $parallel = 6;
 $refresh  = false;
 $examOnly = '';
+$budget   = 15;      // minutes one subject may take before it is left alone
 foreach (array_slice($argv, 1) as $arg) {
     if ($arg === '--dry-run')      { $dryRun = true; }
     elseif ($arg === '--refresh')  { $refresh = true; }
     elseif (strpos($arg, '--limit=') === 0)      { $limit = (int)substr($arg, 8); }
     elseif (strpos($arg, '--parallel=') === 0)   { $parallel = (int)substr($arg, 11); }
+    elseif (strpos($arg, '--budget=') === 0)     { $budget = (int)substr($arg, 9); }
     elseif (strpos($arg, '--exam=') === 0)       { $examOnly = strtolower(substr($arg, 7)); }
 }
 
@@ -113,15 +115,29 @@ foreach ($subjects as $subject) {
     study_say("  . $code $slug - $last pages");
 
     // Fetch the pages of the subject, a window of them at a time.
+    //
+    // The site drops requests when it is hit too hard. A dropped page is asked
+    // for again on its own, and that asking can take a while, so a subject is
+    // given a set amount of time: a subject that will not come back is left
+    // for another run rather than holding the whole run up.
     $collected = [];
     $missing  = [];
     $endOfSubject = false;
+    $outOfTime = false;
+    $deadline = time() + ($budget * 60);
+    $window = 0;
     for ($from = 1; $from <= $last && !$endOfSubject; $from += 10) {
+        if (time() > $deadline) {
+            study_say("  x $code $slug - out of time after " . $window . " windows, left for another run");
+            $outOfTime = true;
+            break;
+        }
+        $window++;
         $urls = [];
         for ($i = 0; $i < 10 && $from + $i <= $last; $i++) {
             $urls[] = "https://www.schoolngr.com/classroom/$code/$slug?page=" . ($from + $i);
         }
-        $bodies = study_fetch_many_retry($urls, ['parallel' => $parallel]);
+        $bodies = study_fetch_many_retry($urls, ['parallel' => $parallel, 'timeout' => 25, 'tries' => 2]);
 
         foreach ($urls as $url) {
             $body = $bodies[$url] ?? null;
@@ -145,6 +161,10 @@ foreach ($subjects as $subject) {
         // A short pause between windows: the site is a shared host and will
         // start refusing requests if it is hit too hard.
         usleep(400000);
+
+        // Say where the run has got to, so that a run is never silent for
+        // long without anyone knowing whether it is working.
+        study_say("    . $code $slug - window $window of " . (int)ceil($last / 10) . ", " . count($collected) . " questions so far");
     }
 
     // A page that did not come back is asked for again, one at a time and
@@ -154,10 +174,14 @@ foreach ($subjects as $subject) {
         $stillMissing = [];
         $late = [];
         foreach ($missing as $url) {
-            $body = study_fetch_retry($url);
+            if (time() > $deadline) {
+                $stillMissing[] = $url;
+                break;
+            }
+            $body = study_fetch_retry($url, ['timeout' => 25, 'tries' => 2]);
             if ($body === null || trim($body) === '') {
                 $stillMissing[] = $url;
-                usleep(1200000);
+                usleep(600000);
                 continue;
             }
             $got = 0;
@@ -167,10 +191,15 @@ foreach ($subjects as $subject) {
                 $late[] = $q;
             }
             if ($got === 0) continue;              // the end of the subject
-            usleep(400000);
+            usleep(300000);
         }
         $collected = array_merge($collected, $late);
         $missing = $stillMissing;
+    }
+
+    // A subject that ran out of time is left for another run, whole.
+    if ($outOfTime) {
+        continue;
     }
 
     // A subject with a missing page would give a paper that is quietly short
