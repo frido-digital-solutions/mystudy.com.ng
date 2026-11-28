@@ -115,7 +115,8 @@ foreach ($subjects as $subject) {
     // Fetch the pages of the subject, a window of them at a time.
     $collected = [];
     $missing  = [];
-    for ($from = 1; $from <= $last; $from += 10) {
+    $endOfSubject = false;
+    for ($from = 1; $from <= $last && !$endOfSubject; $from += 10) {
         $urls = [];
         for ($i = 0; $i < 10 && $from + $i <= $last; $i++) {
             $urls[] = "https://www.schoolngr.com/classroom/$code/$slug?page=" . ($from + $i);
@@ -125,7 +126,7 @@ foreach ($subjects as $subject) {
         foreach ($urls as $url) {
             $body = $bodies[$url] ?? null;
             if ($body === null || trim($body) === '') {
-                $missing[] = $url;
+                $missing[] = $url;      // the page did not come back at all
                 continue;
             }
             $got = 0;
@@ -134,7 +135,12 @@ foreach ($subjects as $subject) {
                 if ($q['year'] <= 0) continue;      // no year on the question: skip it
                 $collected[] = $q;
             }
-            if ($got === 0) $missing[] = $url;     // a page that came back empty
+            // A page that comes back with no questions is the end of the
+            // subject, not a page that was dropped: the listing ends there.
+            if ($got === 0) {
+                $endOfSubject = true;
+                break;
+            }
         }
         // A short pause between windows: the site is a shared host and will
         // start refusing requests if it is hit too hard.
@@ -160,8 +166,8 @@ foreach ($subjects as $subject) {
                 if ($q['year'] <= 0) continue;      // no year on the question: skip it
                 $late[] = $q;
             }
-            if ($got === 0) $stillMissing[] = $url;   // a page that came back empty
-            else usleep(400000);
+            if ($got === 0) continue;              // the end of the subject
+            usleep(400000);
         }
         $collected = array_merge($collected, $late);
         $missing = $stillMissing;
