@@ -107,18 +107,44 @@ foreach ($papers as $p) {
     $lines[] = '';
 }
 
+// The questions of a paper are written in one statement, so the paper is
+// looked up once instead of once for every question. A file written one
+// question at a time takes over an hour to import; this takes minutes.
+$byPaper = [];
 foreach ($questions as $q) {
+    $key = $q['exam'] . '|' . $q['subject_slug'] . '|' . $q['year'] . '|' . $q['paper_code'] . '|' . $q['source'];
+    $byPaper[$key][] = $q;
+}
+
+foreach ($byPaper as $key => $list) {
+    $first = $list[0];
+
+    $rows = [];
+    foreach ($list as $i => $q) {
+        $prefix = $i === 0 ? '    SELECT ' : '    UNION ALL SELECT ';
+        $rows[] = $prefix . (int)$q['display_number'] . ' AS dn, '
+            . study_sql_value($q['question']) . ' AS q, '
+            . study_sql_value($q['options_json']) . ' AS o, '
+            . study_sql_value($q['correct_option']) . ' AS a, '
+            . study_sql_value($q['explanation']) . ' AS e, '
+            . study_sql_value($q['topic']) . ' AS t, '
+            . study_sql_value($q['source_question_id']) . ' AS s';
+    }
+
+    $lines[] = '-- ' . $first['exam'] . ' ' . $first['subject_slug'] . ' ' . $first['year'] . ' questions (' . $first['source'] . ')';
     $lines[] = 'INSERT INTO study_questions (paper_id, display_number, question, options_json, correct_option, explanation, topic, source_question_id)';
-    $lines[] = 'SELECT p.id, ' . (int)$q['display_number'] . ', ' . study_sql_value($q['question']) . ', '
-        . study_sql_value($q['options_json']) . ', ' . study_sql_value($q['correct_option']) . ', '
-        . study_sql_value($q['explanation']) . ', ' . study_sql_value($q['topic']) . ', '
-        . study_sql_value($q['source_question_id']);
-    $lines[] = 'FROM study_papers p WHERE p.exam = ' . study_sql_value($q['exam'])
-        . ' AND p.subject_slug = ' . study_sql_value($q['subject_slug'])
-        . ' AND p.year = ' . (int)$q['year']
-        . ' AND p.paper_code = ' . study_sql_value($q['paper_code'])
-        . ' AND p.source = ' . study_sql_value($q['source'])
-        . ' AND NOT EXISTS (SELECT 1 FROM study_questions sq WHERE sq.paper_id = p.id AND sq.display_number = ' . (int)$q['display_number'] . ');';
+    $lines[] = 'SELECT p.id, v.dn, v.q, v.o, v.a, v.e, v.t, v.s';
+    $lines[] = 'FROM study_papers p JOIN (';
+    $lines = array_merge($lines, $rows);
+    $lines[] = ') v ON 1 = 1';
+    $lines[] = 'WHERE p.exam = ' . study_sql_value($first['exam'])
+        . ' AND p.subject_slug = ' . study_sql_value($first['subject_slug'])
+        . ' AND p.year = ' . (int)$first['year']
+        . ' AND p.paper_code = ' . study_sql_value($first['paper_code'])
+        . ' AND p.source = ' . study_sql_value($first['source']);
+    $lines[] = 'ON DUPLICATE KEY UPDATE question = VALUES(question), options_json = VALUES(options_json),';
+    $lines[] = '    correct_option = VALUES(correct_option), explanation = VALUES(explanation),';
+    $lines[] = '    topic = VALUES(topic), source_question_id = VALUES(source_question_id);';
     $lines[] = '';
 }
 
