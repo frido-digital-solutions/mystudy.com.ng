@@ -12,6 +12,7 @@ require_once __DIR__ . '/lib/study_harvest.php';
 require_once __DIR__ . '/lib/parse_acadmate.php';
 require_once __DIR__ . '/lib/parse_smartest.php';
 require_once __DIR__ . '/lib/parse_skolra.php';
+require_once __DIR__ . '/lib/parse_schoolngr.php';
 
 $source = $argv[1] ?? 'acadmate';
 $url    = $argv[2] ?? '';
@@ -26,6 +27,7 @@ switch ($source) {
     case 'acadmate':  $list = acadmate_questions($body);  break;
     case 'smartest':  $list = smartest_questions($body);  break;
     case 'skolra':    $list = skolra_questions($body);    break;
+    case 'schoolngr': $list = schoolngr_questions($body); break;
     default:
         echo "Unknown source.\n";
         exit(1);
