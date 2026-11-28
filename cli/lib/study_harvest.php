@@ -261,11 +261,20 @@ function study_node_text($node): string
 
     $xp = new DOMXPath($node->ownerDocument);
     $maths = $xp->query(".//*[contains(@class,'katex') or self::math or @data-testid='react-katex' or contains(@class,'math-svg')]", $node);
-    if (!$maths->length) {
-        return $plain($node);
+    if ($maths->length) {
+        return study_math_text($node);
     }
 
-    return study_math_text($node);
+    // Some sources write the formula straight into the text, as LaTeX.
+    $text = $node->textContent ?? '';
+    $text = html_entity_decode($text, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+    $text = preg_replace('/\s+/u', ' ', $text);
+    $text = trim((string)$text);
+
+    if (preg_match('/\\\\\(|\\\\\[|\\\\[a-zA-Z]+\{/', $text)) {
+        $text = study_latex_to_text($text);
+    }
+    return $text;
 }
 
 /**

@@ -140,6 +140,11 @@ function study_latex_to_text(string $latex): string
     $latex = trim($latex);
     if ($latex === '') return '';
 
+    // A formula written inline: \( ... \) or $ ... $ or \[ ... \].
+    $latex = preg_replace('/\\\\\((.*?)\\\\\)/s', '$1', $latex);
+    $latex = preg_replace('/\\\\\[(.*?)\\\\\]/s', '$1', $latex);
+    $latex = preg_replace('/\$(.*?)\$/s', '$1', $latex);
+
     // A table: keep the rows apart so the numbers stay readable.
     $latex = preg_replace('/\\\\begin\{array\}\{[^}]*\}/', ' ', $latex);
     $latex = preg_replace('/\\\\end\{array\}/', '; ', $latex);
@@ -203,6 +208,9 @@ function study_latex_to_text(string $latex): string
         '\\Rightarrow' => '⇒', '\\therefore' => '∴', '\\because' => '∵',
         '\\infty' => '∞', '\\prime' => '′', '\\angle' => '∠', '\\perp' => '⊥',
         '\\parallel' => '∥', '\\in' => '∈', '\\cup' => '∪', '\\cap' => '∩',
+        '\\dm' => ' dm', '\\cm' => ' cm', '\\mm' => ' mm', '\\kg' => ' kg',
+        '\\mol' => ' mol', '\\km' => ' km', '\\cm2' => ' cm²', '\\cm3' => ' cm³',
+        '\\m2' => ' m²', '\\m3' => ' m³', '\\s' => ' s', '\\min' => ' min', '\\h' => ' h',
         '\\leftrightarrow' => '↔', '\\mapsto' => '↦', '\\hookleftarrow' => '↩',
         '\\longleftarrow' => '←', '\\longrightarrow' => '→', '\\longleftrightarrow' => '↔',
         '\\partial' => '∂', '\\nabla' => '∇', '\\int' => '∫', '\\sum' => '∑',
