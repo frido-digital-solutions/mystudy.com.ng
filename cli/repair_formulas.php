@@ -59,6 +59,24 @@ foreach ($rows as $row) {
         continue;
     }
 
+    // A question may only be filed under the year the source gave it.
+    $year = (int)$row['year'];
+    $kept = [];
+    foreach ($list as $q) {
+        $qYear = (int)($q['year'] ?? 0);
+        if ($qYear > 0 && $qYear !== $year) continue;
+        $kept[] = $q;
+    }
+    if (count($kept) !== count($list)) {
+        study_say('  . #' . $row['id'] . ' ' . $row['title'] . ': ' . (count($list) - count($kept)) . ' questions were of another year and were left out');
+    }
+    $list = $kept;
+
+    if (!$list) {
+        study_say('  x #' . $row['id'] . ' - no question of ' . $year . ' on this page');
+        continue;
+    }
+
     if ($dryRun) {
         study_say('  - #' . $row['id'] . ' ' . $row['title'] . ': ' . count($list) . ' questions (not stored, dry run)');
         continue;

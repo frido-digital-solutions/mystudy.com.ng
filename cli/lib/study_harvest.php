@@ -347,7 +347,37 @@ function study_upsert_paper(PDO $pdo, array $paper): int
  */
 function study_replace_questions(PDO $pdo, int $paperId, array $questions): int
 {
-    $pdo->prepare("DELETE FROM study_questions WHERE paper_id = ?")->execute([$paperId]);
+    // The questions of a paper are written in one go: if any of them fails,
+    // the paper keeps the questions it had instead of being left empty.
+    $pdo->beginTransaction();
+    try {
+        $pdo->prepare("DELETE FROM study_questions WHERE paper_id = ?")->execute([$paperId]);
+        $written = study_write_questions($pdo, $paperId, $questions);
+
+        // The paper must say how many questions it really holds, not how many
+        // were offered to it.
+        $pdo->prepare("UPDATE study_papers SET question_count = ? WHERE id = ?")->execute([$written, $paperId]);
+        $pdo->commit();
+    } catch (Throwable $e) {
+        $pdo->rollBack();
+        throw $e;
+    }
+
+    return $written;
+}
+
+/**
+ * Writes the questions of a paper, keeping only the ones that are whole.
+ *
+ * A question is written only when it has text, at least two options that
+ * each have text, and an answer that is one of those options.
+ *
+ * The number a question is shown under is decided here, not by the source:
+ * the same number may not be used twice in one paper, because the paper
+ * would be refused by the database.
+ */
+function study_write_questions(PDO $pdo, int $paperId, array $questions): int
+{
     if (!$questions) return 0;
 
     $stmt = $pdo->prepare("
@@ -357,6 +387,7 @@ function study_replace_questions(PDO $pdo, int $paperId, array $questions): int
     ");
     $n = 0;
     $seen = [];
+    $usedNumbers = [];
     foreach ($questions as $q) {
         $question = trim((string)($q['question'] ?? ''));
         if ($question === '') continue;
@@ -383,7 +414,7 @@ function study_replace_questions(PDO $pdo, int $paperId, array $questions): int
 
         $stmt->execute([
             $paperId,
-            (int)$q['display_number'],
+            study_question_number($q['display_number'] ?? 0, $usedNumbers),
             $question,
             json_encode(array_values($options), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
             $answer,
@@ -394,10 +425,28 @@ function study_replace_questions(PDO $pdo, int $paperId, array $questions): int
         $n++;
     }
 
-    // The paper must say how many questions it really holds, not how many
-    // were offered to it.
-    $pdo->prepare("UPDATE study_papers SET question_count = ? WHERE id = ?")->execute([$n, $paperId]);
+    return $n;
+}
 
+/**
+ * The number a question is shown under inside its paper.
+ *
+ * The number the source gave is kept when it is a real number and no other
+ * question of the paper has it. Otherwise the next free number is used.
+ *
+ * @param array<int,bool> $used the numbers already taken in this paper
+ */
+function study_question_number($wanted, array &$used): int
+{
+    $wanted = (int)$wanted;
+    if ($wanted > 0 && !isset($used[$wanted])) {
+        $used[$wanted] = true;
+        return $wanted;
+    }
+
+    $n = 1;
+    while (isset($used[$n])) $n++;
+    $used[$n] = true;
     return $n;
 }
 
