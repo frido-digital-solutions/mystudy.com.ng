@@ -195,47 +195,47 @@ $heroMatHref    = SITE_URL . '/materials.php';
      site holds: papers, chat, community, materials
      =========================================== -->
 <style>
-.hs-section{padding:34px 0 10px;background:linear-gradient(180deg,#f8fafc 0%,#ffffff 100%)}
-.hs-card{position:relative;background:#fff;border:1px solid #e2e8f0;border-radius:26px;box-shadow:0 20px 50px rgba(15,23,42,.08);overflow:hidden;min-height:430px}
+.hs-section{padding:34px 0 10px;background:linear-gradient(180deg,#ecfdf5 0%,#f8fafc 55%,#ffffff 100%)}
+.hs-card{position:relative;background:linear-gradient(135deg,#065f46 0%,#059669 48%,#10b981 100%);border:1px solid rgba(255,255,255,.22);border-radius:26px;box-shadow:0 26px 60px rgba(5,150,105,.28);overflow:hidden;min-height:430px}
 .hs-slide{display:none;padding:38px 78px 44px;box-sizing:border-box;min-height:430px}
-.hs-nav{position:absolute;top:50%;transform:translateY(-50%);width:46px;height:46px;border-radius:50%;border:1.5px solid #a7f3d0;background:#fff;color:#059669;display:flex;align-items:center;justify-content:center;cursor:pointer;z-index:5;box-shadow:0 6px 18px rgba(15,23,42,.10);transition:all .18s ease}
-.hs-nav:hover{background:#10b981;color:#fff;border-color:#10b981;transform:translateY(-50%) scale(1.06)}
-.hs-nav:focus-visible{outline:3px solid rgba(16,185,129,.45);outline-offset:2px}
+.hs-nav{position:absolute;top:50%;transform:translateY(-50%);width:46px;height:46px;border-radius:50%;border:1px solid rgba(255,255,255,.7);background:#fff;color:#047857;display:flex;align-items:center;justify-content:center;cursor:pointer;z-index:5;box-shadow:0 8px 22px rgba(4,120,87,.30);transition:all .18s ease}
+.hs-nav:hover{background:#ecfdf5;color:#065f46;transform:translateY(-50%) scale(1.08)}
+.hs-nav:focus-visible{outline:3px solid rgba(255,255,255,.9);outline-offset:2px}
 .hs-nav.prev{left:16px}
 .hs-nav.next{right:16px}
 .hs-nav i{font-size:1rem}
 .hs-audience{display:flex;flex-wrap:wrap;gap:10px;margin:-6px 0 22px}
-.hs-chip{display:inline-flex;align-items:center;gap:8px;font-size:.86rem;font-weight:600;color:#334155;background:#f8fafc;border:1px solid #e2e8f0;border-radius:999px;padding:7px 15px}
-.hs-chip i{color:#059669}
+.hs-chip{display:inline-flex;align-items:center;gap:8px;font-size:.86rem;font-weight:600;color:#fff;background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.34);border-radius:999px;padding:7px 15px}
+.hs-chip i{color:#d1fae5}
 .hs-slide.is-active{display:block;animation:hsFade .5s ease both}
 @keyframes hsFade{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
-.hs-eyebrow{display:inline-flex;align-items:center;gap:8px;font-size:.74rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#047857;background:#ecfdf5;border:1px solid #a7f3d0;border-radius:999px;padding:5px 13px;margin-bottom:16px}
-.hs-title{margin:0 0 12px;font-size:clamp(1.6rem,3.4vw,2.5rem);font-weight:800;color:#0f172a;letter-spacing:-.025em;line-height:1.15}
-.hs-title .hl{color:#059669}
-.hs-text{margin:0 0 22px;max-width:64ch;font-size:1.03rem;line-height:1.7;color:#475569}
+.hs-eyebrow{display:inline-flex;align-items:center;gap:8px;font-size:.74rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#fff;background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.34);border-radius:999px;padding:5px 13px;margin-bottom:16px}
+.hs-title{margin:0 0 12px;font-size:clamp(1.6rem,3.4vw,2.5rem);font-weight:800;color:#fff;letter-spacing:-.025em;line-height:1.15}
+.hs-title .hl{color:#a7f3d0}
+.hs-text{margin:0 0 22px;max-width:64ch;font-size:1.03rem;line-height:1.7;color:rgba(255,255,255,.9)}
 .hs-logos{display:flex;flex-wrap:wrap;gap:12px;margin-bottom:22px}
-.hs-logo{display:flex;align-items:center;gap:11px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:14px;padding:10px 16px 10px 12px}
+.hs-logo{display:flex;align-items:center;gap:11px;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.3);border-radius:14px;padding:10px 16px 10px 12px}
 .hs-logo img{width:40px;height:40px;object-fit:contain}
-.hs-logo span{font-weight:800;color:#0f172a;font-size:.98rem;letter-spacing:.01em}
+.hs-logo span{font-weight:800;color:#fff;font-size:.98rem;letter-spacing:.01em}
 .hs-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px}
-.hs-stat{background:#f8fafc;border:1px solid #e2e8f0;border-radius:14px;padding:14px 16px}
-.hs-stat b{display:block;font-size:1.45rem;font-weight:800;color:#0f172a;line-height:1.1;letter-spacing:-.02em}
-.hs-stat span{display:block;margin-top:4px;font-size:.78rem;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:.05em}
+.hs-stat{background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.26);border-radius:14px;padding:14px 16px}
+.hs-stat b{display:block;font-size:1.45rem;font-weight:800;color:#fff;line-height:1.1;letter-spacing:-.02em}
+.hs-stat span{display:block;margin-top:4px;font-size:.78rem;font-weight:600;color:rgba(255,255,255,.85);text-transform:uppercase;letter-spacing:.05em}
 .hs-ctas{display:flex;flex-wrap:wrap;gap:12px}
 .hs-btn{display:inline-flex;align-items:center;gap:9px;text-decoration:none;font-weight:700;font-size:.95rem;padding:13px 26px;border-radius:999px;transition:all .18s ease;border:1.5px solid transparent}
-.hs-btn.primary{background:#10b981;color:#fff;box-shadow:0 10px 24px rgba(16,185,129,.3)}
-.hs-btn.primary:hover{background:#059669;color:#fff;transform:translateY(-2px)}
-.hs-btn.ghost{background:#fff;color:#047857;border-color:#a7f3d0}
-.hs-btn.ghost:hover{background:#ecfdf5;color:#065f46;transform:translateY(-2px)}
+.hs-btn.primary{background:#fff;color:#047857;box-shadow:0 10px 24px rgba(4,120,87,.32)}
+.hs-btn.primary:hover{background:#ecfdf5;color:#065f46;transform:translateY(-2px)}
+.hs-btn.ghost{background:rgba(255,255,255,.12);color:#fff;border-color:rgba(255,255,255,.5)}
+.hs-btn.ghost:hover{background:rgba(255,255,255,.22);color:#fff;transform:translateY(-2px)}
 .hs-feats{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:24px}
-.hs-feat{display:flex;gap:12px;align-items:flex-start;background:#f8fafc;border:1px solid #e2e8f0;border-radius:14px;padding:14px 16px}
-.hs-feat i{width:38px;height:38px;flex:0 0 auto;border-radius:11px;background:#ecfdf5;color:#059669;display:flex;align-items:center;justify-content:center}
-.hs-feat b{display:block;color:#0f172a;font-size:.94rem;font-weight:700}
-.hs-feat span{display:block;font-size:.82rem;color:#64748b;margin-top:2px;line-height:1.5}
+.hs-feat{display:flex;gap:12px;align-items:flex-start;background:rgba(255,255,255,.13);border:1px solid rgba(255,255,255,.26);border-radius:14px;padding:14px 16px}
+.hs-feat i{width:38px;height:38px;flex:0 0 auto;border-radius:11px;background:rgba(255,255,255,.22);color:#fff;display:flex;align-items:center;justify-content:center}
+.hs-feat b{display:block;color:#fff;font-size:.94rem;font-weight:700}
+.hs-feat span{display:block;font-size:.82rem;color:rgba(255,255,255,.85);margin-top:2px;line-height:1.5}
 .hs-dots{position:absolute;left:0;right:0;bottom:18px;display:flex;justify-content:center;gap:9px}
-.hs-dot{width:9px;height:9px;border-radius:50%;border:none;background:#cbd5e1;cursor:pointer;padding:0;transition:all .2s ease}
-.hs-dot.is-active{background:#10b981;width:26px;border-radius:999px}
-.hs-dot:focus-visible{outline:3px solid rgba(16,185,129,.45);outline-offset:2px}
+.hs-dot{width:9px;height:9px;border-radius:50%;border:none;background:rgba(255,255,255,.5);cursor:pointer;padding:0;transition:all .2s ease}
+.hs-dot.is-active{background:#fff;width:26px;border-radius:999px}
+.hs-dot:focus-visible{outline:3px solid rgba(255,255,255,.9);outline-offset:2px}
 @media (max-width:900px){
   .hs-slide{padding:30px 24px 44px;min-height:0}
   .hs-card{min-height:0}
@@ -482,19 +482,14 @@ $heroMatHref    = SITE_URL . '/materials.php';
 .bl-all{display:inline-flex;align-items:center;gap:8px;background:#fff;border:1.5px solid #a7f3d0;color:#047857;text-decoration:none;font-weight:700;font-size:.88rem;padding:9px 18px;border-radius:999px;white-space:nowrap;transition:all .18s ease}
 .bl-all:hover{background:#ecfdf5;color:#065f46}
 .bl-stage{position:relative}
-.bl-slide{display:none;background:#fff;border:1px solid #e2e8f0;border-radius:22px;overflow:hidden;box-shadow:0 14px 36px rgba(15,23,42,.07);grid-template-columns:minmax(0,44%) 1fr}
+.bl-slide{display:none;background:#fff;border:1px solid #e2e8f0;border-radius:22px;overflow:hidden;box-shadow:0 14px 36px rgba(15,23,42,.07);grid-template-columns:minmax(0,46%) 1fr;text-decoration:none}
 .bl-slide.is-active{display:grid;animation:blFade .45s ease both}
 @keyframes blFade{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
 .bl-media{position:relative;background:#0f172a;aspect-ratio:1200/630;align-self:center;width:100%;border-radius:14px;overflow:hidden}
 .bl-media img{width:100%;height:100%;object-fit:cover;display:block}
 .bl-media .bl-fallback{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#10b981 0%,#059669 100%);color:#fff;font-size:2.2rem}
-.bl-body{padding:30px 32px;display:flex;flex-direction:column;justify-content:center}
-.bl-tag{display:inline-block;align-self:flex-start;font-size:.7rem;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:#047857;background:#ecfdf5;border:1px solid #a7f3d0;border-radius:999px;padding:4px 12px;margin-bottom:12px}
-.bl-title{margin:0 0 12px;font-size:clamp(1.15rem,2.2vw,1.5rem);font-weight:800;color:#0f172a;line-height:1.3;letter-spacing:-.015em}
-.bl-excerpt{margin:0 0 16px;font-size:.95rem;line-height:1.65;color:#475569}
-.bl-date{display:inline-flex;align-items:center;gap:7px;font-size:.82rem;color:#94a3b8;margin-bottom:18px}
-.bl-cta{display:inline-flex;align-items:center;gap:9px;align-self:flex-start;background:#10b981;color:#fff;text-decoration:none;font-weight:700;font-size:.9rem;padding:11px 22px;border-radius:999px;transition:all .18s ease}
-.bl-cta:hover{background:#059669;color:#fff;transform:translateY(-2px)}
+.bl-body{padding:26px 30px;display:flex;flex-direction:column;justify-content:center}
+.bl-title{margin:0;font-size:clamp(1.15rem,2.2vw,1.45rem);font-weight:800;color:#0f172a;line-height:1.32;letter-spacing:-.015em}
 .bl-nav{position:absolute;top:50%;transform:translateY(-50%);width:44px;height:44px;border-radius:50%;border:1.5px solid #a7f3d0;background:#fff;color:#059669;display:flex;align-items:center;justify-content:center;cursor:pointer;z-index:5;box-shadow:0 6px 18px rgba(15,23,42,.12);transition:all .18s ease}
 .bl-nav:hover{background:#10b981;color:#fff;border-color:#10b981}
 .bl-nav:focus-visible{outline:3px solid rgba(16,185,129,.45);outline-offset:2px}
@@ -526,9 +521,9 @@ $heroMatHref    = SITE_URL . '/materials.php';
         <div class="bl-stage" id="blogStage">
             <?php foreach ($latestPosts as $idx => $p):
                 $thumb = $postThumbs[(int)($p['id'] ?? 0)] ?? '';
-                $isUniversity = strtolower((string)($p['level'] ?? '')) === 'university';
             ?>
-            <article class="bl-slide<?php echo $idx === 0 ? ' is-active' : ''; ?>" data-slide="<?php echo (int)$idx; ?>">
+            <a class="bl-slide<?php echo $idx === 0 ? ' is-active' : ''; ?>" data-slide="<?php echo (int)$idx; ?>"
+               href="<?php echo SITE_URL; ?>/post.php?slug=<?php echo urlencode($p['slug']); ?>">
                 <div class="bl-media">
                     <?php if ($thumb !== ''): ?>
                         <img src="<?php echo htmlspecialchars($thumb); ?>" alt="<?php echo htmlspecialchars($p['title']); ?>" loading="lazy">
@@ -537,24 +532,9 @@ $heroMatHref    = SITE_URL . '/materials.php';
                     <?php endif; ?>
                 </div>
                 <div class="bl-body">
-                    <span class="bl-tag"><?php echo $isUniversity ? 'University' : 'Secondary'; ?></span>
                     <h3 class="bl-title"><?php echo htmlspecialchars($p['title']); ?></h3>
-                    <p class="bl-excerpt"><?php
-                        $blExcerpt = trim((string)($p['excerpt'] ?? ''));
-                        if (mb_strlen($blExcerpt) > 180) {
-                            $blExcerpt = mb_substr($blExcerpt, 0, 180);
-                            $blCut = mb_strrpos($blExcerpt, ' ');
-                            if ($blCut !== false && $blCut > 60) $blExcerpt = mb_substr($blExcerpt, 0, $blCut);
-                            $blExcerpt = rtrim($blExcerpt, " ,.;:") . '…';
-                        }
-                        echo htmlspecialchars($blExcerpt);
-                    ?></p>
-                    <span class="bl-date"><i class="far fa-calendar"></i> <?php echo date('M j, Y', strtotime((string)$p['created_at'])); ?></span>
-                    <a class="bl-cta" href="<?php echo SITE_URL; ?>/post.php?slug=<?php echo urlencode($p['slug']); ?>">
-                        Read post <i class="fas fa-arrow-right"></i>
-                    </a>
                 </div>
-            </article>
+            </a>
             <?php endforeach; ?>
 
             <button type="button" class="bl-nav prev" id="blogPrev" aria-label="Previous post">
