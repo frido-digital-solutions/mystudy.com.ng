@@ -216,7 +216,7 @@ include __DIR__ . '/includes/header.php';
                             </div>
                         <?php else: ?>
                             <div class="pm-buy">
-                                <a class="pm-btn pm-btn-pay pm-btn-block" href="<?php echo SITE_URL; ?>/login.php">
+                                <a class="pm-btn pm-btn-pay pm-btn-block" href="<?php echo htmlspecialchars(msb_auth_url('login')); ?>">
                                     <i class="fas fa-right-to-bracket"></i>
                                     <span>Log in to unlock — &#8358;<?php echo number_format((float)$material['price'], 0); ?></span>
                                 </a>

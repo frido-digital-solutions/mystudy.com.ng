@@ -5,7 +5,7 @@ require_once __DIR__ . '/models/Battle.php';
 require_once __DIR__ . '/models/Notification.php';
 
 if (!isset($_SESSION['user_id'])) {
-    header("Location: login.php");
+    header("Location: " . SITE_URL . "/login.php?return=" . rawurlencode(msb_return_path()));
     exit();
 }
 

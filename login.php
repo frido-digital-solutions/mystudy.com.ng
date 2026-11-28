@@ -3,13 +3,16 @@
 $base_path = __DIR__;
 require_once $base_path . '/config/config.php'; // loads database.php and functions.php, sets $pdo and SITE_URL
 
+// Where the visitor was before the sign-in page asked them to sign in.
+$returnTo = msb_login_return();
+
 // If already logged in, redirect
 if (function_exists('is_logged_in') && is_logged_in()) {
     if (function_exists('has_role') && has_role('admin')) {
         header('Location: ' . SITE_URL . '/admin/');
         exit;
     }
-    header('Location: ' . SITE_URL . '/dashboard.php');
+    header('Location: ' . SITE_URL . $returnTo);
     exit;
 }
 
@@ -27,7 +30,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $result = $auth->login($email, $password);
 
     if (!empty($result['success'])) {
-        $target = !empty($result['redirect']) ? $result['redirect'] : '/dashboard.php';
+        // Back to the paper, quiz or material they came from - not always the dashboard.
+        $target = msb_safe_return($returnTo, '/dashboard.php');
+        if ($target === '/dashboard.php' && !empty($result['redirect'])) {
+            $target = $result['redirect'];
+        }
         header('Location: ' . SITE_URL . $target);
         exit;
     } else {

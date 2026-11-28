@@ -322,6 +322,7 @@
             </ul>
             
             <form action="<?php echo SITE_URL; ?>/register.php" method="POST" enctype="multipart/form-data" id="registrationForm" novalidate>
+                <input type="hidden" name="return" value="<?php echo htmlspecialchars($returnTo ?? ''); ?>">
                 <div class="tab-content" id="userTypeTabsContent">
                     <!-- Secondary Student Content -->
                     <div class="tab-pane fade <?php echo ($user_type !== 'university') ? 'show active' : ''; ?>" id="secondary" role="tabpanel">
@@ -518,7 +519,7 @@
                 <?php endif; ?>
                 
                 <div class="login-link">
-                    Already have an account? <a href="<?php echo SITE_URL; ?>/login.php">Log In</a>
+                    Already have an account? <a href="<?php echo SITE_URL; ?>/login.php?return=<?php echo rawurlencode($returnTo ?? ''); ?>">Log In</a>
                 </div>
             </form>
         </div>

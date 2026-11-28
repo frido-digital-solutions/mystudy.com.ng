@@ -355,8 +355,8 @@ if (isset($_SESSION['user_id']) && isset($pdo)) {
                         </div>
                     <?php else: ?>
                         <!-- Not Logged In -->
-                        <a href="<?php echo SITE_URL; ?>/login.php" class="btn-login">Log in</a>
-                        <a href="<?php echo SITE_URL; ?>/register.php" class="btn-signup">Sign Up</a>
+                        <a href="<?php echo htmlspecialchars(msb_auth_url('login')); ?>" class="btn-login">Log in</a>
+                        <a href="<?php echo htmlspecialchars(msb_auth_url('register')); ?>" class="btn-signup">Sign Up</a>
                     <?php endif; ?>
                 </div>
             </div>

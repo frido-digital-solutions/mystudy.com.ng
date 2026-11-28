@@ -192,105 +192,251 @@ seo_jsonld([
 <!-- ===========================================
      HERO SECTION - Rich & Professional
      =========================================== -->
-<section class="hero-warm">
-    <!-- Floating Decorative Elements -->
-    <i class="fas fa-book float-element float-book"></i>
-    <i class="fas fa-pencil-alt float-element float-pencil"></i>
-    <i class="fas fa-graduation-cap float-element float-cap"></i>
-    <i class="fas fa-star float-element float-star"></i>
-    <i class="fas fa-cube float-element float-cube"></i>
-    
+<?php
+// The real numbers on the site, read from the database once, so the home page
+// can state what is actually there instead of guessing.
+$msbCount = function (string $table) use ($pdo): int {
+    try {
+        return (int)$pdo->query("SELECT COUNT(*) FROM `{$table}`")->fetchColumn();
+    } catch (Throwable $e) {
+        return 0;
+    }
+};
+
+$heroStats = [
+    'questions'   => $msbCount('study_questions'),
+    'papers'      => $msbCount('study_papers'),
+    'quizzes'     => $msbCount('quizzes'),
+    'materials'   => $msbCount('materials'),
+    'tutorials'   => $msbCount('tutorials'),
+    'discussions' => $msbCount('discussions'),
+    'conversations' => $msbCount('conversations'),
+];
+
+$heroExamLogos = [];
+foreach (['JAMB', 'WAEC', 'NECO'] as $heroExamKey) {
+    $heroExamLogos[] = [
+        'name' => $heroExamKey,
+        'logo' => seo_exam_logo($heroExamKey),
+    ];
+}
+
+// Where the buttons go, for a visitor and for a signed-in student.
+$heroStudyHref  = SITE_URL . '/study.php';
+$heroStartHref  = is_logged_in() ? SITE_URL . '/dashboard.php' : msb_auth_url('register');
+$heroStartLabel = is_logged_in() ? 'Go to Dashboard' : 'Start Your Study';
+$heroChatHref   = is_logged_in() ? SITE_URL . '/messages.php' : msb_auth_url('login');
+$heroCommHref   = is_logged_in() ? SITE_URL . '/discussions.php' : msb_auth_url('login');
+$heroMatHref    = SITE_URL . '/materials.php';
+
+?>
+<!-- ===========================================
+     HERO - a card that slides through what the
+     site holds: papers, chat, community, materials
+     =========================================== -->
+<style>
+.hs-section{padding:34px 0 10px;background:linear-gradient(180deg,#f8fafc 0%,#ffffff 100%)}
+.hs-card{position:relative;background:#fff;border:1px solid #e2e8f0;border-radius:26px;box-shadow:0 20px 50px rgba(15,23,42,.08);overflow:hidden;min-height:430px}
+.hs-slide{display:none;padding:38px 40px 44px;box-sizing:border-box;min-height:430px}
+.hs-slide.is-active{display:block;animation:hsFade .5s ease both}
+@keyframes hsFade{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+.hs-eyebrow{display:inline-flex;align-items:center;gap:8px;font-size:.74rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#047857;background:#ecfdf5;border:1px solid #a7f3d0;border-radius:999px;padding:5px 13px;margin-bottom:16px}
+.hs-title{margin:0 0 12px;font-size:clamp(1.6rem,3.4vw,2.5rem);font-weight:800;color:#0f172a;letter-spacing:-.025em;line-height:1.15}
+.hs-title .hl{color:#059669}
+.hs-text{margin:0 0 22px;max-width:64ch;font-size:1.03rem;line-height:1.7;color:#475569}
+.hs-logos{display:flex;flex-wrap:wrap;gap:12px;margin-bottom:22px}
+.hs-logo{display:flex;align-items:center;gap:11px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:14px;padding:10px 16px 10px 12px}
+.hs-logo img{width:40px;height:40px;object-fit:contain}
+.hs-logo span{font-weight:800;color:#0f172a;font-size:.98rem;letter-spacing:.01em}
+.hs-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px}
+.hs-stat{background:#f8fafc;border:1px solid #e2e8f0;border-radius:14px;padding:14px 16px}
+.hs-stat b{display:block;font-size:1.45rem;font-weight:800;color:#0f172a;line-height:1.1;letter-spacing:-.02em}
+.hs-stat span{display:block;margin-top:4px;font-size:.78rem;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:.05em}
+.hs-ctas{display:flex;flex-wrap:wrap;gap:12px}
+.hs-btn{display:inline-flex;align-items:center;gap:9px;text-decoration:none;font-weight:700;font-size:.95rem;padding:13px 26px;border-radius:999px;transition:all .18s ease;border:1.5px solid transparent}
+.hs-btn.primary{background:#10b981;color:#fff;box-shadow:0 10px 24px rgba(16,185,129,.3)}
+.hs-btn.primary:hover{background:#059669;color:#fff;transform:translateY(-2px)}
+.hs-btn.ghost{background:#fff;color:#047857;border-color:#a7f3d0}
+.hs-btn.ghost:hover{background:#ecfdf5;color:#065f46;transform:translateY(-2px)}
+.hs-feats{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:24px}
+.hs-feat{display:flex;gap:12px;align-items:flex-start;background:#f8fafc;border:1px solid #e2e8f0;border-radius:14px;padding:14px 16px}
+.hs-feat i{width:38px;height:38px;flex:0 0 auto;border-radius:11px;background:#ecfdf5;color:#059669;display:flex;align-items:center;justify-content:center}
+.hs-feat b{display:block;color:#0f172a;font-size:.94rem;font-weight:700}
+.hs-feat span{display:block;font-size:.82rem;color:#64748b;margin-top:2px;line-height:1.5}
+.hs-dots{position:absolute;left:0;right:0;bottom:18px;display:flex;justify-content:center;gap:9px}
+.hs-dot{width:9px;height:9px;border-radius:50%;border:none;background:#cbd5e1;cursor:pointer;padding:0;transition:all .2s ease}
+.hs-dot.is-active{background:#10b981;width:26px;border-radius:999px}
+.hs-dot:focus-visible{outline:3px solid rgba(16,185,129,.45);outline-offset:2px}
+@media (max-width:900px){
+  .hs-slide{padding:30px 24px 44px;min-height:0}
+  .hs-card{min-height:0}
+  .hs-stats{grid-template-columns:repeat(2,1fr)}
+  .hs-feats{grid-template-columns:1fr}
+  .hs-ctas{flex-direction:column}
+  .hs-btn{justify-content:center}
+}
+</style>
+
+<section class="hs-section">
     <div class="container">
-        <div class="row align-items-center">
-            <div class="col-lg-6 hero-content-wrap">
-                <!-- Education Level Badge -->
-                <div class="edu-badge">
-                    <i class="fas fa-university"></i>
-                    <span>University</span>
-                    <span class="edu-badge-divider"></span>
-                    <i class="fas fa-school"></i>
-                    <span>Secondary School</span>
-                </div>
-                
-                <h1 class="hero-tagline">
-                    Free WAEC, NECO &amp; JAMB
-                    <span class="highlight">Past Questions &amp; CBT Practice</span>
-                </h1>
-                <p class="hero-description">
-                    Free WAEC, NECO and JAMB past questions with answers, CBT practice tests and study materials for secondary and university students. Take a paper, get your score the moment you finish, and work on your phone even without internet.
+        <div class="hs-card" id="heroSlides">
+
+            <!-- Slide 1: the papers -->
+            <div class="hs-slide is-active" data-slide="0">
+                <span class="hs-eyebrow"><i class="fas fa-sparkles"></i> Free for every student</span>
+                <h1 class="hs-title">Study Real Past Questions and Answers <span class="hl">for JAMB, WAEC and NECO</span></h1>
+                <p class="hs-text">
+                    Read the real examination papers with the options and the correct answer under every
+                    question. Then sit the same papers as a timed CBT and get your score the moment you finish.
                 </p>
-                
-                <div class="hero-cta-group">
-                    <?php if (!is_logged_in()): ?>
-                        <a href="register.php" class="btn-start">
-                            <i class="fas fa-rocket"></i> Start Learning Free
-                        </a>
-                        <a href="materials.php" class="btn-outline-hero">
-                            <i class="fas fa-book-open"></i> Browse Materials
-                        </a>
-                    <?php else: ?>
-                        <a href="dashboard.php" class="btn-start">
-                            <i class="fas fa-tachometer-alt"></i> Go to Dashboard
-                        </a>
-                        <a href="materials.php" class="btn-outline-hero">
-                            <i class="fas fa-book-open"></i> Browse Materials
-                        </a>
-                    <?php endif; ?>
+
+                <div class="hs-logos">
+                    <?php foreach ($heroExamLogos as $heroLogo): ?>
+                        <div class="hs-logo">
+                            <?php if ($heroLogo['logo'] !== ''): ?>
+                                <img src="<?php echo htmlspecialchars($heroLogo['logo']); ?>" alt="<?php echo htmlspecialchars($heroLogo['name']); ?>" width="40" height="40" loading="lazy">
+                            <?php endif; ?>
+                            <span><?php echo htmlspecialchars($heroLogo['name']); ?></span>
+                        </div>
+                    <?php endforeach; ?>
                 </div>
-                
-                <!-- Trust Stats -->
-                <div class="trust-stats">
-                    <div class="trust-stat">
-                        <div class="trust-stat-number">10,000+</div>
-                        <div class="trust-stat-label">Active Students</div>
-                    </div>
-                    <div class="trust-stat">
-                        <div class="trust-stat-number">5,000+</div>
-                        <div class="trust-stat-label">Study Materials</div>
-                    </div>
-                    <div class="trust-stat">
-                        <div class="trust-stat-number">98%</div>
-                        <div class="trust-stat-label">Pass Rate</div>
-                    </div>
+
+                <div class="hs-stats">
+                    <div class="hs-stat"><b><?php echo number_format($heroStats['questions']); ?></b><span>Past questions &amp; answers</span></div>
+                    <div class="hs-stat"><b><?php echo number_format($heroStats['papers']); ?></b><span>Full papers</span></div>
+                    <div class="hs-stat"><b><?php echo number_format($heroStats['quizzes']); ?></b><span>CBT quizzes</span></div>
+                    <div class="hs-stat"><b><?php echo number_format($heroStats['materials']); ?></b><span>Study materials</span></div>
+                </div>
+
+                <div class="hs-ctas">
+                    <a class="hs-btn primary" href="<?php echo htmlspecialchars($heroStartHref); ?>">
+                        <i class="fas fa-rocket"></i> <?php echo htmlspecialchars($heroStartLabel); ?>
+                    </a>
+                    <a class="hs-btn ghost" href="<?php echo htmlspecialchars($heroStudyHref); ?>">
+                        <i class="fas fa-book-open"></i> Study Past Questions
+                    </a>
                 </div>
             </div>
-            
-            <div class="col-lg-6 d-none d-lg-block">
-                <div class="hero-image-wrapper">
-                    <!-- Floating Stat Cards -->
-                    <div class="floating-stat-card card-1">
-                        <div class="floating-stat-icon green">
-                            <i class="fas fa-check-circle"></i>
-                        </div>
-                        <div class="floating-stat-text">
-                            <h4>CBT Ready</h4>
-                            <span>Practice anytime</span>
-                        </div>
-                    </div>
-                    
-                    <div class="floating-stat-card card-2">
-                        <div class="floating-stat-icon blue">
-                            <i class="fas fa-play-circle"></i>
-                        </div>
-                        <div class="floating-stat-text">
-                            <h4>1,500+ Videos</h4>
-                            <span>Expert tutorials</span>
-                        </div>
-                    </div>
-                    
-                    <!-- Main Hero Image -->
-                    <div class="hero-main-image">
-                        <img src="https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=400&h=267&fit=crop&crop=faces&q=60&fm=webp" 
-                             alt="Students learning together" 
-                             fetchpriority="high"
-                             width="400" height="267"
-                             decoding="async">
-                    </div>
+
+            <!-- Slide 2: the chat -->
+            <div class="hs-slide" data-slide="1">
+                <span class="hs-eyebrow"><i class="fas fa-comment-dots"></i> Chat with friends</span>
+                <h2 class="hs-title">Ask the students doing <span class="hl">the same paper</span></h2>
+                <p class="hs-text">
+                    A question you cannot answer is often one message away. Talk to other students, share a
+                    tip, and get unstuck before the exam, not on the day.
+                </p>
+                <div class="hs-feats">
+                    <div class="hs-feat"><i class="fas fa-users"></i><div><b>Private messages</b><span>Talk to a student directly and keep the conversation.</span></div></div>
+                    <div class="hs-feat"><i class="fas fa-bolt"></i><div><b>Quick replies</b><span>Send a picture of the question you are stuck on.</span></div></div>
+                    <div class="hs-feat"><i class="fas fa-mobile-screen"></i><div><b>On your phone</b><span>The app keeps the conversation open offline.</span></div></div>
+                </div>
+                <div class="hs-ctas">
+                    <a class="hs-btn primary" href="<?php echo htmlspecialchars($heroChatHref); ?>">
+                        <i class="fas fa-comment-dots"></i> Open the chat
+                    </a>
+                    <a class="hs-btn ghost" href="<?php echo htmlspecialchars($heroStudyHref); ?>">
+                        <i class="fas fa-book-open"></i> Study Past Questions
+                    </a>
                 </div>
             </div>
+
+            <!-- Slide 3: the community -->
+            <div class="hs-slide" data-slide="2">
+                <span class="hs-eyebrow"><i class="fas fa-users"></i> The community</span>
+                <h2 class="hs-title">One community for <span class="hl">every subject</span></h2>
+                <p class="hs-text">
+                    Ask a question in the community, answer somebody else's, and keep the notes that come
+                    out of it. The subjects people ask about most are the ones worth reading twice.
+                </p>
+                <div class="hs-stats">
+                    <div class="hs-stat"><b><?php echo number_format($heroStats['discussions']); ?></b><span>Discussions</span></div>
+                    <div class="hs-stat"><b><?php echo number_format($heroStats['conversations']); ?></b><span>Conversations</span></div>
+                    <div class="hs-stat"><b><?php echo number_format($heroStats['tutorials']); ?></b><span>Video tutorials</span></div>
+                    <div class="hs-stat"><b><?php echo number_format($heroStats['materials']); ?></b><span>Study materials</span></div>
+                </div>
+                <div class="hs-ctas">
+                    <a class="hs-btn primary" href="<?php echo htmlspecialchars($heroCommHref); ?>">
+                        <i class="fas fa-comments"></i> Join the community
+                    </a>
+                    <a class="hs-btn ghost" href="<?php echo htmlspecialchars($heroStudyHref); ?>">
+                        <i class="fas fa-book-open"></i> Study Past Questions
+                    </a>
+                </div>
+            </div>
+
+            <!-- Slide 4: materials -->
+            <div class="hs-slide" data-slide="3">
+                <span class="hs-eyebrow"><i class="fas fa-folder-open"></i> Materials and lessons</span>
+                <h2 class="hs-title">Notes, summaries and <span class="hl">video lessons</span></h2>
+                <p class="hs-text">
+                    When a paper is not enough, the notes are there: downloadable study materials for each
+                    subject, and tutorials that explain the part you keep getting wrong.
+                </p>
+                <div class="hs-stats">
+                    <div class="hs-stat"><b><?php echo number_format($heroStats['materials']); ?></b><span>Study materials</span></div>
+                    <div class="hs-stat"><b><?php echo number_format($heroStats['tutorials']); ?></b><span>Video tutorials</span></div>
+                    <div class="hs-stat"><b><?php echo number_format($heroStats['questions']); ?></b><span>Past questions</span></div>
+                    <div class="hs-stat"><b><?php echo number_format($heroStats['quizzes']); ?></b><span>CBT quizzes</span></div>
+                </div>
+                <div class="hs-ctas">
+                    <a class="hs-btn primary" href="<?php echo htmlspecialchars($heroMatHref); ?>">
+                        <i class="fas fa-book-open"></i> Browse materials
+                    </a>
+                    <a class="hs-btn ghost" href="<?php echo htmlspecialchars($heroStudyHref); ?>">
+                        <i class="fas fa-book-open"></i> Study Past Questions
+                    </a>
+                </div>
+            </div>
+
+            <div class="hs-dots" id="heroDots" role="tablist" aria-label="Home page highlights"></div>
         </div>
     </div>
 </section>
+
+<script>
+(function () {
+    var card = document.getElementById('heroSlides');
+    if (!card) return;
+    var slides = Array.prototype.slice.call(card.querySelectorAll('.hs-slide'));
+    var dotsBox = document.getElementById('heroDots');
+    var dots = [];
+    var current = 0;
+    var timer = null;
+
+    slides.forEach(function (slide, i) {
+        var dot = document.createElement('button');
+        dot.type = 'button';
+        dot.className = 'hs-dot' + (i === 0 ? ' is-active' : '');
+        dot.setAttribute('aria-label', 'Show highlight ' + (i + 1));
+        dot.addEventListener('click', function () { go(i); restart(); });
+        dotsBox.appendChild(dot);
+        dots.push(dot);
+    });
+
+    function go(i) {
+        if (i < 0 || i >= slides.length) return;
+        slides[current].classList.remove('is-active');
+        dots[current].classList.remove('is-active');
+        current = i;
+        slides[current].classList.add('is-active');
+        dots[current].classList.add('is-active');
+    }
+
+    function next() { go((current + 1) % slides.length); }
+
+    function restart() {
+        if (timer) clearInterval(timer);
+        timer = setInterval(next, 7000);
+    }
+
+    card.addEventListener('mouseenter', function () { if (timer) clearInterval(timer); });
+    card.addEventListener('mouseleave', restart);
+    card.addEventListener('focusin', function () { if (timer) clearInterval(timer); });
+
+    restart();
+})();
+</script>
 
 <!-- ===========================================
      CHOOSE YOUR EXAMINATION - the three doors
@@ -624,11 +770,11 @@ seo_jsonld([
 <section class="cta-warm">
     <div class="container cta-content">
         <h2 class="cta-title-warm">Ready to Start Learning?</h2>
-        <p class="cta-desc-warm">Join thousands of Nigerian students achieving their academic goals today.</p>
+        <p class="cta-desc-warm">Every paper, quiz and material on this site is free. An account only keeps your scores and your progress.</p>
         <?php if (!is_logged_in()): ?>
-            <a href="register.php" class="btn-cta-white">Create Free Account</a>
+            <a href="<?php echo htmlspecialchars(msb_auth_url('register')); ?>" class="btn-cta-white">Create Free Account</a>
         <?php else: ?>
-            <a href="dashboard.php" class="btn-cta-white">Go to Dashboard</a>
+            <a href="<?php echo SITE_URL; ?>/dashboard.php" class="btn-cta-white">Go to Dashboard</a>
         <?php endif; ?>
     </div>
 </section>

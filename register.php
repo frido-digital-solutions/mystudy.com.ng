@@ -15,6 +15,10 @@ $department = '';
 $level = '';
 $errors = [];
 
+// The page the visitor was on before they were asked to register. They go back
+// to it once they have signed in.
+$returnTo = msb_login_return();
+
 // Fetch universities dynamically from the database
 $universitiesList = [];
 try {
@@ -149,14 +153,14 @@ if (!$registrations_open) {
             if ($is_ajax) {
                 echo json_encode([
                     'success' => true,
-                    'redirect' => SITE_URL . '/login.php?registered=1',
+                    'redirect' => SITE_URL . '/login.php?registered=1&return=' . rawurlencode($returnTo),
                     'message' => 'Registration successful! Redirecting to login...'
                 ]);
                 exit;
             }
 
             // set_flash_message('success', 'Registration successful! Please log in.');
-            header('Location: ' . SITE_URL . '/login.php?registered=1');
+            header('Location: ' . SITE_URL . '/login.php?registered=1&return=' . rawurlencode($returnTo));
             exit;
         } catch (Throwable $e) {
             if ($pdo->inTransaction()) $pdo->rollBack();

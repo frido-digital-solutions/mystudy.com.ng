@@ -206,12 +206,31 @@ seo_jsonld([
 .st-btn{display:inline-block;background:#10b981;color:#fff;text-decoration:none;font-weight:700;font-size:.9rem;padding:11px 20px;border-radius:999px;transition:background .18s ease}
 .st-btn:hover{background:#059669;color:#fff}
 
+/* ---------------- the lock on a paper for a visitor who is not signed in ---- */
+.st-locked{position:relative;margin-top:6px}
+.st-preview{position:relative;overflow:hidden;max-height:190px;mask-image:linear-gradient(180deg,#000 0%,rgba(0,0,0,.55) 45%,transparent 100%);-webkit-mask-image:linear-gradient(180deg,#000 0%,rgba(0,0,0,.55) 45%,transparent 100%);filter:blur(1.5px);opacity:.75;pointer-events:none;user-select:none}
+.st-preview .st-q{border-bottom:1px solid #f1f5f9}
+.st-lock-card{position:relative;margin-top:-40px;background:#fff;border:1px solid #e2e8f0;border-radius:18px;box-shadow:0 12px 32px rgba(15,23,42,.08);padding:30px 26px;text-align:center}
+.st-lock-card .st-lock-icon{width:54px;height:54px;border-radius:50%;background:#ecfdf5;color:#059669;display:flex;align-items:center;justify-content:center;font-size:1.3rem;margin:0 auto 14px}
+.st-lock-card h3{margin:0 0 8px;font-size:1.22rem;font-weight:800;color:#0f172a;letter-spacing:-.01em}
+.st-lock-card p{margin:0 auto 18px;max-width:52ch;font-size:.95rem;line-height:1.65;color:#64748b}
+.st-lock-actions{display:flex;flex-wrap:wrap;gap:12px;justify-content:center}
+.st-lock-btn{display:inline-block;text-decoration:none;font-weight:700;font-size:.93rem;padding:12px 26px;border-radius:999px;transition:all .18s ease}
+.st-lock-btn.primary{background:#10b981;color:#fff;box-shadow:0 8px 20px rgba(16,185,129,.28)}
+.st-lock-btn.primary:hover{background:#059669;color:#fff;transform:translateY(-2px)}
+.st-lock-btn.ghost{background:#fff;color:#047857;border:1.5px solid #a7f3d0}
+.st-lock-btn.ghost:hover{background:#ecfdf5;color:#065f46}
+.st-lock-note{margin:16px 0 0;font-size:.82rem;color:#94a3b8}
+
 @media (max-width:640px){
   .st-wrap{padding:20px 14px 44px}
   .st-head h1{font-size:1.6rem}
   .st-qs{padding:6px 16px 20px}
   .st-paper-head{padding:16px}
   .st-cta{flex-direction:column;align-items:flex-start}
+  .st-lock-card{padding:24px 18px}
+  .st-lock-actions{flex-direction:column}
+  .st-lock-btn{width:100%;text-align:center}
 }
 </style>
 
@@ -349,15 +368,29 @@ seo_jsonld([
       <div class="st-note">No paper found for that year.</div>
     <?php endif; ?>
 
-    <?php $showAnswers = true; foreach ($papers as $paper):
+    <?php
+    // A visitor who is not signed in reads the first five questions of a
+    // paper. The rest is behind a clean invitation to sign in - and the
+    // invitation remembers the paper, so signing in opens this exact page.
+    $isSignedIn = is_logged_in();
+    $freeCount  = 5;
+    $returnTo   = msb_current_path();
+
+    foreach ($papers as $paper):
       $questions = $study->questions((int)$paper['id']);
       if (!$questions) continue;
+      $total    = count($questions);
+      $shown    = $isSignedIn ? $questions : array_slice($questions, 0, $freeCount);
+      $hidden   = $total - count($shown);
     ?>
       <article class="st-paper">
         <div class="st-paper-head">
           <h2><?php echo htmlspecialchars($paper['title']); ?></h2>
           <p class="st-paper-meta">
-            <span><?php echo count($questions); ?> questions</span>
+            <span><?php echo number_format($total); ?> questions</span>
+            <?php if (!$isSignedIn && $hidden > 0): ?>
+              <span>&middot; showing the first <?php echo number_format($freeCount); ?></span>
+            <?php endif; ?>
             <?php if (!empty($paper['source_url'])): ?>
               <span>&middot; <a href="<?php echo htmlspecialchars($paper['source_url']); ?>" rel="nofollow noopener" target="_blank">view the source</a></span>
             <?php endif; ?>
@@ -365,7 +398,7 @@ seo_jsonld([
         </div>
 
         <div class="st-qs">
-          <?php foreach ($questions as $q):
+          <?php foreach ($shown as $q):
             $options = json_decode((string)$q['options_json'], true);
             if (!is_array($options)) $options = [];
             $answer = strtoupper(trim((string)$q['correct_option']));
@@ -401,6 +434,44 @@ seo_jsonld([
               <?php endif; ?>
             </div>
           <?php endforeach; ?>
+
+          <?php if (!$isSignedIn && $hidden > 0): ?>
+            <div class="st-locked">
+              <?php $preview = array_slice($questions, $freeCount, 2); ?>
+              <?php if ($preview): ?>
+                <div class="st-preview" aria-hidden="true">
+                  <?php foreach ($preview as $q): ?>
+                    <div class="st-q">
+                      <div class="st-q-head">
+                        <span class="st-num"><?php echo (int)$q['display_number']; ?></span>
+                        <p class="st-q-text"><?php echo nl2br(htmlspecialchars($q['question'])); ?></p>
+                      </div>
+                    </div>
+                  <?php endforeach; ?>
+                </div>
+              <?php endif; ?>
+
+              <div class="st-lock-card">
+                <div class="st-lock-icon"><i class="fas fa-lock"></i></div>
+                <h3>Log in to read the whole paper</h3>
+                <p>
+                  You are reading the first <?php echo number_format($freeCount); ?> of
+                  <?php echo number_format($total); ?> questions. Create a free account or log in and the
+                  full paper opens, with the options and the correct answer under every question.
+                  It is free, and you will come straight back to this page.
+                </p>
+                <div class="st-lock-actions">
+                  <a class="st-lock-btn primary" href="<?php echo htmlspecialchars(SITE_URL . '/login.php?return=' . rawurlencode($returnTo)); ?>">
+                    <i class="fas fa-right-to-bracket"></i> Log in
+                  </a>
+                  <a class="st-lock-btn ghost" href="<?php echo htmlspecialchars(SITE_URL . '/register.php?return=' . rawurlencode($returnTo)); ?>">
+                    <i class="fas fa-user-plus"></i> Create a free account
+                  </a>
+                </div>
+                <p class="st-lock-note">Free forever. No card needed.</p>
+              </div>
+            </div>
+          <?php endif; ?>
         </div>
       </article>
     <?php endforeach; ?>

@@ -267,6 +267,7 @@
             <?php echo display_flash_message(); ?>
             
             <form action="" method="POST" id="loginForm">
+                <input type="hidden" name="return" value="<?php echo htmlspecialchars($returnTo ?? ''); ?>">
                 <div class="form-floating mb-3">
                     <input type="email" 
                            class="form-control <?php echo isset($errors['email']) ? 'is-invalid' : ''; ?>" 
@@ -322,7 +323,7 @@
 
             
             <div class="register-link">
-                Don't have an account? <a href="<?php echo SITE_URL; ?>/register.php">Create Account</a>
+                Don't have an account? <a href="<?php echo SITE_URL; ?>/register.php?return=<?php echo rawurlencode($returnTo ?? ''); ?>">Create Account</a>
             </div>
         </div>
     </div>

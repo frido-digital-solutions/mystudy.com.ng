@@ -11,8 +11,137 @@ function redirect($url, $statusCode = 302) {
 }
 
 /**
+ * The page the visitor is on right now, written as a path inside this site.
+ *
+ * Used to send a student back to the exact paper, quiz or material they were
+ * reading when they were asked to sign in.
+ *
+ * @return string a path such as "/study.php?exam=WAEC&year=2024"
+ */
+function msb_current_path(): string {
+    $uri = $_SERVER['REQUEST_URI'] ?? '/';
+    $path = (string)(parse_url($uri, PHP_URL_PATH) ?: '/');
+    $query = (string)(parse_url($uri, PHP_URL_QUERY) ?: '');
+
+    // On a folder install ("/mystudybase/site.php") the path starts with the
+    // folder name. Take it off, so the stored path works from any page.
+    $script = str_replace('\\', '/', (string)($_SERVER['SCRIPT_NAME'] ?? ''));
+    $base   = rtrim(dirname($script), '/');
+    if ($base !== '' && $base !== '.' && strpos($path, $base) === 0) {
+        $path = substr($path, strlen($base));
+        if ($path === '') $path = '/';
+    }
+
+    return $path . ($query !== '' ? '?' . $query : '');
+}
+
+/**
+ * The address to send a visitor back to after they sign in.
+ *
+ * When a page posts to a handler (a quiz, a battle, a purchase), the page the
+ * student was actually reading is the one they came from - the referrer - and
+ * that is the better answer. When there is no referrer, the current page is
+ * used instead.
+ *
+ * @return string a path inside this site
+ */
+function msb_return_path(): string {
+    $referer = (string)($_SERVER['HTTP_REFERER'] ?? '');
+    if ($referer !== '') {
+        $parts = parse_url($referer);
+        if (!empty($parts['path'])) {
+            $host  = strtolower((string)($parts['host'] ?? ''));
+            $site  = strtolower((string)(parse_url(defined('SITE_URL') ? SITE_URL : '', PHP_URL_HOST) ?: ''));
+            if ($host === '' || $site === '' || $host === $site) {
+                $path  = (string)$parts['path'];
+                $query = (string)($parts['query'] ?? '');
+                $base  = rtrim(dirname(str_replace('\\', '/', (string)($_SERVER['SCRIPT_NAME'] ?? ''))), '/');
+                if ($base !== '' && $base !== '.' && strpos($path, $base) === 0) {
+                    $path = substr($path, strlen($base));
+                    if ($path === '') $path = '/';
+                }
+                return $path . ($query !== '' ? '?' . $query : '');
+            }
+        }
+    }
+    return msb_current_path();
+}
+
+/**
+ * Check that a "come back to this page" address belongs to this site.
+ *
+ * Anything that names another site, or that is not a path inside this site,
+ * is refused and the fallback is used instead. This is what stops the sign-in
+ * page from being used to bounce people to a stranger's website.
+ *
+ * @param mixed $raw      the address that came in
+ * @param string $fallback where to go when the address is not ours
+ * @return string a safe path inside this site
+ */
+function msb_safe_return($raw, string $fallback = '/dashboard.php'): string {
+    $raw = trim((string)$raw);
+    if ($raw === '') return $fallback;
+
+    // No line breaks (header splitting), no other site, no scheme.
+    if (preg_match('/[\r\n]/', $raw)) return $fallback;
+    if (preg_match('#^//#', $raw)) return $fallback;
+    if (preg_match('#^[a-z][a-z0-9+.\-]*:#i', $raw)) return $fallback;
+
+    // A path inside this site. "discussions.php" and "/discussions.php" are
+    // the same page, so both are accepted.
+    if ($raw[0] !== '/') $raw = '/' . $raw;
+
+    // "/\evil.com" is read as a protocol-relative address by some browsers.
+    if (strpos($raw, '/\\') === 0 || strpos($raw, '/%5c') === 0 || strpos($raw, '/%2f') === 0) return $fallback;
+
+    // No climbing out of the site.
+    foreach (explode('/', $raw) as $part) {
+        if ($part === '..') return $fallback;
+    }
+
+    return $raw;
+}
+
+/**
+ * The address of the sign-in or sign-up page, carrying the page the visitor
+ * came from so that they can be sent back to it afterwards.
+ *
+ * @param string $page "login" or "register"
+ * @return string
+ */
+function msb_auth_url(string $page = 'login'): string {
+    $page = ($page === 'register') ? 'register' : 'login';
+    $base = defined('SITE_URL') ? SITE_URL : '';
+    return $base . '/' . $page . '.php?return=' . rawurlencode(msb_current_path());
+}
+
+/**
+ * Where to send a visitor after they sign in: the page they asked to reach,
+ * when we have it and it is safe, and the dashboard otherwise.
+ *
+ * @param mixed $raw      the address that came in (query, form or session)
+ * @param string $fallback where to go when there is nothing safe to go to
+ * @return string
+ */
+function msb_login_return($raw = null, string $fallback = '/dashboard.php'): string {
+    if ($raw === null) {
+        $raw = $_GET['return']
+            ?? ($_GET['redirect']
+            ?? ($_POST['return']
+            ?? ($_POST['redirect']
+            ?? ($_SESSION['msb_return'] ?? ''))));
+    }
+    $safe = msb_safe_return($raw, $fallback);
+    // Never send anybody back to the sign-in or sign-up page itself.
+    if (preg_match('#^/(login|register)\.php$#', parse_url($safe, PHP_URL_PATH) ?: '')) {
+        return $fallback;
+    }
+    return $safe;
+}
+
+/**
  * Sanitize input data
- * 
+ *
  * @param mixed $data Data to be sanitized
  * @return mixed Sanitized data
  */
@@ -162,7 +291,12 @@ function has_role($role) {
 function require_login($redirect = null) {
     if (!is_logged_in()) {
         set_flash_message('error', 'Please log in to access this page.');
-        $dest = $redirect ?? (defined('SITE_URL') ? (SITE_URL . '/login.php') : '/login.php');
+        if ($redirect !== null) {
+            redirect($redirect);
+        }
+        // Send them to the sign-in page, and remember where they were going so
+        // that they land back on it once they have signed in.
+        $dest = defined('SITE_URL') ? (SITE_URL . '/login.php?return=' . rawurlencode(msb_current_path())) : '/login.php';
         redirect($dest);
     }
     

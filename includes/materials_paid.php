@@ -371,7 +371,7 @@ function material_require_access(PDO $pdo, array $material, ?int $userId): void
     }
     if ($userId === null || $userId <= 0) {
         set_flash_message('info', 'Please log in to buy and download this material.');
-        header('Location: ' . SITE_URL . '/login.php');
+        header('Location: ' . SITE_URL . '/login.php?return=' . rawurlencode(msb_return_path()));
         exit;
     }
     // They may have paid and simply been redirected too early.

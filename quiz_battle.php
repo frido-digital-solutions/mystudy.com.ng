@@ -5,7 +5,7 @@ require_once __DIR__ . '/models/Battle.php';
 
 // Must be logged in
 if (!isset($_SESSION['user_id'])) {
-    header("Location: login.php");
+    header("Location: " . SITE_URL . "/login.php?return=" . rawurlencode(msb_return_path()));
     exit();
 }
 
